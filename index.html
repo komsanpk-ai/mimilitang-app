@@ -1121,7 +1121,7 @@ p.hint.collapsible-hint.show{display:block;}
 </div>
 
 <div id="toast"></div>
-<div id="fsDebugBox" style="position:fixed;bottom:8px;left:8px;right:8px;z-index:2000;background:rgba(0,0,0,.92);color:#7CFC7C;font-family:monospace;font-size:11px;line-height:1.5;padding:10px;border-radius:10px;white-space:pre-wrap;max-height:45vh;overflow:auto;"></div>
+<div id="fsDebugBox" style="display:none;position:fixed;bottom:8px;left:8px;right:8px;z-index:2000;background:rgba(0,0,0,.92);color:#7CFC7C;font-family:monospace;font-size:11px;line-height:1.5;padding:10px;border-radius:10px;white-space:pre-wrap;max-height:45vh;overflow:auto;"></div>
 
 <!-- Login gate: shown until Firebase Auth confirms a signed-in user -->
 <div class="modal-overlay show" id="loginOverlay" style="z-index:1000;">
@@ -1166,6 +1166,10 @@ const firestore = firebase.firestore();
 
 /* TEMPORARY diagnostic overlay — visible on-screen sync log, to debug the "mobile shows stale
    data" report without needing device console access. Remove once resolved. */
+// Hidden by default; add ?debug=1 to the URL to show this panel again for troubleshooting.
+if(new URLSearchParams(location.search).get('debug')==='1'){
+  document.getElementById('fsDebugBox').style.display = 'block';
+}
 function fsDebugLog(msg){
   const box = document.getElementById('fsDebugBox');
   const t = new Date().toLocaleTimeString('th-TH', {hour12:false});
