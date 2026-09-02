@@ -1,0 +1,4 @@
+*.xlsx
+*.csv
+*.json
+!package.json
