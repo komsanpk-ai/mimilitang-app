@@ -1174,7 +1174,7 @@ function fsDebugLog(msg){
 }
 fsDebugLog('project: '+firebaseConfig.projectId+' | origin: '+location.origin+location.pathname);
 
-firestore.enablePersistence({synchronizeTabs:true})
+const fsPersistenceReady = firestore.enablePersistence({synchronizeTabs:true})
   .then(()=>fsDebugLog('offline persistence: enabled'))
   .catch(e=>fsDebugLog('offline persistence: NOT enabled ('+e.code+')'));
 
@@ -1203,7 +1203,7 @@ auth.onAuthStateChanged(user=>{
   document.getElementById('logoutBtn').style.display = user ? '' : 'none';
   if(user){
     document.getElementById('loginPassword').value = '';
-    fsAttachListeners();
+    fsPersistenceReady.then(fsAttachListeners);
   }
 });
 
@@ -1318,6 +1318,22 @@ function fsSyncArray(name, currentArr){
 function fsSyncValue(key, value){
   firestore.collection('settings').doc(key).set({value}).catch(e=>console.error('Firestore sync failed: settings/'+key, e));
 }
+// Self-healing listener: Firestore does NOT auto-retry permission-denied/unauthenticated errors
+// (unlike transient network errors), so a listener that errors once would otherwise die silently
+// forever for the rest of the page session. Wrapping every listener in this retry loop means any
+// transient rejection (e.g. an auth-token-not-yet-attached race right after login) heals itself
+// within a few seconds instead of requiring the user to reload the page.
+function fsListen(getRef, onSnap, label){
+  function attach(){
+    getRef().onSnapshot(onSnap, e=>{
+      fsDebugLog(label+' LISTENER ERROR: '+e.code+' — retrying in 3s');
+      console.error(label+' listener error', e);
+      setTimeout(attach, 3000);
+    });
+  }
+  attach();
+}
+
 let fsListenersAttached = false;
 function fsAttachListeners(){
   if(fsListenersAttached){ fsDebugLog('fsAttachListeners: already attached, skipping'); return; }
@@ -1331,34 +1347,34 @@ function fsAttachListeners(){
   // The one-time move of existing local data into a fresh Firestore is a deliberate, manual step:
   // use the existing "กู้ข้อมูลจากไฟล์" (restore from backup) feature once, which already routes
   // through persistX() and therefore syncs to Firestore correctly.
-  firestore.collection('orders').onSnapshot(snap=>{
+  fsListen(()=>firestore.collection('orders'), snap=>{
     orders = snap.docs.map(d=>d.data());
     _fsPrevSnapshot.orders = orders.map(x=>Object.assign({},x));
     save(LS.orders, orders);
     fsDebugLog('orders snapshot: '+snap.docs.length+' doc(s), fromCache='+snap.metadata.fromCache);
     renderTable(); renderReport(); renderDeliveryReport(); renderPrepPage(); renderStockPage();
-  }, e=>{ fsDebugLog('orders LISTENER ERROR: '+e.code+' — '+e.message); console.error('orders listener error', e); });
+  }, 'orders');
 
-  firestore.collection('materials').onSnapshot(snap=>{
+  fsListen(()=>firestore.collection('materials'), snap=>{
     materials = snap.docs.map(d=>d.data());
     _fsPrevSnapshot.materials = materials.map(x=>Object.assign({},x));
     save(LS.materials, materials);
     renderStockPage(); renderMaterialSettingsList(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable(); renderPrepPage();
-  }, e=>console.error('materials listener error', e));
+  }, 'materials');
 
-  firestore.collection('stockins').onSnapshot(snap=>{
+  fsListen(()=>firestore.collection('stockins'), snap=>{
     stockins = snap.docs.map(d=>d.data());
     _fsPrevSnapshot.stockins = stockins.map(x=>Object.assign({},x));
     save(LS.stockins, stockins);
     renderStockPage();
-  }, e=>console.error('stockins listener error', e));
+  }, 'stockins');
 
-  firestore.collection('stockAdjustments').onSnapshot(snap=>{
+  fsListen(()=>firestore.collection('stockAdjustments'), snap=>{
     stockAdjustments = snap.docs.map(d=>d.data());
     _fsPrevSnapshot.stockAdjustments = stockAdjustments.map(x=>Object.assign({},x));
     save(LS.adjustments, stockAdjustments);
     renderStockPage();
-  }, e=>console.error('stockAdjustments listener error', e));
+  }, 'stockAdjustments');
 
   const settingsListeners = {
     products: v=>{ products = v||[]; save(LS.products, products); populateSelects(); renderTable(); renderReport(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable(); renderSettingsLists(); },
@@ -1375,9 +1391,9 @@ function fsAttachListeners(){
     logo: v=>{ logoData = v||null; save(LS.logo, logoData); renderLogo(); }
   };
   Object.keys(settingsListeners).forEach(key=>{
-    firestore.collection('settings').doc(key).onSnapshot(snap=>{
+    fsListen(()=>firestore.collection('settings').doc(key), snap=>{
       if(snap.exists) settingsListeners[key](snap.data().value);
-    }, e=>console.error('settings/'+key+' listener error', e));
+    }, 'settings/'+key);
   });
 }
 
