@@ -1308,12 +1308,13 @@ function fsAttachListeners(){
   if(fsListenersAttached) return;
   fsListenersAttached = true;
 
-  // one-time push: seed Firestore with whatever this device already has locally before we start listening
-  persistOrders(); persistMaterials(); persistStockins(); persistStockAdjustments();
-  persistProducts(); persistChannels(); persistPaymentMethods(); persistUnits(); persistRecipes();
-  persistStartupCosts(); persistOperatingExpenses(); persistDailyTarget(); persistPrepChecklist();
-  persistDeliveryRouteOrder(); persistDeliveryRouteMaps(); persistLogo();
-
+  // Pull-only on login: Firestore is always the source of truth once connected.
+  // We deliberately never auto-push local/localStorage state here — every browser origin has its
+  // own separate localStorage, so an automatic push would overwrite real cloud data with
+  // whatever (possibly empty/seed/stale) data happens to be sitting in THIS origin's local cache.
+  // The one-time move of existing local data into a fresh Firestore is a deliberate, manual step:
+  // use the existing "กู้ข้อมูลจากไฟล์" (restore from backup) feature once, which already routes
+  // through persistX() and therefore syncs to Firestore correctly.
   firestore.collection('orders').onSnapshot(snap=>{
     orders = snap.docs.map(d=>d.data());
     _fsPrevSnapshot.orders = orders.map(x=>Object.assign({},x));
