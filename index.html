@@ -1121,6 +1121,7 @@ p.hint.collapsible-hint.show{display:block;}
 </div>
 
 <div id="toast"></div>
+<div id="fsDebugBox" style="position:fixed;bottom:8px;left:8px;right:8px;z-index:2000;background:rgba(0,0,0,.92);color:#7CFC7C;font-family:monospace;font-size:11px;line-height:1.5;padding:10px;border-radius:10px;white-space:pre-wrap;max-height:45vh;overflow:auto;"></div>
 
 <!-- Login gate: shown until Firebase Auth confirms a signed-in user -->
 <div class="modal-overlay show" id="loginOverlay" style="z-index:1000;">
@@ -1162,7 +1163,20 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const firestore = firebase.firestore();
-firestore.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore offline persistence not enabled:', e.code));
+
+/* TEMPORARY diagnostic overlay — visible on-screen sync log, to debug the "mobile shows stale
+   data" report without needing device console access. Remove once resolved. */
+function fsDebugLog(msg){
+  const box = document.getElementById('fsDebugBox');
+  const t = new Date().toLocaleTimeString('th-TH', {hour12:false});
+  box.textContent += `[${t}] ${msg}\n`;
+  box.scrollTop = box.scrollHeight;
+}
+fsDebugLog('project: '+firebaseConfig.projectId+' | origin: '+location.origin+location.pathname);
+
+firestore.enablePersistence({synchronizeTabs:true})
+  .then(()=>fsDebugLog('offline persistence: enabled'))
+  .catch(e=>fsDebugLog('offline persistence: NOT enabled ('+e.code+')'));
 
 document.getElementById('loginForm').addEventListener('submit', e=>{
   e.preventDefault();
@@ -1184,6 +1198,7 @@ document.getElementById('logoutBtn').addEventListener('click', ()=>{
   if(confirm('ออกจากระบบ?')) auth.signOut();
 });
 auth.onAuthStateChanged(user=>{
+  fsDebugLog(user ? ('auth: signed in as '+user.email+' (uid '+user.uid+')') : 'auth: signed out');
   document.getElementById('loginOverlay').classList.toggle('show', !user);
   document.getElementById('logoutBtn').style.display = user ? '' : 'none';
   if(user){
@@ -1305,8 +1320,9 @@ function fsSyncValue(key, value){
 }
 let fsListenersAttached = false;
 function fsAttachListeners(){
-  if(fsListenersAttached) return;
+  if(fsListenersAttached){ fsDebugLog('fsAttachListeners: already attached, skipping'); return; }
   fsListenersAttached = true;
+  fsDebugLog('fsAttachListeners: attaching...');
 
   // Pull-only on login: Firestore is always the source of truth once connected.
   // We deliberately never auto-push local/localStorage state here — every browser origin has its
@@ -1319,8 +1335,9 @@ function fsAttachListeners(){
     orders = snap.docs.map(d=>d.data());
     _fsPrevSnapshot.orders = orders.map(x=>Object.assign({},x));
     save(LS.orders, orders);
+    fsDebugLog('orders snapshot: '+snap.docs.length+' doc(s), fromCache='+snap.metadata.fromCache);
     renderTable(); renderReport(); renderDeliveryReport(); renderPrepPage(); renderStockPage();
-  }, e=>console.error('orders listener error', e));
+  }, e=>{ fsDebugLog('orders LISTENER ERROR: '+e.code+' — '+e.message); console.error('orders listener error', e); });
 
   firestore.collection('materials').onSnapshot(snap=>{
     materials = snap.docs.map(d=>d.data());
