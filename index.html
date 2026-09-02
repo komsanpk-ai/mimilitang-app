@@ -69,6 +69,8 @@ input,select,textarea{font-family:inherit;}
   display:flex;align-items:center;justify-content:center;transition:.15s;
 }
 .topbar .icon-btn:hover{background:rgba(255,255,255,.28);}
+.topbar .logout-btn{background:#d9362e;border-color:#d9362e;border-radius:50%;}
+.topbar .logout-btn:hover{background:#c22b23;}
 
 main{max-width:1180px;margin:0 auto;padding:18px 16px 0;display:flex;flex-direction:column;gap:20px;}
 
@@ -402,7 +404,9 @@ p.hint.collapsible-hint.show{display:block;}
     <p>สาลี่ตุ๋น แปดเซียน 蜜蜜梨汤 · โทร 084-639-4708</p>
   </div>
   <button class="icon-btn" id="settingsBtn" title="ตั้งค่าสินค้า/ราคา/ช่องทาง">⚙️</button>
-  <button class="icon-btn" id="logoutBtn" title="ออกจากระบบ" style="display:none;">🚪</button>
+  <button class="icon-btn logout-btn" id="logoutBtn" title="ออกจากระบบ" style="display:none;">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="12"></line><path d="M6.3 6.3a8 8 0 1 0 11.4 0"></path></svg>
+  </button>
 </div>
 
 <div class="drawer-overlay" id="drawerOverlay">
