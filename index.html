@@ -714,7 +714,6 @@ p.hint.collapsible-hint.show{display:block;}
       <button type="button" class="btn btn-outline btn-small" data-dlquick="tomorrow">พรุ่งนี้</button>
       <button type="button" class="btn btn-outline btn-small" id="dl_prev">◀ วันก่อนหน้า</button>
       <button type="button" class="btn btn-outline btn-small" id="dl_next">วันถัดไป ▶</button>
-      <div class="field"><label>เป้าหมายยอดขาย/วัน (บาท)</label><input type="number" min="0" id="dl_target" placeholder="ไม่ตั้งเป้า" style="width:150px;"></div>
     </div>
     <div class="stat-grid" id="deliveryStats"></div>
     <div class="mini-title" style="margin-top:14px;">แยกตามสินค้า</div>
@@ -1427,7 +1426,7 @@ function fsAttachListeners(){
     recipes: v=>{ recipes = v||[]; save(LS.recipes, recipes); loadRecipeIntoBuilder(); renderRecipeOverviewTable(); renderStockPage(); renderPrepPage(); },
     startupCosts: v=>{ startupCosts = v||[]; save(LS.startupCosts, startupCosts); renderStartupCostRows(); renderStartupTotal(); renderBreakEven(); renderCashFlow(); },
     operatingExpenses: v=>{ operatingExpenses = v||[]; save(LS.operatingExpenses, operatingExpenses); renderOpex(); renderCashFlow(); },
-    dailyTarget: v=>{ dailySalesTarget = Number(v)||0; save(LS.dailyTarget, dailySalesTarget); const el=document.getElementById('dl_target'); if(el) el.value = dailySalesTarget||''; renderDeliveryReport(); },
+    dailyTarget: v=>{ dailySalesTarget = Number(v)||0; save(LS.dailyTarget, dailySalesTarget); renderDeliveryReport(); },
     prepChecklist: v=>{ prepChecklist = v||{}; save(LS.prepChecklist, prepChecklist); renderPrepPage(); },
     deliveryRouteOrder: v=>{ deliveryRouteOrder = v||{}; save(LS.deliveryRouteOrder, deliveryRouteOrder); renderDeliveryReport(); },
     deliveryRouteMaps: v=>{ deliveryRouteMaps = v||{}; save(LS.deliveryRouteMaps, deliveryRouteMaps); renderDeliveryReport(); },
@@ -1981,12 +1980,6 @@ document.querySelectorAll('[data-dlquick]').forEach(btn=>{
 document.getElementById('dl_prev').addEventListener('click', ()=>{ f('dl_date').value = addDaysISO(f('dl_date').value||todayISO(), -1); renderDeliveryReport(); });
 document.getElementById('dl_next').addEventListener('click', ()=>{ f('dl_date').value = addDaysISO(f('dl_date').value||todayISO(), 1); renderDeliveryReport(); });
 document.getElementById('dl_date').addEventListener('input', renderDeliveryReport);
-document.getElementById('dl_target').value = dailySalesTarget || '';
-document.getElementById('dl_target').addEventListener('change', ()=>{
-  dailySalesTarget = Number(document.getElementById('dl_target').value)||0;
-  persistDailyTarget();
-  renderDeliveryReport();
-});
 
 function renderDeliveryReport(){
   const date = f('dl_date').value || addDaysISO(todayISO(),1);
@@ -2009,8 +2002,6 @@ function renderDeliveryReport(){
     statCard('ถ้วยใหญ่รวม', totalLarge+' ถ้วย'),
     statCard('ยอดรวมของออเดอร์ที่จะส่ง', fmt(totalValue)+' บ.', 'ยอดเต็มทุกออเดอร์วันนี้'),
     statCard('ในนั้นยังไม่ได้รับเงิน', fmt(totalOutstanding)+' บ.', 'เผื่อต้องเก็บเงินปลายทาง'),
-    statCard('เป้าหมายยอดขายวันนี้', dailySalesTarget>0 ? fmt(dailySalesTarget)+' บ.' : 'ยังไม่ได้ตั้ง',
-      dailySalesTarget>0 ? (totalValue>=dailySalesTarget ? '✅ ถึงเป้าแล้ว' : `ขาดอีก ${fmt(dailySalesTarget-totalValue)} บ.`) : 'พิมพ์ตัวเลขด้านบนเพื่อกำหนดเป้า'),
     statCard('กำไรที่คาดว่าจะได้รับ (รวมค่าจัดส่ง)', fmt(dayProfit.profit)+' บ.', 'ยอดขาย - ต้นทุนตามสูตร ทุกออเดอร์วันนี้')
   ].join('');
 
@@ -2160,7 +2151,7 @@ function renderPrepPage(){
   const checks = prepChecklist[date] || {};
 
   document.getElementById('prepStats').innerHTML = [
-    statCard('วันที่เตรียม (สำหรับส่งวันที่)', fmtDate(date)),
+    statCard('วันที่เตรียม (สำหรับส่ง)', fmtDate(date)),
     statCard('จำนวนออเดอร์', data.orderCount+' ออเดอร์'),
     statCard('รายการสินค้าที่ต้องผลิต', data.productsNeeded.length+' รายการ'),
     statCard('วัตถุดิบที่ต้องเตรียม', data.materialsNeeded.length+' รายการ')
@@ -3809,6 +3800,8 @@ renderStockPage();
 loadRecipeIntoBuilder();
 makeHintsCollapsible(document.getElementById('page-stock'));
 makeHintsCollapsible(document.getElementById('settingsModal'));
+makeHintsCollapsible(document.getElementById('page-prep'));
+makeHintsCollapsible(document.getElementById('page-delivery'));
 
 })();
 </script>
