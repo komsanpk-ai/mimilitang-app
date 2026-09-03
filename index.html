@@ -261,13 +261,8 @@ footer.appfoot{text-align:center;color:var(--muted);font-size:11.5px;padding:26p
   .brand-text p{display:none;}
 }
 
-/* ---------- Page switch ---------- */
+/* ---------- Page switch (back-to-home bar) ---------- */
 .page-switch{display:flex;gap:8px;max-width:1180px;margin:14px auto 0;padding:0 16px;}
-.page-tab{
-  flex:1;border:1.5px solid var(--border);background:#fff;border-radius:12px 12px 0 0;
-  padding:12px 16px;font-size:14px;font-weight:600;color:var(--muted);border-bottom:none;box-shadow:var(--shadow);
-}
-.page-tab.active{background:var(--maroon);color:#fff;border-color:var(--maroon);}
 .page-view{display:none;}
 .page-view.active{display:flex;}
 
@@ -445,10 +440,7 @@ p.hint.collapsible-hint.show{display:block;}
 </div>
 
 <div class="page-switch">
-  <button type="button" class="page-tab" data-page="order">📝 บันทึกคำสั่งซื้อ</button>
-  <button type="button" class="page-tab" data-page="prep">✅ เช็คลิสต์เตรียมของ</button>
-  <button type="button" class="page-tab" data-page="delivery">📋 สรุปสินค้าเตรียมส่ง</button>
-  <button type="button" class="page-tab" data-page="stock">📦 ต้นทุน &amp; สต๊อกสินค้า</button>
+  <button type="button" class="btn btn-outline btn-small" id="backHomeBtn">🏠 กลับหน้าแรก</button>
 </div>
 
 <main id="page-home" class="page-view active">
@@ -2655,7 +2647,6 @@ document.getElementById('restoreInput').addEventListener('change', e=>{
 let activeSubview = 'overview';
 
 function switchPage(pageName){
-  document.querySelectorAll('.page-tab').forEach(b=>b.classList.toggle('active', b.dataset.page===pageName));
   document.querySelectorAll('.drawer-link').forEach(b=>b.classList.toggle('active', b.dataset.page===pageName));
   document.getElementById('page-home').classList.toggle('active', pageName==='home');
   document.getElementById('page-order').classList.toggle('active', pageName==='order');
@@ -2674,9 +2665,7 @@ function switchSubview(name){
   document.querySelectorAll('.drawer-sublink').forEach(b=>b.classList.toggle('active', b.dataset.subview===name));
   window.scrollTo({top:0, behavior:'smooth'});
 }
-document.querySelectorAll('.page-tab').forEach(btn=>{
-  btn.addEventListener('click', ()=>switchPage(btn.dataset.page));
-});
+document.getElementById('backHomeBtn').addEventListener('click', ()=>switchPage('home'));
 document.querySelectorAll('.home-tile').forEach(btn=>{
   btn.addEventListener('click', ()=>switchPage(btn.dataset.page));
 });
