@@ -276,6 +276,7 @@ footer.appfoot{text-align:center;color:var(--muted);font-size:11.5px;padding:26p
 .home-tile:hover{border-color:var(--maroon);box-shadow:var(--shadow-lg);transform:translateY(-2px);}
 .home-tile-icon{font-size:40px;}
 .home-tile-label{font-size:14.5px;font-weight:700;color:var(--maroon-dark);text-align:center;line-height:1.3;}
+.home-tile-wide{grid-column:1/-1;aspect-ratio:auto;flex-direction:row;padding:18px;}
 
 /* ---------- Sub-views within a page ---------- */
 .stock-subview{display:none;flex-direction:column;gap:20px;}
@@ -423,6 +424,7 @@ p.hint.collapsible-hint.show{display:block;}
       <button type="button" class="drawer-link" data-page="prep">✅ เช็คลิสต์เตรียมของ</button>
       <button type="button" class="drawer-link" data-page="delivery">📋 สรุปสินค้าเตรียมส่ง</button>
       <button type="button" class="drawer-link" data-page="stock">📦 ต้นทุน &amp; สต๊อกสินค้า</button>
+      <button type="button" class="drawer-link" data-page="report">📊 รายงานสรุป</button>
     </div>
     <div class="drawer-divider"></div>
     <div class="drawer-subhead">หัวข้อในหน้าต้นทุน &amp; สต๊อกสินค้า</div>
@@ -460,6 +462,10 @@ p.hint.collapsible-hint.show{display:block;}
     <button type="button" class="home-tile" data-page="stock">
       <span class="home-tile-icon">📦</span>
       <span class="home-tile-label">ต้นทุน &amp; สต๊อกสินค้า</span>
+    </button>
+    <button type="button" class="home-tile home-tile-wide" data-page="report">
+      <span class="home-tile-icon">📊</span>
+      <span class="home-tile-label">รายงานสรุป</span>
     </button>
   </div>
 </main>
@@ -571,6 +577,10 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="pagination" id="pagination"></div>
     </div>
   </section>
+
+</main>
+
+<main id="page-report" class="page-view">
 
   <!-- ===== REPORTS ===== -->
   <section class="card" id="reportSection">
@@ -2653,10 +2663,12 @@ function switchPage(pageName){
   document.getElementById('page-prep').classList.toggle('active', pageName==='prep');
   document.getElementById('page-delivery').classList.toggle('active', pageName==='delivery');
   document.getElementById('page-stock').classList.toggle('active', pageName==='stock');
+  document.getElementById('page-report').classList.toggle('active', pageName==='report');
   document.querySelector('.page-switch').style.display = pageName==='home' ? 'none' : 'flex';
   if(pageName==='stock') renderStockPage();
   if(pageName==='prep') renderPrepPage();
   if(pageName==='delivery') renderDeliveryReport();
+  if(pageName==='report') renderReport();
   window.scrollTo({top:0, behavior:'smooth'});
 }
 function switchSubview(name){
