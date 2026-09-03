@@ -259,7 +259,7 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
 .record-card-head input.rc-name,.record-card-head select.rc-name{
   flex:1;min-width:0;font-weight:600;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;
 }
-.record-card-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;}
+.record-card-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px 10px;}
 .record-field{display:flex;flex-direction:column;gap:3px;min-width:0;}
 .record-field.full{grid-column:1/-1;}
 .record-field label{font-size:11px;color:var(--muted);}
@@ -289,6 +289,7 @@ footer.appfoot{text-align:center;color:var(--muted);font-size:11.5px;padding:26p
   .stat-grid{grid-template-columns:1fr 1fr;}
   .stat-card{padding:12px;}
   .stat-card .stat-value{font-size:18px;}
+  .record-card-fields{grid-template-columns:1fr 1fr;}
 }
 
 /* ---------- Page switch (back-to-home bar) ---------- */
