@@ -245,9 +245,6 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
 .drag-handle:active{cursor:grabbing;background:var(--gold-light);}
 .drag-row.dragging{opacity:.5;}
 .settings-list input{border:1.5px solid var(--border);border-radius:8px;padding:7px 8px;font-size:13px;}
-.modal-tabs{display:flex;gap:8px;margin-bottom:16px;}
-.modal-tabs button{flex:1;border:1.5px solid var(--border);background:#fff;border-radius:8px;padding:8px;font-size:13px;font-weight:600;color:var(--muted);}
-.modal-tabs button.active{background:var(--maroon);border-color:var(--maroon);color:#fff;}
 .backup-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
 
 /* ---------- Toast ---------- */
@@ -1078,54 +1075,92 @@ p.hint.collapsible-hint.show{display:block;}
 
 <footer class="appfoot">ข้อมูลถูกบันทึกไว้ในเบราว์เซอร์นี้ (localStorage) — กรุณาใช้ปุ่ม “สำรองข้อมูล” ใน ⚙️ ตั้งค่า เพื่อกันข้อมูลสูญหาย</footer>
 
-<!-- Settings Modal -->
-<div class="modal-overlay" id="settingsModal">
-  <div class="modal">
-    <button class="modal-close" id="closeSettingsBtn">✕</button>
-    <h3>⚙️ ตั้งค่า</h3>
-    <div class="modal-tabs">
-      <button type="button" class="active" data-mtab="products">สินค้า &amp; ราคา</button>
-      <button type="button" data-mtab="channels">ช่องทางการขาย</button>
-      <button type="button" data-mtab="paymentMethods">ประเภทการจ่ายเงิน</button>
-      <button type="button" data-mtab="materials">วัตถุดิบ</button>
-      <button type="button" data-mtab="units">หน่วยนับ</button>
-      <button type="button" data-mtab="backup">สำรอง/กู้ข้อมูล</button>
-    </div>
-    <div id="mtab-products">
-      <div class="settings-list" id="productList"></div>
-      <button type="button" class="btn btn-outline btn-small" id="addProductBtn">+ เพิ่มสินค้า</button>
-    </div>
-    <div id="mtab-channels" style="display:none">
-      <div class="settings-list" id="channelList"></div>
-      <button type="button" class="btn btn-outline btn-small" id="addChannelBtn">+ เพิ่มช่องทาง</button>
-    </div>
-    <div id="mtab-paymentMethods" style="display:none">
-      <div class="settings-list" id="paymentMethodList"></div>
-      <button type="button" class="btn btn-outline btn-small" id="addPaymentMethodBtn">+ เพิ่มประเภทการจ่ายเงิน</button>
-    </div>
-    <div id="mtab-materials" style="display:none">
-      <p class="hint">ชื่อวัตถุดิบ, หน่วยนับ และจุดสั่งซื้อ (ใช้แจ้งเตือนเมื่อของใกล้หมด)<br>
-      "หมวด" แยกระหว่าง <b>วัตถุดิบอาหาร</b> (ใช้เลือกในช่อง "วัตถุดิบที่ใช้" ของสูตร) กับ <b>อุปกรณ์/บรรจุภัณฑ์</b> เช่น ถ้วย ฝา สติ๊กเกอร์ (ใช้เลือกในช่อง "ต้นทุนผันแปรอื่นๆ" ของสูตรแทน) จะได้ไม่ปนกัน<br>
-      "หน่วยย่อย" ใช้เมื่อซื้อเป็นหน่วยใหญ่แต่ใช้ในสูตรเป็นหน่วยเล็ก เช่น ซื้อสาลี่เป็น "ลูก" แต่หั่นได้ 8 "ชิ้น" ต่อลูก หรือซื้อสติ๊กเกอร์เป็น "ม้วน" แต่ใช้ทีละ "ดวง" — ใส่หน่วยย่อยแล้วในหน้าสูตรจะเลือกกรอกเป็นหน่วยย่อยได้ ระบบคำนวณต้นทุนและตัดสต๊อกให้ถูกต้องอัตโนมัติ (เว้นว่างได้ถ้าไม่มีหน่วยย่อย) — ช่องนี้ใช้ไม่ได้กับวัตถุดิบที่ซื้อเป็นกรัม/กิโลกรัม (ดูช่องถัดไปแทน)<br>
-      "กรัม/ชิ้น" ใช้กับวัตถุดิบที่ซื้อเป็นกรัม/กิโลกรัม แต่เวลาใส่สูตรอยากนับเป็น "ชิ้น" แทน (เช่น พุทราจีน แปะก๊วย แปะฮะ ลำไย เก๋ากี้ ที่ซื้อชั่งน้ำหนักแต่ตักใส่ถ้วยเป็นชิ้น) — ชั่งวัตถุดิบ 10 ชิ้นแล้วหารด้วย 10 เพื่อหาน้ำหนักเฉลี่ยต่อชิ้น กรอกที่นี่ หน้าสูตรจะมีตัวเลือกหน่วย "ชิ้น" ให้เลือกเพิ่ม (เว้นว่างได้ถ้าไม่ได้นับเป็นชิ้น)</p>
-      <div class="settings-list" id="materialSettingsList"></div>
-      <button type="button" class="btn btn-outline btn-small" id="addMaterialBtn">+ เพิ่มวัตถุดิบ</button>
-    </div>
-    <div id="mtab-units" style="display:none">
-      <p class="hint">หน่วยนับสำหรับวัตถุดิบ (เช่น ถุง กล่อง แพ็ค ชิ้น ลูก กรัม กิโลกรัม) — "กรัม" และ "กิโลกรัม" จะแปลงหน่วยให้อัตโนมัติในสูตรต้นทุน</p>
-      <div class="settings-list" id="unitList"></div>
-      <button type="button" class="btn btn-outline btn-small" id="addUnitBtn">+ เพิ่มหน่วยนับ</button>
-    </div>
-    <div id="mtab-backup" style="display:none">
-      <p class="hint">ข้อมูลทั้งหมดเก็บไว้ในเบราว์เซอร์นี้เท่านั้น หากล้างข้อมูลเบราว์เซอร์หรือเปลี่ยนเครื่อง ข้อมูลจะหาย — ควรสำรองไฟล์ JSON เก็บไว้เป็นระยะ</p>
-      <div class="backup-row">
-        <button type="button" class="btn btn-outline btn-small" id="downloadBackupBtn">⬇️ ดาวน์โหลดไฟล์สำรองข้อมูล</button>
-        <button type="button" class="btn btn-outline btn-small" id="restoreBackupBtn">⬆️ กู้ข้อมูลจากไฟล์</button>
-        <input type="file" id="restoreInput" accept=".json" style="display:none">
-      </div>
-    </div>
+<!-- Settings hub + dedicated settings pages -->
+<main id="page-settings" class="page-view">
+  <div class="home-menu">
+    <button type="button" class="home-tile" data-page="settings-products">
+      <span class="home-tile-icon">🍐</span>
+      <span class="home-tile-label">สินค้า &amp; ราคา</span>
+    </button>
+    <button type="button" class="home-tile" data-page="settings-channels">
+      <span class="home-tile-icon">🛒</span>
+      <span class="home-tile-label">ช่องทางการขาย</span>
+    </button>
+    <button type="button" class="home-tile" data-page="settings-payment">
+      <span class="home-tile-icon">💵</span>
+      <span class="home-tile-label">ประเภทการจ่ายเงิน</span>
+    </button>
+    <button type="button" class="home-tile" data-page="settings-materials">
+      <span class="home-tile-icon">🧂</span>
+      <span class="home-tile-label">วัตถุดิบ</span>
+    </button>
+    <button type="button" class="home-tile" data-page="settings-units">
+      <span class="home-tile-icon">📏</span>
+      <span class="home-tile-label">หน่วยนับ</span>
+    </button>
+    <button type="button" class="home-tile" data-page="settings-backup">
+      <span class="home-tile-icon">💾</span>
+      <span class="home-tile-label">สำรอง/กู้ข้อมูล</span>
+    </button>
   </div>
-</div>
+</main>
+
+<main id="page-settings-products" class="page-view">
+  <section class="card">
+    <div class="card-head"><h2><span class="emoji">🍐</span>สินค้า &amp; ราคา</h2></div>
+    <div class="settings-list" id="productList"></div>
+    <button type="button" class="btn btn-outline btn-small" id="addProductBtn">+ เพิ่มสินค้า</button>
+  </section>
+</main>
+
+<main id="page-settings-channels" class="page-view">
+  <section class="card">
+    <div class="card-head"><h2><span class="emoji">🛒</span>ช่องทางการขาย</h2></div>
+    <div class="settings-list" id="channelList"></div>
+    <button type="button" class="btn btn-outline btn-small" id="addChannelBtn">+ เพิ่มช่องทาง</button>
+  </section>
+</main>
+
+<main id="page-settings-payment" class="page-view">
+  <section class="card">
+    <div class="card-head"><h2><span class="emoji">💵</span>ประเภทการจ่ายเงิน</h2></div>
+    <div class="settings-list" id="paymentMethodList"></div>
+    <button type="button" class="btn btn-outline btn-small" id="addPaymentMethodBtn">+ เพิ่มประเภทการจ่ายเงิน</button>
+  </section>
+</main>
+
+<main id="page-settings-materials" class="page-view">
+  <section class="card">
+    <div class="card-head"><h2><span class="emoji">🧂</span>วัตถุดิบ</h2></div>
+    <p class="hint">ชื่อวัตถุดิบ, หน่วยนับ และจุดสั่งซื้อ (ใช้แจ้งเตือนเมื่อของใกล้หมด)<br>
+    "หมวด" แยกระหว่าง <b>วัตถุดิบอาหาร</b> (ใช้เลือกในช่อง "วัตถุดิบที่ใช้" ของสูตร) กับ <b>อุปกรณ์/บรรจุภัณฑ์</b> เช่น ถ้วย ฝา สติ๊กเกอร์ (ใช้เลือกในช่อง "ต้นทุนผันแปรอื่นๆ" ของสูตรแทน) จะได้ไม่ปนกัน<br>
+    "หน่วยย่อย" ใช้เมื่อซื้อเป็นหน่วยใหญ่แต่ใช้ในสูตรเป็นหน่วยเล็ก เช่น ซื้อสาลี่เป็น "ลูก" แต่หั่นได้ 8 "ชิ้น" ต่อลูก หรือซื้อสติ๊กเกอร์เป็น "ม้วน" แต่ใช้ทีละ "ดวง" — ใส่หน่วยย่อยแล้วในหน้าสูตรจะเลือกกรอกเป็นหน่วยย่อยได้ ระบบคำนวณต้นทุนและตัดสต๊อกให้ถูกต้องอัตโนมัติ (เว้นว่างได้ถ้าไม่มีหน่วยย่อย) — ช่องนี้ใช้ไม่ได้กับวัตถุดิบที่ซื้อเป็นกรัม/กิโลกรัม (ดูช่องถัดไปแทน)<br>
+    "กรัม/ชิ้น" ใช้กับวัตถุดิบที่ซื้อเป็นกรัม/กิโลกรัม แต่เวลาใส่สูตรอยากนับเป็น "ชิ้น" แทน (เช่น พุทราจีน แปะก๊วย แปะฮะ ลำไย เก๋ากี้ ที่ซื้อชั่งน้ำหนักแต่ตักใส่ถ้วยเป็นชิ้น) — ชั่งวัตถุดิบ 10 ชิ้นแล้วหารด้วย 10 เพื่อหาน้ำหนักเฉลี่ยต่อชิ้น กรอกที่นี่ หน้าสูตรจะมีตัวเลือกหน่วย "ชิ้น" ให้เลือกเพิ่ม (เว้นว่างได้ถ้าไม่ได้นับเป็นชิ้น)</p>
+    <div class="settings-list" id="materialSettingsList"></div>
+    <button type="button" class="btn btn-outline btn-small" id="addMaterialBtn">+ เพิ่มวัตถุดิบ</button>
+  </section>
+</main>
+
+<main id="page-settings-units" class="page-view">
+  <section class="card">
+    <div class="card-head"><h2><span class="emoji">📏</span>หน่วยนับ</h2></div>
+    <p class="hint">หน่วยนับสำหรับวัตถุดิบ (เช่น ถุง กล่อง แพ็ค ชิ้น ลูก กรัม กิโลกรัม) — "กรัม" และ "กิโลกรัม" จะแปลงหน่วยให้อัตโนมัติในสูตรต้นทุน</p>
+    <div class="settings-list" id="unitList"></div>
+    <button type="button" class="btn btn-outline btn-small" id="addUnitBtn">+ เพิ่มหน่วยนับ</button>
+  </section>
+</main>
+
+<main id="page-settings-backup" class="page-view">
+  <section class="card">
+    <div class="card-head"><h2><span class="emoji">💾</span>สำรอง/กู้ข้อมูล</h2></div>
+    <p class="hint">ข้อมูลทั้งหมดเก็บไว้ในเบราว์เซอร์นี้เท่านั้น หากล้างข้อมูลเบราว์เซอร์หรือเปลี่ยนเครื่อง ข้อมูลจะหาย — ควรสำรองไฟล์ JSON เก็บไว้เป็นระยะ</p>
+    <div class="backup-row">
+      <button type="button" class="btn btn-outline btn-small" id="downloadBackupBtn">⬇️ ดาวน์โหลดไฟล์สำรองข้อมูล</button>
+      <button type="button" class="btn btn-outline btn-small" id="restoreBackupBtn">⬆️ กู้ข้อมูลจากไฟล์</button>
+      <input type="file" id="restoreInput" accept=".json" style="display:none">
+    </div>
+  </section>
+</main>
 
 <!-- Delivery-complete confirm modal -->
 <div class="modal-overlay" id="dlCompleteModal">
@@ -2539,19 +2574,8 @@ function svgPie(data,total){
   return `<svg viewBox="0 0 ${size} ${size}" class="chart-svg">${paths}</svg>`;
 }
 
-/* ============ Settings Modal ============ */
-const settingsModal = document.getElementById('settingsModal');
-document.getElementById('settingsDrawerBtn').addEventListener('click', ()=>{ closeDrawer(); settingsModal.classList.add('show'); renderSettingsLists(); renderMaterialSettingsList(); renderUnitSettingsList(); });
-document.getElementById('closeSettingsBtn').addEventListener('click', ()=>settingsModal.classList.remove('show'));
-settingsModal.addEventListener('click', e=>{ if(e.target===settingsModal) settingsModal.classList.remove('show'); });
-
-document.querySelectorAll('.modal-tabs button').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.modal-tabs button').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    ['products','channels','paymentMethods','materials','units','backup'].forEach(t=>document.getElementById('mtab-'+t).style.display = t===btn.dataset.mtab?'block':'none');
-  });
-});
+/* ============ Settings pages ============ */
+document.getElementById('settingsDrawerBtn').addEventListener('click', ()=>{ closeDrawer(); switchPage('settings'); });
 
 function renderSettingsLists(){
   document.getElementById('productList').innerHTML = products.map((p,i)=>`
@@ -2655,19 +2679,26 @@ document.getElementById('restoreInput').addEventListener('change', e=>{
 /* ============ Page switch ============ */
 let activeSubview = 'overview';
 
+const ALL_PAGES = ['home','order','prep','delivery','stock','report',
+  'settings','settings-products','settings-channels','settings-payment','settings-materials','settings-units','settings-backup'];
+const PAGE_PARENT = {
+  order:'home', prep:'home', delivery:'home', stock:'home', report:'home', settings:'home',
+  'settings-products':'settings', 'settings-channels':'settings', 'settings-payment':'settings',
+  'settings-materials':'settings', 'settings-units':'settings', 'settings-backup':'settings'
+};
 function switchPage(pageName){
   document.querySelectorAll('.drawer-link').forEach(b=>b.classList.toggle('active', b.dataset.page===pageName));
-  document.getElementById('page-home').classList.toggle('active', pageName==='home');
-  document.getElementById('page-order').classList.toggle('active', pageName==='order');
-  document.getElementById('page-prep').classList.toggle('active', pageName==='prep');
-  document.getElementById('page-delivery').classList.toggle('active', pageName==='delivery');
-  document.getElementById('page-stock').classList.toggle('active', pageName==='stock');
-  document.getElementById('page-report').classList.toggle('active', pageName==='report');
+  ALL_PAGES.forEach(p=>{ const el=document.getElementById('page-'+p); if(el) el.classList.toggle('active', p===pageName); });
+  const parent = PAGE_PARENT[pageName] || 'home';
+  const backBtn = document.getElementById('backHomeBtn');
+  backBtn.textContent = parent==='home' ? '🏠 กลับหน้าแรก' : '◀ กลับไปตั้งค่า';
+  backBtn.dataset.target = parent;
   document.querySelector('.page-switch').style.display = pageName==='home' ? 'none' : 'flex';
   if(pageName==='stock') renderStockPage();
   if(pageName==='prep') renderPrepPage();
   if(pageName==='delivery') renderDeliveryReport();
   if(pageName==='report') renderReport();
+  if(pageName==='settings' || pageName.indexOf('settings-')===0){ renderSettingsLists(); renderMaterialSettingsList(); renderUnitSettingsList(); }
   window.scrollTo({top:0, behavior:'smooth'});
 }
 function switchSubview(name){
@@ -2676,7 +2707,7 @@ function switchSubview(name){
   document.querySelectorAll('.drawer-sublink').forEach(b=>b.classList.toggle('active', b.dataset.subview===name));
   window.scrollTo({top:0, behavior:'smooth'});
 }
-document.getElementById('backHomeBtn').addEventListener('click', ()=>switchPage('home'));
+document.getElementById('backHomeBtn').addEventListener('click', ()=>switchPage(document.getElementById('backHomeBtn').dataset.target || 'home'));
 document.querySelectorAll('.home-tile').forEach(btn=>{
   btn.addEventListener('click', ()=>switchPage(btn.dataset.page));
 });
@@ -3807,7 +3838,9 @@ renderPrepPage();
 renderStockPage();
 loadRecipeIntoBuilder();
 makeHintsCollapsible(document.getElementById('page-stock'));
-makeHintsCollapsible(document.getElementById('settingsModal'));
+makeHintsCollapsible(document.getElementById('page-settings-materials'));
+makeHintsCollapsible(document.getElementById('page-settings-units'));
+makeHintsCollapsible(document.getElementById('page-settings-backup'));
 makeHintsCollapsible(document.getElementById('page-prep'));
 makeHintsCollapsible(document.getElementById('page-delivery'));
 
