@@ -2013,7 +2013,7 @@ function renderDeliveryReport(){
     byProduct[key].small += Number(o.jarSmall)||0;
     byProduct[key].large += Number(o.jarLarge)||0;
   });
-  const lines = Object.keys(byProduct).map(k=>`<b>${esc(k)}</b>: เล็ก ${byProduct[k].small} · ใหญ่ ${byProduct[k].large}`);
+  const lines = Object.keys(byProduct).map(k=>`<b>${esc(k)}</b>: เล็ก ${byProduct[k].small} · ใหญ่ ${byProduct[k].large} · รวม ${byProduct[k].small+byProduct[k].large} ถ้วย`);
   document.getElementById('deliveryProductBreakdown').innerHTML = lines.length ? lines.join(' &nbsp;|&nbsp; ') : 'ไม่มีออเดอร์ในวันนี้';
 
   const tbody = document.getElementById('deliveryBody');
