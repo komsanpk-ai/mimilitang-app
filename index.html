@@ -326,20 +326,18 @@ footer.appfoot{text-align:center;color:var(--muted);font-size:11.5px;padding:26p
 .alert-banner ul{margin:4px 0 0;padding-left:18px;}
 .alert-banner b{font-weight:700;}
 
-/* ---------- Builder rows (recipe ingredients / other costs) ---------- */
-.builder-row{display:grid;grid-template-columns:2fr 1fr 1fr 90px 34px;gap:8px;align-items:center;margin-bottom:8px;}
-.builder-row.cost{grid-template-columns:1.6fr 0.8fr 1fr 34px;}
-@media(max-width:640px){.builder-row,.builder-row.cost{grid-template-columns:1fr 1fr;}}
+/* ---------- Builder rows: recipe ingredients/other-costs are <tr>-based (table-scroll);
+   startup-cost rows still reuse the same .builder-row class name as plain <div>s, so the
+   grid layout below is scoped to div.builder-row specifically and never applies to the
+   <tr class="builder-row"> rows in the recipe builder tables. ---------- */
+div.builder-row{display:grid;grid-template-columns:2fr 1fr 1fr 90px 34px;gap:8px;align-items:center;margin-bottom:8px;}
+div.builder-row.cost{grid-template-columns:1.6fr 0.8fr 1fr 34px;}
+@media(max-width:640px){div.builder-row,div.builder-row.cost{grid-template-columns:1fr 1fr;}}
 .row-cost{font-size:12px;color:var(--muted);white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums;}
 .row-cost.warn{color:var(--orange);}
-.builder-total-row{
-  display:flex;justify-content:space-between;align-items:center;gap:10px;
-  padding:9px 14px;margin:2px 0 10px;border-radius:9px;
-  background:var(--cream);border:1.5px solid var(--gold-light);
-  font-weight:700;color:var(--maroon-dark);font-size:13.5px;
-}
-.builder-total-row .value{font-variant-numeric:tabular-nums;}
-.builder-row select,.builder-row input{border:1.5px solid var(--border);border-radius:9px;padding:8px 10px;font-size:13px;width:100%;}
+tr.builder-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--cream);border-top:2px solid var(--gold-light);font-size:13.5px;}
+tr.builder-total-row td.value{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.builder-row select,.builder-row input{border:1.5px solid var(--border);border-radius:9px;padding:8px 10px;font-size:13px;width:100%;min-width:120px;}
 .unit-tag{font-size:12px;color:var(--muted);background:var(--cream);border-radius:8px;padding:8px 10px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 .cost-summary{
@@ -355,9 +353,12 @@ footer.appfoot{text-align:center;color:var(--muted);font-size:11.5px;padding:26p
 .subtle-note{font-size:11.5px;color:var(--muted);margin-top:6px;}
 .section-divider{border:none;border-top:1.5px dashed var(--border);margin:22px 0;}
 .mini-title{font-size:14px;font-weight:600;color:var(--maroon-dark);margin-bottom:10px;}
-.settings-list .item-row.material{grid-template-columns:44px 1.1fr 120px 85px 105px 100px 85px 110px 34px;}
-@media(max-width:900px){.settings-list .item-row.material{grid-template-columns:1fr 1fr;}}
 .settings-list .item-row.product{grid-template-columns:44px 1fr 90px 90px 34px;}
+#materialSettingsTable td{padding:8px;vertical-align:middle;}
+#materialSettingsTable input,#materialSettingsTable select{
+  border:1.5px solid var(--border);border-radius:8px;padding:7px 8px;font-size:13px;width:100%;min-width:110px;
+}
+#materialSettingsTable td:nth-child(3) input{min-width:160px;}
 
 .category-block{border:1.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:6px;background:#fffdf8;}
 .category-label{font-size:12.5px;font-weight:700;color:var(--maroon);text-transform:uppercase;letter-spacing:.2px;margin-bottom:14px;}
@@ -918,7 +919,12 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="category-label">🔵 หมวด: ต้นทุนผันแปร (Variable Cost) — แปรผันตามจำนวนที่ผลิต</div>
 
       <div class="mini-title">วัตถุดิบที่ใช้ (ต่อ 1 ถ้วย)</div>
-      <div id="ingredientRows"></div>
+      <div class="table-scroll">
+        <table id="ingredientTable">
+          <thead><tr><th>วัตถุดิบ</th><th>จำนวน</th><th>หน่วย</th><th>ต้นทุน</th><th></th></tr></thead>
+          <tbody id="ingredientRows"></tbody>
+        </table>
+      </div>
       <button type="button" class="btn btn-outline btn-small" id="addIngredientBtn">+ เพิ่มวัตถุดิบ</button>
 
       <div class="mini-title" style="margin-top:18px;">ต้นทุนผันแปรอื่นๆ (ต่อ 1 ถ้วย)</div>
@@ -1136,7 +1142,15 @@ p.hint.collapsible-hint.show{display:block;}
     "หมวด" แยกระหว่าง <b>วัตถุดิบอาหาร</b> (ใช้เลือกในช่อง "วัตถุดิบที่ใช้" ของสูตร) กับ <b>อุปกรณ์/บรรจุภัณฑ์</b> เช่น ถ้วย ฝา สติ๊กเกอร์ (ใช้เลือกในช่อง "ต้นทุนผันแปรอื่นๆ" ของสูตรแทน) จะได้ไม่ปนกัน<br>
     "หน่วยย่อย" ใช้เมื่อซื้อเป็นหน่วยใหญ่แต่ใช้ในสูตรเป็นหน่วยเล็ก เช่น ซื้อสาลี่เป็น "ลูก" แต่หั่นได้ 8 "ชิ้น" ต่อลูก หรือซื้อสติ๊กเกอร์เป็น "ม้วน" แต่ใช้ทีละ "ดวง" — ใส่หน่วยย่อยแล้วในหน้าสูตรจะเลือกกรอกเป็นหน่วยย่อยได้ ระบบคำนวณต้นทุนและตัดสต๊อกให้ถูกต้องอัตโนมัติ (เว้นว่างได้ถ้าไม่มีหน่วยย่อย) — ช่องนี้ใช้ไม่ได้กับวัตถุดิบที่ซื้อเป็นกรัม/กิโลกรัม (ดูช่องถัดไปแทน)<br>
     "กรัม/ชิ้น" ใช้กับวัตถุดิบที่ซื้อเป็นกรัม/กิโลกรัม แต่เวลาใส่สูตรอยากนับเป็น "ชิ้น" แทน (เช่น พุทราจีน แปะก๊วย แปะฮะ ลำไย เก๋ากี้ ที่ซื้อชั่งน้ำหนักแต่ตักใส่ถ้วยเป็นชิ้น) — ชั่งวัตถุดิบ 10 ชิ้นแล้วหารด้วย 10 เพื่อหาน้ำหนักเฉลี่ยต่อชิ้น กรอกที่นี่ หน้าสูตรจะมีตัวเลือกหน่วย "ชิ้น" ให้เลือกเพิ่ม (เว้นว่างได้ถ้าไม่ได้นับเป็นชิ้น)</p>
-    <div class="settings-list" id="materialSettingsList"></div>
+    <div class="table-scroll">
+      <table id="materialSettingsTable">
+        <thead><tr>
+          <th style="width:28px;"></th><th style="width:48px;"></th><th>ชื่อวัตถุดิบ</th><th>หมวด</th><th>หน่วยนับ</th>
+          <th>จุดสั่งซื้อ</th><th>หน่วยย่อย</th><th>กี่หน่วยย่อย/หน่วย</th><th>กรัม/ชิ้น</th><th style="width:34px;"></th>
+        </tr></thead>
+        <tbody id="materialSettingsList"></tbody>
+      </table>
+    </div>
     <button type="button" class="btn btn-outline btn-small" id="addMaterialBtn">+ เพิ่มวัตถุดิบ</button>
   </section>
 </main>
@@ -3082,7 +3096,7 @@ function loadRecipeIntoBuilder(){
 }
 function renderIngredientRows(){
   const box = document.getElementById('ingredientRows');
-  if(!builderIngredients.length){ box.innerHTML = '<p class="hint">ยังไม่มีวัตถุดิบในสูตรนี้ กด "+ เพิ่มวัตถุดิบ" ด้านล่าง</p>'; return; }
+  if(!builderIngredients.length){ box.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีวัตถุดิบในสูตรนี้ กด "+ เพิ่มวัตถุดิบ" ด้านล่าง</td></tr>'; return; }
   box.innerHTML = builderIngredients.map((ing,i)=>{
     const mat = getMaterial(ing.materialId);
     const options = getIngredientUnitOptions(mat);
@@ -3097,16 +3111,16 @@ function renderIngredientRows(){
     const missingOption = mat ? '' : `<option value="" selected>⚠️ ไม่พบวัตถุดิบเดิม — กรุณาเลือกใหม่</option>`;
     const costInfo = recipeIngredientCost(ing);
     const costDisplay = !mat ? '' : costInfo.invalidUnit ? `<span class="row-cost warn">⚠️ หน่วยไม่ตรง — เลือกใหม่</span>` : costInfo.missingPrice ? `<span class="row-cost warn">⚠️ ไม่มีราคา</span>` : `<span class="row-cost">= ${fmt(costInfo.cost)} บ.</span>`;
-    return `<div class="builder-row">
-      <select class="ing-material" data-i="${i}">${missingOption}${foodMaterials.map(m=>`<option value="${m.id}" ${m.id===ing.materialId?'selected':''}>${esc(m.name)}</option>`).join('')}</select>
-      <input type="number" min="0" step="any" class="ing-qty" data-i="${i}" value="${ing.qty}" placeholder="จำนวน">
-      ${unitField}
-      ${costDisplay}
-      <button type="button" class="icon-mini danger ing-remove" data-i="${i}">✕</button>
-    </div>`;
+    return `<tr class="builder-row">
+      <td><select class="ing-material" data-i="${i}">${missingOption}${foodMaterials.map(m=>`<option value="${m.id}" ${m.id===ing.materialId?'selected':''}>${esc(m.name)}</option>`).join('')}</select></td>
+      <td><input type="number" min="0" step="any" class="ing-qty" data-i="${i}" value="${ing.qty}" placeholder="จำนวน"></td>
+      <td>${unitField}</td>
+      <td>${costDisplay}</td>
+      <td><button type="button" class="icon-mini danger ing-remove" data-i="${i}">✕</button></td>
+    </tr>`;
   }).join('') + (()=>{
     const total = builderIngredients.reduce((s,ing)=>s+recipeIngredientCost(ing).cost,0);
-    return `<div class="builder-total-row"><span>รวมต้นทุนวัตถุดิบ</span><span class="value">= ${fmt(total)} บ.</span></div>`;
+    return `<tr class="builder-total-row"><td colspan="3">รวมต้นทุนวัตถุดิบ</td><td class="value" colspan="2">= ${fmt(total)} บ.</td></tr>`;
   })();
   box.querySelectorAll('.ing-material').forEach(el=>el.addEventListener('change', ()=>{
     const i = Number(el.dataset.i);
@@ -3178,21 +3192,21 @@ function renderOtherCostRows(){
     const missingOption = mat ? '' : `<option value="" selected>⚠️ ไม่พบวัตถุดิบเดิม — กรุณาเลือกใหม่</option>`;
     const costInfo = recipeIngredientCost(entry);
     const costDisplay = !mat ? '' : costInfo.invalidUnit ? `<span class="row-cost warn">⚠️ หน่วยไม่ตรง — เลือกใหม่</span>` : costInfo.missingPrice ? `<span class="row-cost warn">⚠️ ไม่มีราคา</span>` : `<span class="row-cost">= ${fmt(costInfo.cost)} บ.</span>`;
-    return `<div class="builder-row">
-      <select class="oc-material" data-i="${i}">${missingOption}${supplyMaterials.map(m=>`<option value="${m.id}" ${m.id===entry.materialId?'selected':''}>${esc(m.name)}</option>`).join('')}</select>
-      <input type="number" min="0" step="any" class="oc-qty" data-i="${i}" value="${entry.qty}" placeholder="จำนวน">
-      ${unitField}
-      ${costDisplay}
-      <button type="button" class="icon-mini danger oc-remove" data-i="${i}">✕</button>
-    </div>`;
+    return `<tr class="builder-row">
+      <td><select class="oc-material" data-i="${i}">${missingOption}${supplyMaterials.map(m=>`<option value="${m.id}" ${m.id===entry.materialId?'selected':''}>${esc(m.name)}</option>`).join('')}</select></td>
+      <td><input type="number" min="0" step="any" class="oc-qty" data-i="${i}" value="${entry.qty}" placeholder="จำนวน"></td>
+      <td>${unitField}</td>
+      <td>${costDisplay}</td>
+      <td><button type="button" class="icon-mini danger oc-remove" data-i="${i}">✕</button></td>
+    </tr>`;
   }
   function flatRowHtml(entry, i){
-    return `<div class="builder-row cost">
-      <input type="text" class="cost-label" data-i="${i}" list="costLabelList" value="${esc(entry.label)}" placeholder="เช่น ค่าน้ำมัน">
-      <input type="text" class="cost-unit" data-i="${i}" list="unitSuggestList" value="${esc(entry.unit||'')}" placeholder="หน่วย (ถ้ามี)">
-      <input type="number" min="0" step="any" class="cost-amount" data-i="${i}" value="${entry.amount}" placeholder="บาท">
-      <button type="button" class="icon-mini danger cost-remove" data-i="${i}">✕</button>
-    </div>`;
+    return `<tr class="builder-row cost">
+      <td><input type="text" class="cost-label" data-i="${i}" list="costLabelList" value="${esc(entry.label)}" placeholder="เช่น ค่าน้ำมัน"></td>
+      <td><input type="text" class="cost-unit" data-i="${i}" list="unitSuggestList" value="${esc(entry.unit||'')}" placeholder="หน่วย (ถ้ามี)"></td>
+      <td><input type="number" min="0" step="any" class="cost-amount" data-i="${i}" value="${entry.amount}" placeholder="บาท"></td>
+      <td><button type="button" class="icon-mini danger cost-remove" data-i="${i}">✕</button></td>
+    </tr>`;
   }
   const indexed = builderOtherCosts.map((entry,i)=>({entry,i}));
   const itemRows = indexed.filter(x=>x.entry.materialId!==undefined);
@@ -3201,14 +3215,18 @@ function renderOtherCostRows(){
   if(itemRows.length){
     const itemTotal = itemRows.reduce((s,x)=>s+recipeIngredientCost(x.entry).cost,0);
     html += `<div class="subgroup-label">🔵 อุปกรณ์/บรรจุภัณฑ์ — มีหน่วยย่อย ตัดสต๊อกอัตโนมัติ</div>`;
+    html += `<div class="table-scroll"><table><thead><tr><th>รายการ</th><th>จำนวน</th><th>หน่วย</th><th>ต้นทุน</th><th></th></tr></thead><tbody>`;
     html += itemRows.map(x=>itemRowHtml(x.entry, x.i)).join('');
-    html += `<div class="builder-total-row items"><span>รวมต้นทุนอุปกรณ์/บรรจุภัณฑ์</span><span class="value">= ${fmt(itemTotal)} บ.</span></div>`;
+    html += `<tr class="builder-total-row items"><td colspan="3">รวมต้นทุนอุปกรณ์/บรรจุภัณฑ์</td><td class="value" colspan="2">= ${fmt(itemTotal)} บ.</td></tr>`;
+    html += `</tbody></table></div>`;
   }
   if(flatRows.length){
     const flatTotal = flatRows.reduce((s,x)=>s+(Number(x.entry.amount)||0),0);
     html += `<div class="subgroup-label" style="margin-top:${itemRows.length?'14px':'0'};">📝 ค่าใช้จ่ายเหมา — กรอกเอง ไม่ตัดสต๊อก</div>`;
+    html += `<div class="table-scroll"><table><thead><tr><th>รายการ</th><th>หน่วย</th><th>จำนวนเงิน</th><th></th></tr></thead><tbody>`;
     html += flatRows.map(x=>flatRowHtml(x.entry, x.i)).join('');
-    html += `<div class="builder-total-row flat"><span>รวมค่าใช้จ่ายเหมา</span><span class="value">= ${fmt(flatTotal)} บ.</span></div>`;
+    html += `<tr class="builder-total-row flat"><td colspan="2">รวมค่าใช้จ่ายเหมา</td><td class="value" colspan="2">= ${fmt(flatTotal)} บ.</td></tr>`;
+    html += `</tbody></table></div>`;
   }
   box.innerHTML = html;
   box.querySelectorAll('.oc-material').forEach(el=>el.addEventListener('change', ()=>{
@@ -3738,8 +3756,8 @@ function initDragReorder(container, rowSelector, onReorder){
 }
 function initMaterialDragReorder(){
   const container = document.getElementById('materialSettingsList');
-  initDragReorder(container, '.drag-row', ()=>{
-    const newOrderIds = Array.from(container.querySelectorAll('.drag-row')).map(r=>r.dataset.id);
+  initDragReorder(container, 'tr', ()=>{
+    const newOrderIds = Array.from(container.querySelectorAll('tr')).map(r=>r.dataset.id);
     materials.sort((a,b)=> newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id));
     persistMaterials();
     renderMaterialSettingsList();
@@ -3748,27 +3766,27 @@ function initMaterialDragReorder(){
   });
 }
 function renderMaterialSettingsList(){
-  document.getElementById('materialSettingsList').innerHTML = materials.map((m,i)=>`
-    <div class="drag-row" data-id="${esc(m.id)}">
-      <span class="drag-handle" title="ลากเพื่อจัดเรียงลำดับ">⠿</span>
-      <div class="item-row material">
-        <label class="item-photo" title="คลิกเพื่ออัปโหลด/เปลี่ยนรูปวัตถุดิบ">
-          ${m.image ? `<img src="${m.image}">` : '🧂'}
-          <input type="file" accept="image/*" data-i="${i}" class="material-photo-input">
-        </label>
-        <input type="text" data-i="${i}" data-f="name" value="${esc(m.name)}" placeholder="ชื่อวัตถุดิบ">
-        <select data-i="${i}" data-f="category">
-          <option value="food" ${(m.category||'food')==='food'?'selected':''}>วัตถุดิบอาหาร</option>
-          <option value="supply" ${m.category==='supply'?'selected':''}>อุปกรณ์/บรรจุภัณฑ์</option>
-        </select>
-        <select data-i="${i}" data-f="unit">${units.map(u=>`<option value="${esc(u)}" ${u===m.unit?'selected':''}>${esc(u)}</option>`).join('')}</select>
-        <input type="number" min="0" step="any" data-i="${i}" data-f="reorderPoint" value="${m.reorderPoint?m.reorderPoint:''}" placeholder="จุดสั่งซื้อ (ยังไม่กำหนด)">
-        <input type="text" data-i="${i}" data-f="subUnitName" value="${esc(m.subUnitName||'')}" placeholder="หน่วยย่อย (ถ้ามี) เช่น ชิ้น">
-        <input type="number" min="0" step="1" data-i="${i}" data-f="subUnitCount" value="${m.subUnitCount?m.subUnitCount:''}" placeholder="กี่ชิ้น/หน่วย">
-        <input type="number" min="0" step="any" data-i="${i}" data-f="pieceWeight" value="${m.pieceWeight?m.pieceWeight:''}" placeholder="กรัม/ชิ้น (ถ้านับชิ้น)">
-        <button class="icon-mini danger" data-i="${i}" data-act="delMaterial">✕</button>
-      </div>
-    </div>`).join('') || '<p class="hint">ยังไม่มีวัตถุดิบ</p>';
+  const tbody = document.getElementById('materialSettingsList');
+  if(!materials.length){ tbody.innerHTML = '<tr><td colspan="10" class="empty-state">ยังไม่มีวัตถุดิบ</td></tr>'; return; }
+  tbody.innerHTML = materials.map((m,i)=>`
+    <tr data-id="${esc(m.id)}">
+      <td><span class="drag-handle" title="ลากเพื่อจัดเรียงลำดับ">⠿</span></td>
+      <td><label class="item-photo" title="คลิกเพื่ออัปโหลด/เปลี่ยนรูปวัตถุดิบ">
+        ${m.image ? `<img src="${m.image}">` : '🧂'}
+        <input type="file" accept="image/*" data-i="${i}" class="material-photo-input">
+      </label></td>
+      <td><input type="text" data-i="${i}" data-f="name" value="${esc(m.name)}" placeholder="ชื่อวัตถุดิบ"></td>
+      <td><select data-i="${i}" data-f="category">
+        <option value="food" ${(m.category||'food')==='food'?'selected':''}>วัตถุดิบอาหาร</option>
+        <option value="supply" ${m.category==='supply'?'selected':''}>อุปกรณ์/บรรจุภัณฑ์</option>
+      </select></td>
+      <td><select data-i="${i}" data-f="unit">${units.map(u=>`<option value="${esc(u)}" ${u===m.unit?'selected':''}>${esc(u)}</option>`).join('')}</select></td>
+      <td><input type="number" min="0" step="any" data-i="${i}" data-f="reorderPoint" value="${m.reorderPoint?m.reorderPoint:''}" placeholder="ยังไม่กำหนด"></td>
+      <td><input type="text" data-i="${i}" data-f="subUnitName" value="${esc(m.subUnitName||'')}" placeholder="เช่น ชิ้น"></td>
+      <td><input type="number" min="0" step="1" data-i="${i}" data-f="subUnitCount" value="${m.subUnitCount?m.subUnitCount:''}" placeholder="กี่ชิ้น/หน่วย"></td>
+      <td><input type="number" min="0" step="any" data-i="${i}" data-f="pieceWeight" value="${m.pieceWeight?m.pieceWeight:''}" placeholder="ถ้านับชิ้น"></td>
+      <td><button class="icon-mini danger" data-i="${i}" data-act="delMaterial">✕</button></td>
+    </tr>`).join('');
   initMaterialDragReorder();
   document.getElementById('materialSettingsList').querySelectorAll('input:not(.material-photo-input),select').forEach(el=>{
     el.addEventListener('input', ()=>{
