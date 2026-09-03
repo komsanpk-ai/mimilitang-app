@@ -251,8 +251,8 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
    One self-contained card per item — everything stacks/wraps inside a card that's always
    100% of its container's width, so it can never overflow sideways ("ตกขอบ") the way a fixed
    multi-column grid or a wide table did. No horizontal scrolling needed for these. */
-.record-list{display:flex;flex-direction:column;gap:10px;margin-bottom:10px;}
-.record-card{border:1.5px solid var(--border);border-radius:12px;padding:12px;background:#fff;}
+.record-list{margin-bottom:2px;}
+.record-card{border:1.5px solid var(--border);border-radius:12px;padding:12px;background:#fff;margin-bottom:10px;}
 .record-card.dragging{opacity:.5;}
 .record-card-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
 .record-card-head .item-photo{flex:none;}
@@ -942,7 +942,7 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="mini-title" style="margin-top:18px;">ต้นทุนผันแปรอื่นๆ (ต่อ 1 ถ้วย)</div>
       <p class="hint" style="margin-top:-6px;">สำหรับของที่มีสต๊อกนับจำนวนได้ เช่น ถ้วย ฝา สติ๊กเกอร์ ถุงหูหิ้ว — เลือกจากรายการวัตถุดิบหมวด "อุปกรณ์/บรรจุภัณฑ์" (เพิ่มรายการได้ที่ ⚙️ ตั้งค่า → วัตถุดิบ) ระบบจะคำนวณต้นทุนและตัดสต๊อกให้อัตโนมัติเหมือนวัตถุดิบอาหาร แสดงหน่วยให้ตรงกับที่ตั้งค่าไว้เสมอ<br>
       ส่วนค่าใช้จ่ายที่ไม่มีของให้นับสต๊อก เช่น ค่าไฟ ค่าน้ำ ค่าโฆษณาเพจ ให้ใช้ปุ่ม "กรอกเองแบบเหมา" แทน — แบบนี้มีช่อง "หน่วย" ให้พิมพ์เองด้วย (ไว้บอกความหมายเฉยๆ ไม่ได้ใช้คำนวณ เพราะยอดที่กรอกคือยอดรวมต่อถ้วยอยู่แล้ว)</p>
-      <div id="otherCostRows"></div>
+      <div class="record-list" id="otherCostRows"></div>
       <div class="form-actions">
         <button type="button" class="btn btn-outline btn-small" id="addCostBtn">+ เพิ่มอุปกรณ์/บรรจุภัณฑ์</button>
         <button type="button" class="btn btn-outline btn-small" id="addFlatCostBtn">+ เพิ่มค่าใช้จ่ายอื่นๆ (กรอกเองแบบเหมา)</button>
