@@ -226,6 +226,7 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
 .chart-section{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;}
 .chart-box{flex:1;min-width:260px;max-width:420px;}
 .chart-col{flex:1;min-width:260px;max-width:420px;}
+.chart-col-wide{flex:2;min-width:280px;max-width:680px;}
 .chart-svg{width:100%;height:auto;}
 .legend{flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px;}
 .legend-row{display:flex;align-items:center;gap:10px;font-size:13px;}
@@ -620,10 +621,39 @@ p.hint.collapsible-hint.show{display:block;}
 </main>
 
 <main id="page-report" class="page-view">
+  <div class="home-menu">
+    <button type="button" class="home-tile" data-page="report-sales">
+      <span class="home-tile-icon">🍧</span>
+      <span class="home-tile-label">รายงานการขายสินค้า</span>
+    </button>
+    <button type="button" class="home-tile" data-page="report-revenue">
+      <span class="home-tile-icon">💰</span>
+      <span class="home-tile-label">รายงานรายได้</span>
+    </button>
+    <button type="button" class="home-tile" data-page="report-customers">
+      <span class="home-tile-icon">👥</span>
+      <span class="home-tile-label">รายงานลูกค้าใหม่/ซื้อซ้ำ</span>
+    </button>
+    <button type="button" class="home-tile" data-page="report-stock">
+      <span class="home-tile-icon">📦</span>
+      <span class="home-tile-label">รายงานสต๊อกที่ซื้อเข้า</span>
+    </button>
+    <button type="button" class="home-tile" data-page="report-payment">
+      <span class="home-tile-icon">💳</span>
+      <span class="home-tile-label">รายงานประเภทการจ่ายเงิน</span>
+    </button>
+    <button type="button" class="home-tile home-tile-wide" data-page="report-overview">
+      <span class="home-tile-icon">📊</span>
+      <span class="home-tile-label">ภาพรวมยอดขาย</span>
+    </button>
+  </div>
+</main>
 
-  <!-- ===== REPORTS ===== -->
+<main id="page-report-overview" class="page-view">
+
+  <!-- ===== REPORTS: OVERVIEW ===== -->
   <section class="card" id="reportSection">
-    <div class="card-head"><h2><span class="emoji">📊</span>รายงานสรุป</h2></div>
+    <div class="card-head"><h2><span class="emoji">📊</span>ภาพรวมยอดขาย</h2></div>
     <div class="tabs">
       <button type="button" data-tab="daily" class="active">รายงานประจำวัน</button>
       <button type="button" data-tab="weekly">รายงานประจำสัปดาห์</button>
@@ -698,6 +728,193 @@ p.hint.collapsible-hint.show{display:block;}
 
   </section>
 
+</main>
+
+<main id="page-report-sales" class="page-view">
+  <section class="card">
+    <div class="card-head"><h2><span class="emoji">🍧</span>รายงานการขายสินค้า</h2></div>
+    <p class="hint">เปรียบเทียบจำนวนถ้วยเล็ก/ถ้วยใหญ่ที่ขายได้ ไล่ระดับจากรายเดือน (12 เดือนของปีที่เลือก) → รายสัปดาห์ (ของเดือนที่เลือก) → รายวัน (ของสัปดาห์ที่เลือก) ไม่นับออเดอร์ที่ยกเลิก</p>
+    <div class="tabs">
+      <button type="button" data-tab="month" class="active">รายเดือน</button>
+      <button type="button" data-tab="week">รายสัปดาห์</button>
+      <button type="button" data-tab="day">รายวัน</button>
+    </div>
+    <div class="report-controls" id="rs-ctrl-month">
+      <button type="button" class="btn btn-outline btn-small" id="rs-yprev">◀ ปีก่อน</button>
+      <span class="range-label" id="rs-y-label"></span>
+      <button type="button" class="btn btn-outline btn-small" id="rs-ynext">ปีถัดไป ▶</button>
+    </div>
+    <div class="report-controls" id="rs-ctrl-week" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="rs-mprev">◀ เดือนก่อน</button>
+      <input type="month" id="rs-m-pick">
+      <button type="button" class="btn btn-outline btn-small" id="rs-mnext">เดือนถัดไป ▶</button>
+    </div>
+    <div class="report-controls" id="rs-ctrl-day" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="rs-wprev">◀ สัปดาห์ก่อน</button>
+      <input type="date" id="rs-w-pick">
+      <button type="button" class="btn btn-outline btn-small" id="rs-wnext">สัปดาห์ถัดไป ▶</button>
+      <span class="range-label" id="rs-w-label"></span>
+    </div>
+    <div class="chart-section">
+      <div class="chart-col chart-col-wide">
+        <div class="chart-box" id="rs-chart-box"></div>
+      </div>
+      <div class="legend" id="rs-legend"></div>
+    </div>
+    <div class="total-box" id="rs-total-box"></div>
+  </section>
+</main>
+
+<main id="page-report-revenue" class="page-view">
+  <section class="card">
+    <div class="card-head"><h2><span class="emoji">💰</span>รายงานรายได้</h2></div>
+    <p class="hint">เปรียบเทียบรายได้ / ต้นทุนตามสูตร / กำไร ไล่ระดับจากรายเดือน → รายสัปดาห์ → รายวัน ไม่นับออเดอร์ที่ยกเลิก</p>
+    <div class="field" style="max-width:320px;margin-bottom:12px;">
+      <label>แสดงกราฟตาม</label>
+      <select id="rr-mode">
+        <option value="baht">ยอดเงิน (บาท): รายได้ / ต้นทุน / กำไร</option>
+        <option value="qty">จำนวนถ้วยที่ขาย</option>
+      </select>
+    </div>
+    <div class="tabs">
+      <button type="button" data-tab="month" class="active">รายเดือน</button>
+      <button type="button" data-tab="week">รายสัปดาห์</button>
+      <button type="button" data-tab="day">รายวัน</button>
+    </div>
+    <div class="report-controls" id="rr-ctrl-month">
+      <button type="button" class="btn btn-outline btn-small" id="rr-yprev">◀ ปีก่อน</button>
+      <span class="range-label" id="rr-y-label"></span>
+      <button type="button" class="btn btn-outline btn-small" id="rr-ynext">ปีถัดไป ▶</button>
+    </div>
+    <div class="report-controls" id="rr-ctrl-week" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="rr-mprev">◀ เดือนก่อน</button>
+      <input type="month" id="rr-m-pick">
+      <button type="button" class="btn btn-outline btn-small" id="rr-mnext">เดือนถัดไป ▶</button>
+    </div>
+    <div class="report-controls" id="rr-ctrl-day" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="rr-wprev">◀ สัปดาห์ก่อน</button>
+      <input type="date" id="rr-w-pick">
+      <button type="button" class="btn btn-outline btn-small" id="rr-wnext">สัปดาห์ถัดไป ▶</button>
+      <span class="range-label" id="rr-w-label"></span>
+    </div>
+    <div class="chart-section">
+      <div class="chart-col chart-col-wide">
+        <div class="chart-box" id="rr-chart-box"></div>
+      </div>
+      <div class="legend" id="rr-legend"></div>
+    </div>
+    <div class="total-box" id="rr-total-box"></div>
+    <p class="subtle-note" id="rr-uncovered-note"></p>
+  </section>
+</main>
+
+<main id="page-report-customers" class="page-view">
+  <section class="card">
+    <div class="card-head"><h2><span class="emoji">👥</span>รายงานอัตราส่วนลูกค้าใหม่/ซื้อซ้ำ</h2></div>
+    <p class="hint">นับออเดอร์แยกเป็นลูกค้าใหม่ (สั่งครั้งแรกในประวัติ) กับลูกค้าประจำที่ซื้อซ้ำ ไล่ระดับจากรายเดือน → รายสัปดาห์ → รายวัน ไม่นับออเดอร์ที่ยกเลิก</p>
+    <div class="tabs">
+      <button type="button" data-tab="month" class="active">รายเดือน</button>
+      <button type="button" data-tab="week">รายสัปดาห์</button>
+      <button type="button" data-tab="day">รายวัน</button>
+    </div>
+    <div class="report-controls" id="rc-ctrl-month">
+      <button type="button" class="btn btn-outline btn-small" id="rc-yprev">◀ ปีก่อน</button>
+      <span class="range-label" id="rc-y-label"></span>
+      <button type="button" class="btn btn-outline btn-small" id="rc-ynext">ปีถัดไป ▶</button>
+    </div>
+    <div class="report-controls" id="rc-ctrl-week" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="rc-mprev">◀ เดือนก่อน</button>
+      <input type="month" id="rc-m-pick">
+      <button type="button" class="btn btn-outline btn-small" id="rc-mnext">เดือนถัดไป ▶</button>
+    </div>
+    <div class="report-controls" id="rc-ctrl-day" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="rc-wprev">◀ สัปดาห์ก่อน</button>
+      <input type="date" id="rc-w-pick">
+      <button type="button" class="btn btn-outline btn-small" id="rc-wnext">สัปดาห์ถัดไป ▶</button>
+      <span class="range-label" id="rc-w-label"></span>
+    </div>
+    <div class="chart-section">
+      <div class="chart-col chart-col-wide">
+        <div class="chart-box" id="rc-chart-box"></div>
+      </div>
+      <div class="legend" id="rc-legend"></div>
+    </div>
+    <div class="total-box" id="rc-total-box"></div>
+  </section>
+</main>
+
+<main id="page-report-stock" class="page-view">
+  <section class="card">
+    <div class="card-head"><h2><span class="emoji">📦</span>รายงานสต๊อกที่ซื้อเข้า</h2></div>
+    <p class="hint">ยอดรวมที่ซื้อเข้าของวัตถุดิบที่เลือก ไล่ระดับจากรายเดือน → รายสัปดาห์ → รายวัน</p>
+    <div class="field" style="max-width:320px;margin-bottom:12px;">
+      <label>เลือกวัตถุดิบ</label>
+      <select id="rk-material-pick"></select>
+    </div>
+    <div class="tabs">
+      <button type="button" data-tab="month" class="active">รายเดือน</button>
+      <button type="button" data-tab="week">รายสัปดาห์</button>
+      <button type="button" data-tab="day">รายวัน</button>
+    </div>
+    <div class="report-controls" id="rk-ctrl-month">
+      <button type="button" class="btn btn-outline btn-small" id="rk-yprev">◀ ปีก่อน</button>
+      <span class="range-label" id="rk-y-label"></span>
+      <button type="button" class="btn btn-outline btn-small" id="rk-ynext">ปีถัดไป ▶</button>
+    </div>
+    <div class="report-controls" id="rk-ctrl-week" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="rk-mprev">◀ เดือนก่อน</button>
+      <input type="month" id="rk-m-pick">
+      <button type="button" class="btn btn-outline btn-small" id="rk-mnext">เดือนถัดไป ▶</button>
+    </div>
+    <div class="report-controls" id="rk-ctrl-day" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="rk-wprev">◀ สัปดาห์ก่อน</button>
+      <input type="date" id="rk-w-pick">
+      <button type="button" class="btn btn-outline btn-small" id="rk-wnext">สัปดาห์ถัดไป ▶</button>
+      <span class="range-label" id="rk-w-label"></span>
+    </div>
+    <div class="chart-section">
+      <div class="chart-col chart-col-wide">
+        <div class="chart-box" id="rk-chart-box"></div>
+      </div>
+      <div class="legend" id="rk-legend"></div>
+    </div>
+    <div class="total-box" id="rk-total-box"></div>
+  </section>
+</main>
+
+<main id="page-report-payment" class="page-view">
+  <section class="card">
+    <div class="card-head"><h2><span class="emoji">💳</span>รายงานประเภทการจ่ายเงิน</h2></div>
+    <p class="hint">เปรียบเทียบยอดที่ได้รับเงินจริงแยกตามประเภทการจ่ายเงิน ไล่ระดับจากรายเดือน → รายสัปดาห์ → รายวัน ไม่นับออเดอร์ที่ยกเลิก</p>
+    <div class="tabs">
+      <button type="button" data-tab="month" class="active">รายเดือน</button>
+      <button type="button" data-tab="week">รายสัปดาห์</button>
+      <button type="button" data-tab="day">รายวัน</button>
+    </div>
+    <div class="report-controls" id="rp-ctrl-month">
+      <button type="button" class="btn btn-outline btn-small" id="rp-yprev">◀ ปีก่อน</button>
+      <span class="range-label" id="rp-y-label"></span>
+      <button type="button" class="btn btn-outline btn-small" id="rp-ynext">ปีถัดไป ▶</button>
+    </div>
+    <div class="report-controls" id="rp-ctrl-week" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="rp-mprev">◀ เดือนก่อน</button>
+      <input type="month" id="rp-m-pick">
+      <button type="button" class="btn btn-outline btn-small" id="rp-mnext">เดือนถัดไป ▶</button>
+    </div>
+    <div class="report-controls" id="rp-ctrl-day" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="rp-wprev">◀ สัปดาห์ก่อน</button>
+      <input type="date" id="rp-w-pick">
+      <button type="button" class="btn btn-outline btn-small" id="rp-wnext">สัปดาห์ถัดไป ▶</button>
+      <span class="range-label" id="rp-w-label"></span>
+    </div>
+    <div class="chart-section">
+      <div class="chart-col chart-col-wide">
+        <div class="chart-box" id="rp-chart-box"></div>
+      </div>
+      <div class="legend" id="rp-legend"></div>
+    </div>
+    <div class="total-box" id="rp-total-box"></div>
+  </section>
 </main>
 
 <main id="page-prep" class="page-view">
@@ -1480,7 +1697,7 @@ function fsAttachListeners(){
     _fsPrevSnapshot.orders = orders.map(x=>Object.assign({},x));
     save(LS.orders, orders);
     fsDebugLog('orders snapshot: '+snap.docs.length+' doc(s), fromCache='+snap.metadata.fromCache);
-    renderTable(); renderReport(); renderDeliveryReport(); renderPrepPage(); renderStockPage();
+    renderTable(); renderAllReports(); renderDeliveryReport(); renderPrepPage(); renderStockPage();
   }, 'orders');
 
   fsListen(()=>firestore.collection('materials'), snap=>{
@@ -1505,11 +1722,11 @@ function fsAttachListeners(){
   }, 'stockAdjustments');
 
   const settingsListeners = {
-    products: v=>{ products = v||[]; save(LS.products, products); populateSelects(); renderTable(); renderReport(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable(); renderSettingsLists(); },
+    products: v=>{ products = v||[]; save(LS.products, products); populateSelects(); renderTable(); renderAllReports(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable(); renderSettingsLists(); },
     channels: v=>{ channels = v||[]; save(LS.channels, channels); populateSelects(); renderTable(); renderSettingsLists(); },
     paymentMethods: v=>{ paymentMethods = v||[]; save(LS.paymentMethods, paymentMethods); populateSelects(); renderTable(); renderSettingsLists(); },
     units: v=>{ units = v||[]; save(LS.units, units); renderMaterialSettingsList(); renderUnitSettingsList(); },
-    recipes: v=>{ recipes = v||[]; save(LS.recipes, recipes); loadRecipeIntoBuilder(); renderRecipeOverviewTable(); renderStockPage(); renderPrepPage(); },
+    recipes: v=>{ recipes = v||[]; save(LS.recipes, recipes); loadRecipeIntoBuilder(); renderRecipeOverviewTable(); renderStockPage(); renderPrepPage(); reportRevenueModule.render(); },
     startupCosts: v=>{ startupCosts = v||[]; save(LS.startupCosts, startupCosts); renderStartupCostRows(); renderStartupTotal(); renderBreakEven(); renderCashFlow(); },
     operatingExpenses: v=>{ operatingExpenses = v||[]; save(LS.operatingExpenses, operatingExpenses); renderOpex(); renderCashFlow(); },
     dailyTarget: v=>{ dailySalesTarget = Number(v)||0; save(LS.dailyTarget, dailySalesTarget); renderDeliveryReport(); },
@@ -1821,7 +2038,7 @@ document.getElementById('orderForm').addEventListener('submit', e=>{
   syncReportRangeToDate(data.orderDate);
   resetForm();
   renderTable();
-  renderReport();
+  renderAllReports();
   renderDeliveryReport();
   renderPrepPage();
   renderStockPage();
@@ -1970,7 +2187,7 @@ function renderTable(){
     sel.addEventListener('change', e=>{
       const id = sel.dataset.id, field = sel.dataset.field;
       const o = orders.find(o=>o.id===id); if(!o) return;
-      o[field] = sel.value; persistOrders(); renderTable(); renderReport(); renderDeliveryReport(); renderPrepPage();
+      o[field] = sel.value; persistOrders(); renderTable(); renderAllReports(); renderDeliveryReport(); renderPrepPage();
     });
   });
   tbody.querySelectorAll('.edit-btn').forEach(btn=>{
@@ -1995,7 +2212,7 @@ function renderTable(){
       const o = orders.find(o=>o.id===btn.dataset.id);
       if(o && o._stockConsumed) applyConsumption(o._stockConsumed, 1);
       orders = orders.filter(o=>o.id!==btn.dataset.id);
-      persistOrders(); renderTable(); renderReport(); renderDeliveryReport(); renderPrepPage(); renderStockPage(); toast('ลบรายการแล้ว');
+      persistOrders(); renderTable(); renderAllReports(); renderDeliveryReport(); renderPrepPage(); renderStockPage(); toast('ลบรายการแล้ว');
     });
   });
 }
@@ -2054,9 +2271,9 @@ document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
 /* ============ Reports ============ */
 let activeTab = 'daily';
 
-document.querySelectorAll('.tabs button').forEach(btn=>{
+document.querySelectorAll('#page-report-overview .tabs button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('#page-report-overview .tabs button').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active'); activeTab = btn.dataset.tab;
     ['daily','weekly','monthly'].forEach(t=>document.getElementById('ctrl-'+t).style.display = t===activeTab?'flex':'none');
     renderReport();
@@ -2358,7 +2575,7 @@ function completeDelivery(method){
   o.paymentSlip = dlCompleteSlipData;
   persistOrders();
   renderTable();
-  renderReport();
+  renderAllReports();
   renderDeliveryReport();
   closeDlCompleteModal();
   toast(`บันทึก "${o.customerName}" ส่งสำเร็จ + ${method} แล้ว`);
@@ -2627,6 +2844,291 @@ function svgPie(data,total){
   return `<svg viewBox="0 0 ${size} ${size}" class="chart-svg">${paths}</svg>`;
 }
 
+/* ============ Detailed reports: shared grouped-bar engine ============ */
+function svgGroupedBar(categories, series){
+  const w=680,h=300,padL=48,padR=16,padT=26,padB=56;
+  const max = Math.max(1, ...series.flatMap(s=>s.values));
+  const n = categories.length || 1;
+  const groupGap = (w-padL-padR)/n;
+  const seriesN = Math.max(1, series.length);
+  const groupW = groupGap*0.78;
+  const barW = groupW/seriesN;
+  let bars='';
+  categories.forEach((cat,ci)=>{
+    const groupX = padL + ci*groupGap + (groupGap-groupW)/2;
+    series.forEach((s,si)=>{
+      const val = s.values[ci]||0;
+      const barH = (h-padT-padB) * (val/max);
+      const x = groupX + si*barW;
+      const y = h-padB-barH;
+      const bw = barW*0.82;
+      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${barH.toFixed(1)}" rx="4" fill="${s.color}"><title>${esc(s.name)} · ${esc(cat.label)}: ${fmt(val)}</title></rect>`;
+      if(val>0 && barH>15){
+        bars += `<text x="${(x+bw/2).toFixed(1)}" y="${(y-4).toFixed(1)}" font-size="9" text-anchor="middle" fill="#5c4530">${fmt(val)}</text>`;
+      }
+    });
+    const short = cat.label.length>9 ? cat.label.slice(0,8)+'…' : cat.label;
+    bars += `<text x="${(groupX+groupW/2).toFixed(1)}" y="${h-padB+18}" font-size="10.5" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" class="chart-svg"><line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
+}
+
+/* Month(12 of a picked year) / week(the ~4-5 weeks of a picked month) / day(the 7 days of a
+   picked week) bucketing — a consistent drill-down shared by all 5 detailed reports below. */
+function monthsOfYear(year){
+  return Array.from({length:12},(_,i)=>{
+    const m=i+1;
+    const from = `${year}-${String(m).padStart(2,'0')}-01`;
+    const lastDay = new Date(year,m,0).getDate();
+    const to = `${year}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+    return {key:from.slice(0,7), label:THAI_MONTHS_SHORT[m-1], from, to};
+  });
+}
+function weeksOfMonth(year, month){
+  const firstDay = new Date(year, month-1, 1);
+  const lastDay = new Date(year, month, 0);
+  const weeks=[];
+  let cur = startOfWeek(firstDay);
+  while(cur <= lastDay){
+    const from = toISODate(cur);
+    const we = new Date(cur); we.setDate(we.getDate()+6);
+    const to = toISODate(we);
+    weeks.push({key:from, label:`${cur.getDate()}/${cur.getMonth()+1}`, from, to});
+    cur = new Date(cur); cur.setDate(cur.getDate()+7);
+  }
+  return weeks;
+}
+const THAI_DOW_SHORT = ['จ','อ','พ','พฤ','ศ','ส','อา'];
+function daysOfWeek(weekStartISO){
+  const [y,m,d] = weekStartISO.split('-').map(Number);
+  const start = new Date(y,m-1,d);
+  const days=[];
+  for(let i=0;i<7;i++){
+    const dt = new Date(start); dt.setDate(start.getDate()+i);
+    const iso = toISODate(dt);
+    days.push({key:iso, label:`${THAI_DOW_SHORT[i]} ${dt.getDate()}/${dt.getMonth()+1}`, from:iso, to:iso});
+  }
+  return days;
+}
+
+function renderGroupedChartInto(buckets, series, barBoxId, legendId, totalBoxId, totalOverride){
+  const box = document.getElementById(barBoxId), legend = document.getElementById(legendId);
+  const totalBox = totalBoxId ? document.getElementById(totalBoxId) : null;
+  // totalOverride lets a report supply the "whole" a % breakdown is relative to when its series
+  // aren't mutually-exclusive slices of one total — e.g. report 2's กำไร is รายได้−ต้นทุน, so
+  // summing all 3 series would double-count and make รายได้ always read exactly 50%.
+  const grandTotal = typeof totalOverride==='number' ? totalOverride : series.reduce((s,ser)=>s+ser.values.reduce((a,b)=>a+b,0),0);
+  if(!buckets.length || !series.length || grandTotal===0){
+    box.innerHTML = '<div class="empty-state">ไม่มีข้อมูลในช่วงที่เลือก</div>';
+    legend.innerHTML = '';
+    if(totalBox) totalBox.innerHTML = '';
+    return;
+  }
+  box.innerHTML = svgGroupedBar(buckets, series);
+  legend.innerHTML = series.map(s=>{
+    const sTotal = s.values.reduce((a,b)=>a+b,0);
+    const pct = grandTotal ? (sTotal/grandTotal*100).toFixed(1) : '0.0';
+    return `<div class="legend-row">
+      <span class="legend-swatch" style="background:${s.color}"></span>
+      <span class="lname">${esc(s.name)}</span>
+      <span class="lval">${fmt(sTotal)}</span>
+      <span class="lpct">${pct}%</span>
+    </div>`;
+  }).join('');
+  if(totalBox){
+    totalBox.innerHTML = `<div class="label">ยอดรวมทั้งหมดในช่วงที่แสดง</div><div class="amount">${fmt(grandTotal)}</div>`;
+  }
+}
+
+/* Generic month→week→day drill-down controller shared by all 5 detailed reports below: wires
+   up a page's .tabs + year/month/week pickers and calls cfg.computeSeries(buckets) whenever the
+   granularity or picked period changes. */
+function initReportModule(cfg){
+  const P = cfg.prefix;
+  let gran = 'month';
+  let year = Number(todayISO().slice(0,4));
+  let monthPick = todayISO().slice(0,7);
+  let weekPick = todayISO();
+
+  function currentBuckets(){
+    if(gran==='month') return monthsOfYear(year);
+    if(gran==='week'){ const [y,m] = monthPick.split('-').map(Number); return weeksOfMonth(y,m); }
+    return daysOfWeek(toISODate(startOfWeek(weekPick+'T00:00:00')));
+  }
+  function updateVisibility(){
+    ['month','week','day'].forEach(g=>{
+      const el = document.getElementById(`${P}-ctrl-${g}`);
+      if(el) el.style.display = g===gran ? 'flex' : 'none';
+    });
+  }
+  function refreshLabels(){
+    const yLabel = document.getElementById(`${P}-y-label`);
+    if(yLabel) yLabel.textContent = `ปี ${year}`;
+    const wLabel = document.getElementById(`${P}-w-label`);
+    if(wLabel){
+      const s = toISODate(startOfWeek(weekPick+'T00:00:00'));
+      wLabel.textContent = `สัปดาห์: ${fmtDate(s)} – ${fmtDate(addDaysISO(s,6))}`;
+    }
+  }
+  function render(){
+    updateVisibility(); refreshLabels();
+    const buckets = currentBuckets();
+    const result = cfg.computeSeries(buckets) || {series:[]};
+    renderGroupedChartInto(buckets, result.series, `${P}-chart-box`, `${P}-legend`, `${P}-total-box`, result.totalOverride);
+    if(cfg.onRender) cfg.onRender(result, buckets);
+  }
+
+  document.querySelectorAll(`#page-${cfg.page} .tabs button`).forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll(`#page-${cfg.page} .tabs button`).forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active'); gran = btn.dataset.tab; render();
+    });
+  });
+  const yPrev=document.getElementById(`${P}-yprev`), yNext=document.getElementById(`${P}-ynext`);
+  if(yPrev) yPrev.addEventListener('click', ()=>{ year--; render(); });
+  if(yNext) yNext.addEventListener('click', ()=>{ year++; render(); });
+  const mPick=document.getElementById(`${P}-m-pick`);
+  if(mPick){
+    mPick.value = monthPick;
+    mPick.addEventListener('change', ()=>{ monthPick = mPick.value||monthPick; render(); });
+    const mPrev=document.getElementById(`${P}-mprev`), mNext=document.getElementById(`${P}-mnext`);
+    if(mPrev) mPrev.addEventListener('click', ()=>{ monthPick=addMonthsToYm(monthPick,-1); mPick.value=monthPick; render(); });
+    if(mNext) mNext.addEventListener('click', ()=>{ monthPick=addMonthsToYm(monthPick,1); mPick.value=monthPick; render(); });
+  }
+  const wPick=document.getElementById(`${P}-w-pick`);
+  if(wPick){
+    wPick.value = weekPick;
+    wPick.addEventListener('change', ()=>{ weekPick = wPick.value||weekPick; render(); });
+    const wPrev=document.getElementById(`${P}-wprev`), wNext=document.getElementById(`${P}-wnext`);
+    if(wPrev) wPrev.addEventListener('click', ()=>{ weekPick=addDaysISO(weekPick,-7); wPick.value=weekPick; render(); });
+    if(wNext) wNext.addEventListener('click', ()=>{ weekPick=addDaysISO(weekPick,7); wPick.value=weekPick; render(); });
+  }
+  return {render};
+}
+
+/* ---- Report 1: product sales — qty of เล็ก/ใหญ่ per bucket ---- */
+function reportSalesSeries(buckets){
+  const small = buckets.map(()=>0), large = buckets.map(()=>0);
+  orders.forEach(o=>{
+    if(o.shippingStatus==='ยกเลิก') return;
+    const idx = buckets.findIndex(b=>o.orderDate>=b.from && o.orderDate<=b.to);
+    if(idx===-1) return;
+    small[idx] += Number(o.jarSmall)||0;
+    large[idx] += Number(o.jarLarge)||0;
+  });
+  return {series:[
+    {name:'ถ้วยเล็ก', color:PALETTE[0], values:small},
+    {name:'ถ้วยใหญ่', color:PALETTE[1], values:large}
+  ]};
+}
+const reportSalesModule = initReportModule({page:'report-sales', prefix:'rs', computeSeries:reportSalesSeries});
+
+/* ---- Report 2: revenue / cost / profit (or qty sold) per bucket ---- */
+let rrMode = 'baht';
+function reportRevenueSeries(buckets){
+  const revenue=buckets.map(()=>0), cost=buckets.map(()=>0), qty=buckets.map(()=>0);
+  let uncovered=0;
+  orders.forEach(o=>{
+    if(o.shippingStatus==='ยกเลิก') return;
+    const idx = buckets.findIndex(b=>o.orderDate>=b.from && o.orderDate<=b.to);
+    if(idx===-1) return;
+    const amt = computeAmounts(o);
+    revenue[idx] += amt.grandTotal;
+    qty[idx] += (Number(o.jarSmall)||0) + (Number(o.jarLarge)||0);
+    let covered = true;
+    [['jarSmall','small'],['jarLarge','large']].forEach(([field,size])=>{
+      const q = Number(o[field])||0; if(q<=0) return;
+      const recipe = getRecipe(o.product, size);
+      if(!recipe){ covered=false; return; }
+      cost[idx] += computeRecipeCost(recipe).totalCost * q;
+    });
+    if(!covered) uncovered++;
+  });
+  if(rrMode==='qty'){
+    return {series:[{name:'จำนวนถ้วยที่ขาย', color:PALETTE[0], values:qty}], uncovered};
+  }
+  const profit = revenue.map((r,i)=>r-cost[i]);
+  const totalRevenue = revenue.reduce((a,b)=>a+b,0);
+  return {series:[
+    {name:'รายได้', color:PALETTE[3], values:revenue},
+    {name:'ต้นทุน', color:PALETTE[5], values:cost},
+    {name:'กำไร', color:PALETTE[2], values:profit}
+  ], uncovered, totalOverride: totalRevenue};
+}
+const reportRevenueModule = initReportModule({page:'report-revenue', prefix:'rr', computeSeries:reportRevenueSeries,
+  onRender: result=>{
+    const note = document.getElementById('rr-uncovered-note');
+    if(note) note.textContent = result.uncovered ? `⚠️ มี ${result.uncovered} ออเดอร์ที่สินค้า/ขนาดยังไม่มีสูตรต้นทุน ต้นทุนและกำไรในกราฟนี้อาจคลาดเคลื่อนจากความเป็นจริง` : '';
+  }});
+document.getElementById('rr-mode').addEventListener('change', ()=>{ rrMode = document.getElementById('rr-mode').value; reportRevenueModule.render(); });
+
+/* ---- Report 3: new vs repeat customers per bucket ---- */
+function reportCustomerSeries(buckets){
+  const firstOrderDate = {};
+  orders.forEach(o=>{
+    if(!o.phone) return;
+    if(!firstOrderDate[o.phone] || o.orderDate < firstOrderDate[o.phone]) firstOrderDate[o.phone] = o.orderDate;
+  });
+  const newCust = buckets.map(()=>0), repeatCust = buckets.map(()=>0);
+  orders.forEach(o=>{
+    if(o.shippingStatus==='ยกเลิก' || !o.phone) return;
+    const idx = buckets.findIndex(b=>o.orderDate>=b.from && o.orderDate<=b.to);
+    if(idx===-1) return;
+    if(o.orderDate===firstOrderDate[o.phone]) newCust[idx]++; else repeatCust[idx]++;
+  });
+  return {series:[
+    {name:'ลูกค้าใหม่', color:PALETTE[4], values:newCust},
+    {name:'ลูกค้าประจำ (ซื้อซ้ำ)', color:PALETTE[6], values:repeatCust}
+  ]};
+}
+const reportCustomerModule = initReportModule({page:'report-customers', prefix:'rc', computeSeries:reportCustomerSeries});
+
+/* ---- Report 4: stock purchased per bucket, for one selected material ---- */
+function reportStockSeries(buckets){
+  const matId = document.getElementById('rk-material-pick').value;
+  const values = buckets.map(()=>0);
+  const mat = getMaterial(matId);
+  stockins.forEach(si=>{
+    if(si.materialId!==matId) return;
+    const idx = buckets.findIndex(b=>si.date>=b.from && si.date<=b.to);
+    if(idx===-1) return;
+    values[idx] += Number(si.qty)||0;
+  });
+  return {series:[{name: mat ? `${mat.name} (${mat.unit})` : 'วัตถุดิบ', color:PALETTE[0], values}]};
+}
+const reportStockModule = initReportModule({page:'report-stock', prefix:'rk', computeSeries:reportStockSeries});
+document.getElementById('rk-material-pick').addEventListener('change', ()=>reportStockModule.render());
+
+/* ---- Report 5: payment method breakdown per bucket ---- */
+function reportPaymentSeries(buckets){
+  const seriesMap = {};
+  paymentMethods.forEach((m,i)=>{ seriesMap[m] = {name:m, color:PALETTE[(i+2)%PALETTE.length], values:buckets.map(()=>0)}; });
+  orders.forEach(o=>{
+    if(o.shippingStatus==='ยกเลิก') return;
+    const amt = computeAmounts(o);
+    if(amt.amountReceived<=0) return;
+    const idx = buckets.findIndex(b=>o.orderDate>=b.from && o.orderDate<=b.to);
+    if(idx===-1) return;
+    const key = o.paymentMethod || paymentMethods[0] || 'ไม่ระบุ';
+    if(!seriesMap[key]) seriesMap[key] = {name:key, color:PALETTE[Object.keys(seriesMap).length%PALETTE.length], values:buckets.map(()=>0)};
+    seriesMap[key].values[idx] += amt.amountReceived;
+  });
+  return {series:Object.values(seriesMap)};
+}
+const reportPaymentModule = initReportModule({page:'report-payment', prefix:'rp', computeSeries:reportPaymentSeries});
+
+/* Called wherever an order/product/recipe/material change previously only refreshed the old
+   flat report — keeps all 5 detailed reports live even when they aren't the visible page,
+   matching the existing convention (e.g. renderStockPage() is likewise called unconditionally). */
+function renderAllReports(){
+  renderReport();
+  reportSalesModule.render();
+  reportRevenueModule.render();
+  reportCustomerModule.render();
+  reportStockModule.render();
+  reportPaymentModule.render();
+}
+
 /* ============ Settings pages ============ */
 document.getElementById('settingsDrawerBtn').addEventListener('click', ()=>{ closeDrawer(); switchPage('settings'); });
 
@@ -2657,7 +3159,7 @@ function renderSettingsLists(){
     inp.addEventListener('input', ()=>{
       const i = Number(inp.dataset.i), field = inp.dataset.f;
       products[i][field] = field==='name' ? inp.value : Number(inp.value)||0;
-      persistProducts(); populateSelects(); renderTable(); renderReport(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable();
+      persistProducts(); populateSelects(); renderTable(); renderAllReports(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable();
     });
   });
   document.getElementById('productList').querySelectorAll('.product-photo-input').forEach(inp=>{
@@ -2670,7 +3172,7 @@ function renderSettingsLists(){
     });
   });
   document.getElementById('productList').querySelectorAll('[data-act="delProduct"]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ products.splice(Number(btn.dataset.i),1); persistProducts(); renderSettingsLists(); populateSelects(); renderTable(); renderReport(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable(); });
+    btn.addEventListener('click', ()=>{ products.splice(Number(btn.dataset.i),1); persistProducts(); renderSettingsLists(); populateSelects(); renderTable(); renderAllReports(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable(); });
   });
   document.getElementById('channelList').querySelectorAll('input').forEach(inp=>{
     inp.addEventListener('input', ()=>{ channels[Number(inp.dataset.i)] = inp.value; persistChannels(); populateSelects(); renderTable(); });
@@ -2721,7 +3223,7 @@ document.getElementById('restoreInput').addEventListener('change', e=>{
       if(Array.isArray(data.operatingExpenses)) operatingExpenses = data.operatingExpenses;
       if(data.logo) { logoData = data.logo; persistLogo(); renderLogo(); }
       persistOrders(); persistProducts(); persistChannels(); persistMaterials(); persistUnits(); persistRecipes(); persistStockins(); persistStartupCosts(); persistStockAdjustments(); persistPaymentMethods(); persistOperatingExpenses();
-      populateSelects(); renderTable(); renderReport(); renderSettingsLists();
+      populateSelects(); renderTable(); renderAllReports(); renderSettingsLists();
       renderMaterialSettingsList(); renderUnitSettingsList(); renderStockPage(); loadRecipeIntoBuilder();
       toast('กู้ข้อมูลสำเร็จ');
     }catch(err){ toast('ไฟล์ไม่ถูกต้อง'); }
@@ -2733,24 +3235,33 @@ document.getElementById('restoreInput').addEventListener('change', e=>{
 let activeSubview = 'overview';
 
 const ALL_PAGES = ['home','order','prep','delivery','stock','report',
+  'report-overview','report-sales','report-revenue','report-customers','report-stock','report-payment',
   'settings','settings-products','settings-channels','settings-payment','settings-materials','settings-units','settings-backup'];
 const PAGE_PARENT = {
   order:'home', prep:'home', delivery:'home', stock:'home', report:'home', settings:'home',
+  'report-overview':'report', 'report-sales':'report', 'report-revenue':'report',
+  'report-customers':'report', 'report-stock':'report', 'report-payment':'report',
   'settings-products':'settings', 'settings-channels':'settings', 'settings-payment':'settings',
   'settings-materials':'settings', 'settings-units':'settings', 'settings-backup':'settings'
 };
+const HUB_LABEL = {settings:'ตั้งค่า', report:'รายงานสรุป'};
 function switchPage(pageName){
   document.querySelectorAll('.drawer-link').forEach(b=>b.classList.toggle('active', b.dataset.page===pageName));
   ALL_PAGES.forEach(p=>{ const el=document.getElementById('page-'+p); if(el) el.classList.toggle('active', p===pageName); });
   const parent = PAGE_PARENT[pageName] || 'home';
   const backBtn = document.getElementById('backHomeBtn');
-  backBtn.textContent = parent==='home' ? '🏠 กลับหน้าแรก' : '◀ กลับไปตั้งค่า';
+  backBtn.textContent = parent==='home' ? '🏠 กลับหน้าแรก' : `◀ กลับไป${HUB_LABEL[parent]||parent}`;
   backBtn.dataset.target = parent;
   document.querySelector('.page-switch').style.display = pageName==='home' ? 'none' : 'flex';
   if(pageName==='stock') renderStockPage();
   if(pageName==='prep') renderPrepPage();
   if(pageName==='delivery') renderDeliveryReport();
-  if(pageName==='report') renderReport();
+  if(pageName==='report-overview') renderReport();
+  if(pageName==='report-sales') reportSalesModule.render();
+  if(pageName==='report-revenue') reportRevenueModule.render();
+  if(pageName==='report-customers') reportCustomerModule.render();
+  if(pageName==='report-stock') reportStockModule.render();
+  if(pageName==='report-payment') reportPaymentModule.render();
   if(pageName==='settings' || pageName.indexOf('settings-')===0){ renderSettingsLists(); renderMaterialSettingsList(); renderUnitSettingsList(); }
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -2890,6 +3401,7 @@ function populateMaterialSelects(){
   fillSelectPreserve(f('si_material'), matOptions || '<option value="">— ไม่มีวัตถุดิบ —</option>');
   fillSelectPreserve(f('sh_material'), `<option value="">— ทั้งหมด —</option>`+matOptions);
   fillSelectPreserve(f('sa_material'), matOptions || '<option value="">— ไม่มีวัตถุดิบ —</option>');
+  fillSelectPreserve(f('rk-material-pick'), matOptions || '<option value="">— ไม่มีวัตถุดิบ —</option>');
   updateStockInPreview();
   updateAdjustPreview();
   const suppliers = [...new Set(stockins.map(s=>s.supplier).filter(Boolean))];
@@ -3905,7 +4417,7 @@ function makeHintsCollapsible(scopeEl){
 
 /* ============ Init ============ */
 renderTable();
-renderReport();
+renderAllReports();
 renderDeliveryReport();
 renderPrepPage();
 renderStockPage();
