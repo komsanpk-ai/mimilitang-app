@@ -241,7 +241,16 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
   border-radius:8px;background:var(--cream);border:1px solid var(--border);
 }
 .drag-handle:active{cursor:grabbing;background:var(--gold-light);}
-.drag-row.dragging{opacity:.5;}
+/* Shared "lifted" drag feedback — initDragReorder() adds/removes this exact class name on
+   whatever element type the row is (div.record-card, div.drag-row, or a table <tr>), so one
+   rule here covers every draggable list in the app, including ones that had zero visual
+   feedback before (e.g. the delivery-route table rows). */
+.dragging{
+  opacity:.92;position:relative;z-index:20;background:#fffdf3!important;
+  box-shadow:0 10px 24px rgba(90,40,10,.28);outline:2px solid var(--gold-light);
+}
+tr.dragging{display:table-row;box-shadow:inset 0 0 0 2px var(--gold-light);}
+tr.dragging td{background:#fffdf3;}
 .settings-list input{border:1.5px solid var(--border);border-radius:8px;padding:7px 8px;font-size:13px;}
 .backup-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
 
@@ -251,7 +260,6 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
    multi-column grid or a wide table did. No horizontal scrolling needed for these. */
 .record-list{margin-bottom:2px;}
 .record-card{border:1.5px solid var(--border);border-radius:12px;padding:12px;background:#fff;margin-bottom:10px;}
-.record-card.dragging{opacity:.5;}
 .record-card-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
 .record-card-head .item-photo{flex:none;}
 .record-card-head input.rc-name,.record-card-head select.rc-name{
@@ -351,10 +359,6 @@ footer.appfoot{text-align:center;color:var(--muted);font-size:11.5px;padding:26p
 
 /* ---------- Builder rows (startup-cost list only — recipe ingredients/other-costs now use
    the .record-card layout above instead) ---------- */
-.builder-row{display:grid;grid-template-columns:2fr 1fr 1fr 90px 34px;gap:8px;align-items:center;margin-bottom:8px;}
-.builder-row.cost{grid-template-columns:1.6fr 0.8fr 1fr 34px;}
-@media(max-width:640px){.builder-row,.builder-row.cost{grid-template-columns:1fr 1fr;}}
-.builder-row select,.builder-row input{border:1.5px solid var(--border);border-radius:9px;padding:8px 10px;font-size:13px;width:100%;}
 .row-cost{font-size:12px;color:var(--muted);white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums;}
 .row-cost.warn{color:var(--orange);}
 .unit-tag{font-size:12px;color:var(--muted);background:var(--cream);border-radius:8px;padding:8px 10px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -504,7 +508,7 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="field"><label>👤 ชื่อลูกค้า <span class="req">*</span></label>
         <input type="text" id="f_customerName" required placeholder="ชื่อลูกค้า"></div>
       <div class="field"><label>📞 เบอร์โทร <span class="req">*</span></label>
-        <input type="tel" id="f_phone" required placeholder="0812345678"></div>
+        <input type="tel" id="f_phone" required placeholder="081XXXXXXX"></div>
 
       <div class="row">
         <div class="field"><label>🧾 วันที่สั่งสินค้า</label><input type="date" id="f_orderDate"></div>
@@ -976,7 +980,7 @@ p.hint.collapsible-hint.show{display:block;}
   <section class="card" id="startupCostSection">
     <div class="card-head"><h2><span class="emoji">🏗️</span>ต้นทุนเริ่มต้น (เงินลงทุนเริ่มแรก)</h2></div>
     <p class="hint">หมวด: ต้นทุนเริ่มต้น — ค่าใช้จ่ายครั้งเดียวตอนเริ่มกิจการ เช่น อุปกรณ์เครื่องครัว ค่าโต๊ะ ค่าภาชนะ หม้อ เตาไฟฟ้า (ไม่ใช่ต้นทุนต่อถ้วย) ใช้คำนวณจุดคุ้มทุนด้านล่าง</p>
-    <div id="startupCostRows"></div>
+    <div class="record-list" id="startupCostRows"></div>
     <button type="button" class="btn btn-outline btn-small" id="addStartupCostBtn">+ เพิ่มต้นทุนเริ่มต้น</button>
     <datalist id="startupLabelList">
       <option value="อุปกรณ์เครื่องครัว"><option value="ค่าโต๊ะ"><option value="ค่าภาชนะ"><option value="หม้อ"><option value="เตาไฟฟ้า">
@@ -1425,7 +1429,17 @@ function fsSyncValue(key, value){
 // within a few seconds instead of requiring the user to reload the page.
 function fsListen(getRef, onSnap, label){
   function attach(){
-    getRef().onSnapshot(onSnap, e=>{
+    getRef().onSnapshot(snap=>{
+      // Skip the echo of this device's own not-yet-server-confirmed write: every keystroke
+      // that calls persistX() fires this listener almost immediately with hasPendingWrites=true,
+      // and blindly re-rendering here would tear down and rebuild the input the user is still
+      // typing into, kicking focus out after every single character. Local state is already
+      // correct at that point (the mutation handler applied it directly) — this listener only
+      // needs to react to genuinely new data, i.e. a change from another device, which always
+      // arrives with hasPendingWrites=false.
+      if(snap.metadata.hasPendingWrites) return;
+      onSnap(snap);
+    }, e=>{
       fsDebugLog(label+' LISTENER ERROR: '+e.code+' — retrying in 3s');
       console.error(label+' listener error', e);
       setTimeout(attach, 3000);
@@ -1818,6 +1832,7 @@ const COLUMNS = [
   {key:'_total', label:'ยอดรวม'},
   {key:'paymentStatus', label:'💰 การชำระเงิน'},
   {key:'paymentMethod', label:'💵 ประเภทการจ่ายเงิน'},
+  {key:'_slip', label:'📎 สลิป', sortable:false},
   {key:'channel', label:'🛒 ช่องทาง'},
   {key:'note', label:'📝 หมายเหตุ'},
   {key:'_actions', label:'', sortable:false}
@@ -1952,6 +1967,12 @@ function renderTable(){
       document.getElementById('formSection').scrollIntoView({behavior:'smooth'});
     });
   });
+  tbody.querySelectorAll('.slip-view-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const o = orders.find(o=>o.id===btn.dataset.id);
+      if(o && o.paymentSlip){ document.getElementById('slipViewImg').src=o.paymentSlip; document.getElementById('slipViewModal').classList.add('show'); }
+    });
+  });
   tbody.querySelectorAll('.del-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       if(!confirm('ยืนยันลบรายการนี้หรือไม่?')) return;
@@ -1983,6 +2004,7 @@ function rowHtml(o, no){
     <td class="amount-cell">${fmt(a.displayTotal)} บ.</td>
     <td>${badgeSelectHTML(o.id, o.paymentStatus, ['ยังไม่ได้รับเงิน','มัดจำ','ได้รับเงินแล้ว'], 'paymentStatus')}</td>
     <td>${badgeSelectHTML(o.id, o.paymentMethod||paymentMethods[0]||'', paymentMethods, 'paymentMethod')}</td>
+    <td>${o.paymentSlip ? `<button type="button" class="btn btn-outline btn-small slip-view-btn" data-id="${o.id}">🖼️ ดูสลิป</button>` : `<span class="subtle-note">-</span>`}</td>
     <td>${badgeSelectHTML(o.id, o.channel, channels, 'channel')}</td>
     <td class="wrap">${esc(o.note)}</td>
     <td><div class="row-actions">
@@ -3373,10 +3395,14 @@ function renderStartupCostRows(){
   if(!startupCosts.length){ box.innerHTML = '<p class="hint">ยังไม่มีรายการต้นทุนเริ่มต้น กด "+ เพิ่มต้นทุนเริ่มต้น" ด้านล่าง</p>'; }
   else {
     box.innerHTML = startupCosts.map((c,i)=>`
-      <div class="builder-row cost">
-        <input type="text" class="sc-label" data-i="${i}" list="startupLabelList" value="${esc(c.label)}" placeholder="เช่น อุปกรณ์เครื่องครัว">
-        <input type="number" min="0" step="any" class="sc-amount" data-i="${i}" value="${c.amount}" placeholder="บาท">
-        <button type="button" class="icon-mini danger sc-remove" data-i="${i}">✕</button>
+      <div class="record-card">
+        <div class="record-card-head">
+          <input type="text" class="sc-label rc-name" data-i="${i}" list="startupLabelList" value="${esc(c.label)}" placeholder="เช่น อุปกรณ์เครื่องครัว">
+          <button type="button" class="icon-mini danger sc-remove" data-i="${i}">✕</button>
+        </div>
+        <div class="record-card-fields">
+          <div class="record-field"><label>จำนวนเงิน</label><input type="number" min="0" step="any" class="sc-amount" data-i="${i}" value="${c.amount}" placeholder="บาท"></div>
+        </div>
       </div>`).join('');
     box.querySelectorAll('.sc-label').forEach(el=>el.addEventListener('input', ()=>{ startupCosts[Number(el.dataset.i)].label = el.value; persistStartupCosts(); }));
     box.querySelectorAll('.sc-amount').forEach(el=>el.addEventListener('input', ()=>{ startupCosts[Number(el.dataset.i)].amount = Number(el.value)||0; persistStartupCosts(); renderStartupTotal(); renderBreakEven(); renderCashFlow(); }));
