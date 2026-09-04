@@ -168,6 +168,19 @@ select.badge-select{appearance:none;-webkit-appearance:none;text-align:center;}
   color:#5c1616;font-size:10px;font-weight:800;box-shadow:0 1px 3px rgba(0,0,0,.25);
   cursor:help;vertical-align:middle;
 }
+.repeat-badge{
+  display:inline-flex;position:relative;align-items:flex-start;justify-content:center;
+  width:22px;height:22px;flex:none;margin-right:5px;font-size:20px;line-height:1;
+  cursor:help;vertical-align:middle;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3));
+}
+.repeat-badge .count{
+  position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);
+  min-width:12px;height:12px;padding:0 2px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  background:#5c1616;border:1px solid #fff;
+  font-size:8px;font-weight:800;color:#fff;
+}
+.repeat-badge.crown .count{top:52%;}
 .slip-thumb{width:32px;height:32px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border);}
 tr.prep-done td{opacity:.45;text-decoration:line-through;}
 tr.prep-done td:first-child{text-decoration:none;}
@@ -1554,6 +1567,8 @@ function customerOrderCount(phone){
 function repeatStarHTML(phone){
   const count = customerOrderCount(phone);
   if(count<2) return '';
+  if(count>=10) return `<span class="repeat-badge crown" title="ลูกค้า VIP สั่งซื้อมาแล้ว ${count} ครั้ง">👑<span class="count">${count}</span></span>`;
+  if(count>=5) return `<span class="repeat-badge" title="ลูกค้าประจำระดับโบว์ สั่งซื้อมาแล้ว ${count} ครั้ง">🏅<span class="count">${count}</span></span>`;
   return `<span class="repeat-star" title="ลูกค้าประจำ สั่งซื้อมาแล้ว ${count} ครั้ง">${count}</span>`;
 }
 
