@@ -255,7 +255,12 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
    scroll horizontally beside it. Gridlines drawn into the bars SVG at the same tick values line
    the two up exactly (see GROUPED_BAR_LAYOUT / computeNiceTicks). */
 .chart-box-row{display:flex;align-items:flex-start;}
-.chart-axis{flex:none;overflow:hidden;}
+/* Fixed width (matches the JS CHART_AXIS_WIDTH constant) so this column's share of the row is
+   stable even before it has any content — without this, an empty .chart-axis collapses to 0px on
+   first render, .chart-box's flex share grows to fill the gap, and svgBar's width-to-fit-container
+   measurement (taken right before the axis is populated) ends up too wide, overflowing once the
+   axis "snaps" to its real width a moment later. */
+.chart-axis{flex:none;width:56px;overflow:hidden;}
 .legend{flex:1;min-width:220px;display:flex;flex-direction:column;gap:10px;}
 .legend-row{display:flex;align-items:center;gap:10px;font-size:16px;}
 .legend-swatch{width:15px;height:15px;border-radius:4px;flex:none;}
@@ -2999,10 +3004,9 @@ function renderChartInto(data, barBoxId, pieBoxId, legendId, axisBoxId){
     return;
   }
   const total = data.reduce((s,d)=>s+d.value,0)||1;
-  const barChart = svgBar(data);
+  const barChart = svgBar(data, boxBar.clientWidth);
   boxBar.innerHTML = barChart.bars;
   if(axisBox) axisBox.innerHTML = barChart.axis;
-  boxBar.scrollLeft = Math.max(0, (barChart.contentX0+barChart.contentX1)/2 - boxBar.clientWidth/2);
   boxPie.innerHTML = svgPie(data,total);
   legend.innerHTML = data.map(d=>`
     <div class="legend-row">
@@ -3070,23 +3074,21 @@ document.getElementById('sp_pageSize').addEventListener('change', ()=>{ slipPage
 document.getElementById('closeSlipViewBtn').addEventListener('click', ()=>document.getElementById('slipViewModal').classList.remove('show'));
 document.getElementById('slipViewModal').addEventListener('click', e=>{ if(e.target.id==='slipViewModal') document.getElementById('slipViewModal').classList.remove('show'); });
 
-function svgBar(data){
-  /* Same canvas size/padding/font-sizes as svgGroupedBar (GROUPED_BAR_LAYOUT, defined below) so
-     this chart (fewer categories — product/size or payment-method breakdowns) doesn't render its
-     bars visibly larger than the 5 detailed reports' grouped-bar charts just because it has less
-     to divide the same width between. Explicit width/height (not scaled to fit its box — see
-     .chart-svg-bar); .chart-box scrolls horizontally if there isn't room. */
-  const {w,h,padL,padR,padT,padB} = GROUPED_BAR_LAYOUT;
+function svgBar(data, targetWidth){
+  /* Unlike svgGroupedBar (deliberately a fixed wide canvas + horizontal scroll, since month/week/
+     day reports can have up to 12 categories), this chart only ever shows a handful of categories
+     — products/sizes, or payment methods — so on the overview page it should just show all of
+     them at once, centered, with no scrolling. Sized to exactly fill the container's real width
+     (measured at render time and passed in as targetWidth) instead of the fixed 1100px canvas;
+     height/padding/font-sizes still match GROUPED_BAR_LAYOUT for visual consistency with the
+     other charts. */
+  const {h,padL,padR,padT,padB} = GROUPED_BAR_LAYOUT;
+  const w = Math.max(targetWidth||0, padL+padR+80) || GROUPED_BAR_LAYOUT.w;
   const rawMax = Math.max(1,...data.map(d=>d.value));
   const {niceMax, ticks} = computeNiceTicks(rawMax);
   const n = data.length;
-  // Capped so a chart with very few categories (e.g. 1-2 products) doesn't stretch a single bar
-  // across almost the whole canvas — bars stay a normal, consistent width regardless of n.
-  const gap = Math.min((w-padL-padR)/n, 160);
+  const gap = (w-padL-padR)/n;
   const barW = gap*0.55;
-  // When the cap kicks in, the bars no longer fill the plot width on their own — center the
-  // whole cluster instead of leaving it flush left with empty space trailing off to the right.
-  const startX = padL + Math.max(0, ((w-padL-padR) - n*gap)/2);
   let grid = '';
   ticks.forEach(t=>{
     const y = h-padB-(t/niceMax)*(h-padT-padB);
@@ -3094,7 +3096,7 @@ function svgBar(data){
   });
   let bars='';
   data.forEach((d,i)=>{
-    const x = startX + i*gap + (gap-barW)/2;
+    const x = padL + i*gap + (gap-barW)/2;
     const barH = (h-padT-padB) * (d.value/niceMax);
     const y = h-padB-barH;
     bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="6" fill="${d.color}"><title>${esc(d.label)}: ${fmt(d.value)}</title></rect>`;
@@ -3103,11 +3105,7 @@ function svgBar(data){
     bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+24}" font-size="13" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
   });
   const barsSvg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar">${grid}<line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
-  // Where the actual bars sit within the fixed 1100px-wide canvas — used to auto-scroll the
-  // chart-box so they're centered in view on load, instead of leaving the viewer to go find a
-  // handful of bars that (especially once centered-when-few-categories, above) may not be
-  // anywhere near the left edge the box starts scrolled to.
-  return {axis: svgYAxis(niceMax, ticks), bars: barsSvg, contentX0: startX, contentX1: startX+n*gap};
+  return {axis: svgYAxis(niceMax, ticks), bars: barsSvg};
 }
 function svgPie(data,total){
   const size=280,r=105,cx=140,cy=140;
