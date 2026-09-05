@@ -1467,15 +1467,15 @@ p.hint.collapsible-hint.show{display:block;}
 <main id="page-settings-account" class="page-view">
   <section class="card">
     <div class="card-head"><h2><span class="emoji">👤</span>บัญชีผู้ใช้</h2></div>
-    <p class="hint">เปลี่ยนอีเมล/รหัสผ่านที่ใช้เข้าสู่ระบบ — ต้องกรอกรหัสผ่านปัจจุบันเพื่อยืนยันตัวตนก่อนทุกครั้ง (ข้อกำหนดด้านความปลอดภัยของระบบล็อกอิน) หลังเปลี่ยนอีเมลแล้ว ให้ใช้อีเมลใหม่เข้าสู่ระบบในครั้งถัดไป</p>
-    <p style="margin:0 0 18px;">อีเมลปัจจุบัน: <b id="acctCurrentEmail">-</b></p>
+    <p class="hint">เปลี่ยนชื่อผู้ใช้/รหัสผ่านที่ใช้เข้าสู่ระบบ — ต้องกรอกรหัสผ่านปัจจุบันเพื่อยืนยันตัวตนก่อนทุกครั้ง (ข้อกำหนดด้านความปลอดภัยของระบบล็อกอิน) ไม่ต้องใช้อีเมลจริง ตั้งเป็นชื่อสั้นๆ ได้เลย ระบบจะแปลงเก็บเป็นอีเมลภายในให้เอง — หลังเปลี่ยนแล้ว ให้ใช้ชื่อผู้ใช้ใหม่เข้าสู่ระบบในครั้งถัดไป</p>
+    <p style="margin:0 0 18px;">ชื่อผู้ใช้ปัจจุบัน: <b id="acctCurrentEmail">-</b></p>
 
     <form id="changeEmailForm" class="form-grid">
-      <h3 style="font-size:15px;margin:0;color:var(--maroon-dark);">เปลี่ยนอีเมล (Username)</h3>
+      <h3 style="font-size:15px;margin:0;color:var(--maroon-dark);">เปลี่ยนชื่อผู้ใช้</h3>
       <div class="field"><label>รหัสผ่านปัจจุบัน</label><input type="password" id="acctEmailCurrentPassword" autocomplete="current-password" required></div>
-      <div class="field"><label>อีเมลใหม่</label><input type="email" id="acctNewEmail" autocomplete="username" required></div>
+      <div class="field"><label>ชื่อผู้ใช้ใหม่ (ตัวอักษร/ตัวเลข 3-30 ตัว)</label><input type="text" id="acctNewEmail" autocomplete="username" pattern="[a-zA-Z0-9_.\-]{3,30}" required placeholder="เช่น mimi หรือ mimi_shop"></div>
       <p class="hint" id="acctEmailMsg" style="display:none;"></p>
-      <button type="submit" class="btn btn-primary btn-small" id="acctEmailSubmitBtn" style="align-self:flex-start;">บันทึกอีเมลใหม่</button>
+      <button type="submit" class="btn btn-primary btn-small" id="acctEmailSubmitBtn" style="align-self:flex-start;">บันทึกชื่อผู้ใช้ใหม่</button>
     </form>
 
     <hr class="section-divider">
@@ -1543,8 +1543,8 @@ p.hint.collapsible-hint.show{display:block;}
     <p class="hint" id="loginSessionExpiredMsg" style="display:none;color:var(--red);font-weight:600;text-align:center;">⏰ เซสชันของคุณหมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่อีกครั้ง</p>
     <form id="loginForm">
       <div class="field" style="text-align:left;margin-bottom:10px;">
-        <label>อีเมล</label>
-        <input type="email" id="loginEmail" autocomplete="username" required>
+        <label>ชื่อผู้ใช้</label>
+        <input type="text" id="loginEmail" autocomplete="username" required>
       </div>
       <div class="field" style="text-align:left;margin-bottom:10px;">
         <label>รหัสผ่าน</label>
@@ -1595,9 +1595,24 @@ const fsPersistenceReady = firestore.enablePersistence({synchronizeTabs:true})
   .then(()=>fsDebugLog('offline persistence: enabled'))
   .catch(e=>fsDebugLog('offline persistence: NOT enabled ('+e.code+')'));
 
+/* Firebase's email/password auth needs an actual email-shaped identifier, but the user wants to
+   type (and set) just a short username — so a fixed fake domain is appended behind the scenes.
+   Typing something that already contains "@" is passed through as-is (a real email), so an
+   account that hasn't migrated to the short-username form yet keeps logging in exactly as
+   before — no lockout during the transition. Only after using "เปลี่ยนชื่อผู้ใช้" (which sets the
+   account's real stored email to username+this suffix) does the short form actually match. */
+const USERNAME_EMAIL_SUFFIX = '@mimilitang.local';
+function usernameToEmail(input){
+  const v = input.trim();
+  return v.includes('@') ? v : (v.toLowerCase()+USERNAME_EMAIL_SUFFIX);
+}
+function emailToUsername(email){
+  if(!email) return '-';
+  return email.endsWith(USERNAME_EMAIL_SUFFIX) ? email.slice(0, -USERNAME_EMAIL_SUFFIX.length) : email;
+}
 document.getElementById('loginForm').addEventListener('submit', e=>{
   e.preventDefault();
-  const email = document.getElementById('loginEmail').value.trim();
+  const email = usernameToEmail(document.getElementById('loginEmail').value);
   const password = document.getElementById('loginPassword').value;
   const errEl = document.getElementById('loginError');
   const btn = document.getElementById('loginSubmitBtn');
@@ -1605,7 +1620,7 @@ document.getElementById('loginForm').addEventListener('submit', e=>{
   btn.disabled = true; btn.textContent = 'กำลังเข้าสู่ระบบ...';
   auth.signInWithEmailAndPassword(email, password).catch(err=>{
     errEl.textContent = (err.code==='auth/invalid-credential' || err.code==='auth/wrong-password' || err.code==='auth/user-not-found')
-      ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' : 'เข้าสู่ระบบไม่สำเร็จ: '+err.message;
+      ? 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' : 'เข้าสู่ระบบไม่สำเร็จ: '+err.message;
     errEl.style.display = 'block';
   }).finally(()=>{
     btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
@@ -1665,12 +1680,12 @@ auth.onAuthStateChanged(user=>{
 /* ============ Account settings: change email/password (Firebase Auth) ============ */
 function updateAccountEmailDisplay(){
   const el = document.getElementById('acctCurrentEmail');
-  if(el) el.textContent = (auth.currentUser && auth.currentUser.email) || '-';
+  if(el) el.textContent = emailToUsername(auth.currentUser && auth.currentUser.email);
 }
 function accountAuthErrorMessage(err){
   if(err.code==='auth/wrong-password' || err.code==='auth/invalid-credential') return 'รหัสผ่านปัจจุบันไม่ถูกต้อง';
-  if(err.code==='auth/email-already-in-use') return 'อีเมลนี้ถูกใช้งานโดยบัญชีอื่นแล้ว';
-  if(err.code==='auth/invalid-email') return 'รูปแบบอีเมลไม่ถูกต้อง';
+  if(err.code==='auth/email-already-in-use') return 'ชื่อผู้ใช้นี้ถูกใช้งานโดยบัญชีอื่นแล้ว';
+  if(err.code==='auth/invalid-email') return 'รูปแบบชื่อผู้ใช้ไม่ถูกต้อง';
   if(err.code==='auth/weak-password') return 'รหัสผ่านใหม่ไม่ปลอดภัยพอ (ต้องมีอย่างน้อย 6 ตัวอักษร)';
   if(err.code==='auth/requires-recent-login') return 'ต้องยืนยันตัวตนใหม่ก่อนทำรายการนี้ — ออกจากระบบแล้วเข้าสู่ระบบใหม่ แล้วลองอีกครั้ง';
   return 'ทำรายการไม่สำเร็จ: '+err.message;
@@ -1679,13 +1694,19 @@ document.getElementById('changeEmailForm').addEventListener('submit', e=>{
   e.preventDefault();
   const user = auth.currentUser; if(!user) return;
   const currentPassword = document.getElementById('acctEmailCurrentPassword').value;
-  const newEmail = document.getElementById('acctNewEmail').value.trim();
+  const newUsername = document.getElementById('acctNewEmail').value.trim();
   const msgEl = document.getElementById('acctEmailMsg'), btn = document.getElementById('acctEmailSubmitBtn');
   msgEl.style.display='none';
+  if(!/^[a-zA-Z0-9._-]{3,30}$/.test(newUsername)){
+    msgEl.textContent = 'ชื่อผู้ใช้ต้องเป็นตัวอักษร/ตัวเลข 3-30 ตัว (ใช้ . _ - ได้)';
+    msgEl.style.color = 'var(--red)'; msgEl.style.display = 'block';
+    return;
+  }
+  const newEmail = newUsername.toLowerCase()+USERNAME_EMAIL_SUFFIX;
   btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
   const cred = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
   user.reauthenticateWithCredential(cred).then(()=>user.updateEmail(newEmail)).then(()=>{
-    msgEl.textContent = 'เปลี่ยนอีเมลสำเร็จ — ใช้อีเมลใหม่นี้เข้าสู่ระบบในครั้งถัดไป';
+    msgEl.textContent = 'เปลี่ยนชื่อผู้ใช้สำเร็จ — ใช้ชื่อผู้ใช้ใหม่นี้เข้าสู่ระบบในครั้งถัดไป';
     msgEl.style.color = 'var(--green)'; msgEl.style.display = 'block';
     document.getElementById('changeEmailForm').reset();
     updateAccountEmailDisplay();
