@@ -147,6 +147,13 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowr
 tbody tr:nth-child(even){background:#f6fbf5;}
 tbody tr:hover{background:#fdf3df;}
 tbody td.wrap{white-space:normal;max-width:180px;}
+/* Pin the "No." column of the main orders table so it stays visible while scrolling right
+   through its many columns — otherwise it's easy to lose track of which row number you're
+   editing/deleting once it's scrolled off-screen. */
+#ordersTable thead th[data-key="_no"]{position:sticky;left:0;z-index:3;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#ordersTable tbody td:first-child{position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#ordersTable tbody tr:nth-child(even) td:first-child{background:#f6fbf5;}
+#ordersTable tbody tr:hover td:first-child{background:#fdf3df;}
 .day-group-row td{
   background:#fbe9c8!important;font-weight:700;color:var(--maroon-dark);padding:8px 10px;position:sticky;left:0;
 }
