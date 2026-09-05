@@ -2858,11 +2858,12 @@ document.getElementById('closeSlipViewBtn').addEventListener('click', ()=>docume
 document.getElementById('slipViewModal').addEventListener('click', e=>{ if(e.target.id==='slipViewModal') document.getElementById('slipViewModal').classList.remove('show'); });
 
 function svgBar(data){
-  /* Explicit width/height (not scaled to fit its box — see .chart-svg-bar) so text/bars render
-     at a fixed, comfortably-legible size on a phone screen instead of shrinking to fit; .chart-box
-     scrolls horizontally if there isn't room. Tuned down from an earlier 3x pass that read as too
-     large — this is a more modest bump over the original (which was too small to read). */
-  const w=760,h=400,padL=56,padR=20,padT=34,padB=80;
+  /* Same canvas size/padding/font-sizes as svgGroupedBar (GROUPED_BAR_LAYOUT, defined below) so
+     this chart (fewer categories — product/size or payment-method breakdowns) doesn't render its
+     bars visibly larger than the 5 detailed reports' grouped-bar charts just because it has less
+     to divide the same width between. Explicit width/height (not scaled to fit its box — see
+     .chart-svg-bar); .chart-box scrolls horizontally if there isn't room. */
+  const {w,h,padL,padR,padT,padB} = GROUPED_BAR_LAYOUT;
   const max = Math.max(1,...data.map(d=>d.value));
   const n = data.length, gap = (w-padL-padR)/n, barW = gap*0.55;
   let bars='';
@@ -2870,10 +2871,10 @@ function svgBar(data){
     const x = padL + i*gap + (gap-barW)/2;
     const barH = (h-padT-padB) * (d.value/max);
     const y = h-padB-barH;
-    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="8" fill="${d.color}"><title>${esc(d.label)}: ${fmt(d.value)}</title></rect>`;
-    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-8).toFixed(1)}" font-size="14" text-anchor="middle" fill="#5c4530">${fmt(d.value)}</text>`;
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="6" fill="${d.color}"><title>${esc(d.label)}: ${fmt(d.value)}</title></rect>`;
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="12" text-anchor="middle" fill="#5c4530">${fmt(d.value)}</text>`;
     const short = d.label.length>10 ? d.label.slice(0,9)+'…' : d.label;
-    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+24}" font-size="14" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+24}" font-size="13" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
   });
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar"><line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
 }
