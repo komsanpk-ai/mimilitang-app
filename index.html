@@ -156,9 +156,12 @@ tbody td.wrap{white-space:normal;max-width:180px;}
 #ordersTable tbody tr:nth-child(even) td:nth-child(2){background:#f6fbf5;}
 #ordersTable tbody tr:hover td:nth-child(2){background:#fdf3df;}
 /* Same pin, applied to the "สรุปสินค้าเตรียมส่ง" (delivery) table — its ชื่อลูกค้า column is
-   the 4th cell (after the drag-handle, No., and ยืนยันการส่ง button columns). */
-#deliveryTable thead th:nth-child(4){position:sticky;left:0;z-index:3;background:#fff3d6;box-shadow:2px 0 4px rgba(0,0,0,.08);}
-#deliveryTable tbody td:nth-child(4){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+   the 4th cell (after the drag-handle, No., and ยืนยันการส่ง button columns). Given an explicit
+   width (not just the .wrap class's max-width) to match how compact this column renders on the
+   บันทึกข้อมูลลูกค้า order table — otherwise, with fewer competing columns here, the browser's
+   auto table layout was letting it grow much wider and crowding out เบอร์โทร/ที่อยู่จัดส่ง. */
+#deliveryTable thead th:nth-child(4){position:sticky;left:0;z-index:3;background:#fff3d6;box-shadow:2px 0 4px rgba(0,0,0,.08);width:110px;max-width:110px;}
+#deliveryTable tbody td:nth-child(4){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);width:110px;max-width:110px;}
 #deliveryTable tbody tr:nth-child(even) td:nth-child(4){background:#f6fbf5;}
 #deliveryTable tbody tr:hover td:nth-child(4){background:#fdf3df;}
 .day-group-row td{
