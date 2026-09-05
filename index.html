@@ -1908,6 +1908,36 @@ function materialStatus(mat){
   return {level:'ok', label:'ปกติ'};
 }
 
+/* A phone-camera photo can easily be several MB — stored raw as base64 that alone can blow past
+   Firestore's ~1MiB per-document limit, causing the whole order/material/etc. document to fail
+   to sync with an "invalid-argument" error (silently, the local copy still looks fine until the
+   Firestore listener's authoritative snapshot rolls it back). Every photo upload in this app
+   routes through this resize-then-re-encode helper so that can't happen again — long side capped
+   at `maxDim`, re-encoded as JPEG at `quality` (both generous enough that the result is visually
+   indistinguishable at the sizes this app displays photos, typically well under 200KB). */
+function compressImageFile(file, {maxDim=1280, quality=0.75, mimeType='image/jpeg'}={}){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(reader.error||new Error('อ่านไฟล์ไม่สำเร็จ'));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>reject(new Error('ไฟล์รูปภาพเสียหายหรือไม่รองรับ'));
+      img.onload = ()=>{
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if(w>maxDim || h>maxDim){
+          if(w>=h){ h = Math.round(h*maxDim/w); w = maxDim; } else { w = Math.round(w*maxDim/h); h = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL(mimeType, quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 /* ============ Logo ============ */
 const logoImg = document.getElementById('logoImg'), logoFallback = document.getElementById('logoFallback');
 function renderLogo(){
@@ -1917,9 +1947,9 @@ function renderLogo(){
 document.getElementById('logoWrap').addEventListener('click', ()=>document.getElementById('logoInput').click());
 document.getElementById('logoInput').addEventListener('change', e=>{
   const file = e.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{ logoData = reader.result; persistLogo(); renderLogo(); toast('อัปเดตโลโก้แล้ว'); };
-  reader.readAsDataURL(file);
+  compressImageFile(file, {mimeType:'image/png', quality:1}).then(dataUrl=>{
+    logoData = dataUrl; persistLogo(); renderLogo(); toast('อัปเดตโลโก้แล้ว');
+  }).catch(()=>toast('อัปโหลดโลโก้ไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 renderLogo();
 
@@ -1969,9 +1999,8 @@ function updateSlipPreview(){
 }
 f('f_paymentSlip').addEventListener('change', e=>{
   const file = e.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{ formSlipData = reader.result; updateSlipPreview(); };
-  reader.readAsDataURL(file);
+  compressImageFile(file).then(dataUrl=>{ formSlipData = dataUrl; updateSlipPreview(); })
+    .catch(()=>toast('อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 function updateTotalPreview(){
   const amt = computeAmounts(readForm());
@@ -2381,15 +2410,13 @@ function renderDeliveryMapPhoto(date){
 document.getElementById('deliveryMapPhotoInput').addEventListener('change', e=>{
   const file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
+  compressImageFile(file).then(dataUrl=>{
     const date = f('dl_date').value || addDaysISO(todayISO(),1);
-    deliveryRouteMaps[date] = reader.result;
+    deliveryRouteMaps[date] = dataUrl;
     persistDeliveryRouteMaps();
     renderDeliveryMapPhoto(date);
     e.target.value = '';
-  };
-  reader.readAsDataURL(file);
+  }).catch(()=>toast('อัปโหลดรูปแผนที่ไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 document.getElementById('deliveryMapPhotoRemoveBtn').addEventListener('click', ()=>{
   const date = f('dl_date').value || addDaysISO(todayISO(),1);
@@ -2540,9 +2567,8 @@ function updateDlSlipPreview(){
 }
 document.getElementById('dlSlipInput').addEventListener('change', e=>{
   const file = e.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{ dlCompleteSlipData = reader.result; updateDlSlipPreview(); };
-  reader.readAsDataURL(file);
+  compressImageFile(file).then(dataUrl=>{ dlCompleteSlipData = dataUrl; updateDlSlipPreview(); })
+    .catch(()=>toast('อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 function openDlCompleteModal(orderId){
   const o = orders.find(x=>x.id===orderId);
@@ -3166,9 +3192,8 @@ function renderSettingsLists(){
     inp.addEventListener('change', e=>{
       const file = e.target.files[0]; if(!file) return;
       const i = Number(inp.dataset.i);
-      const reader = new FileReader();
-      reader.onload = ()=>{ products[i].image = reader.result; persistProducts(); renderSettingsLists(); };
-      reader.readAsDataURL(file);
+      compressImageFile(file).then(dataUrl=>{ products[i].image = dataUrl; persistProducts(); renderSettingsLists(); })
+        .catch(()=>toast('อัปโหลดรูปสินค้าไม่สำเร็จ ลองใหม่อีกครั้ง'));
     });
   });
   document.getElementById('productList').querySelectorAll('[data-act="delProduct"]').forEach(btn=>{
@@ -4366,9 +4391,8 @@ function renderMaterialSettingsList(){
     inp.addEventListener('change', e=>{
       const file = e.target.files[0]; if(!file) return;
       const i = Number(inp.dataset.i);
-      const reader = new FileReader();
-      reader.onload = ()=>{ materials[i].image = reader.result; persistMaterials(); renderMaterialSettingsList(); };
-      reader.readAsDataURL(file);
+      compressImageFile(file).then(dataUrl=>{ materials[i].image = dataUrl; persistMaterials(); renderMaterialSettingsList(); })
+        .catch(()=>toast('อัปโหลดรูปวัตถุดิบไม่สำเร็จ ลองใหม่อีกครั้ง'));
     });
   });
   document.getElementById('materialSettingsList').querySelectorAll('[data-act="delMaterial"]').forEach(btn=>{
