@@ -3002,6 +3002,7 @@ function renderChartInto(data, barBoxId, pieBoxId, legendId, axisBoxId){
   const barChart = svgBar(data);
   boxBar.innerHTML = barChart.bars;
   if(axisBox) axisBox.innerHTML = barChart.axis;
+  boxBar.scrollLeft = Math.max(0, (barChart.contentX0+barChart.contentX1)/2 - boxBar.clientWidth/2);
   boxPie.innerHTML = svgPie(data,total);
   legend.innerHTML = data.map(d=>`
     <div class="legend-row">
@@ -3102,7 +3103,11 @@ function svgBar(data){
     bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+24}" font-size="13" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
   });
   const barsSvg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar">${grid}<line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
-  return {axis: svgYAxis(niceMax, ticks), bars: barsSvg};
+  // Where the actual bars sit within the fixed 1100px-wide canvas — used to auto-scroll the
+  // chart-box so they're centered in view on load, instead of leaving the viewer to go find a
+  // handful of bars that (especially once centered-when-few-categories, above) may not be
+  // anywhere near the left edge the box starts scrolled to.
+  return {axis: svgYAxis(niceMax, ticks), bars: barsSvg, contentX0: startX, contentX1: startX+n*gap};
 }
 function svgPie(data,total){
   const size=280,r=105,cx=140,cy=140;
