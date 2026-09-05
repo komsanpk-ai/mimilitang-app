@@ -250,6 +250,12 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
    on a phone screen instead of shrinking to fit. Pie charts keep the old shrink-to-fit .chart-svg
    behavior, since there's no "scroll to see more" concept for a pie. */
 .chart-svg-bar{display:block;height:auto;}
+/* Y-axis value scale, rendered as its own small SVG (svgYAxis) kept OUTSIDE the scrollable
+   .chart-box so it stays pinned to the left of the chart — visible at a glance — while the bars
+   scroll horizontally beside it. Gridlines drawn into the bars SVG at the same tick values line
+   the two up exactly (see GROUPED_BAR_LAYOUT / computeNiceTicks). */
+.chart-box-row{display:flex;align-items:flex-start;}
+.chart-axis{flex:none;overflow:hidden;}
 .legend{flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px;}
 .legend-row{display:flex;align-items:center;gap:10px;font-size:13px;}
 .legend-swatch{width:13px;height:13px;border-radius:4px;flex:none;}
@@ -717,7 +723,10 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="chart-section">
         <div class="chart-col">
           <div class="mini-title">กราฟแท่ง</div>
-          <div class="chart-box" id="chartBoxBar"></div>
+          <div class="chart-box-row">
+            <div class="chart-axis" id="chartAxisBar"></div>
+            <div class="chart-box" id="chartBoxBar"></div>
+          </div>
         </div>
         <div class="chart-col">
           <div class="mini-title">กราฟวงกลม</div>
@@ -732,7 +741,10 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="chart-section">
         <div class="chart-col">
           <div class="mini-title">กราฟแท่ง</div>
-          <div class="chart-box" id="pmChartBoxBar"></div>
+          <div class="chart-box-row">
+            <div class="chart-axis" id="pmChartAxisBar"></div>
+            <div class="chart-box" id="pmChartBoxBar"></div>
+          </div>
         </div>
         <div class="chart-col">
           <div class="mini-title">กราฟวงกลม</div>
@@ -779,7 +791,10 @@ p.hint.collapsible-hint.show{display:block;}
     </div>
     <div class="chart-section">
       <div class="chart-col chart-col-wide">
-        <div class="chart-box" id="rs-chart-box"></div>
+        <div class="chart-box-row">
+          <div class="chart-axis" id="rs-chart-axis"></div>
+          <div class="chart-box" id="rs-chart-box"></div>
+        </div>
       </div>
       <div class="legend" id="rs-legend"></div>
     </div>
@@ -821,7 +836,10 @@ p.hint.collapsible-hint.show{display:block;}
     </div>
     <div class="chart-section">
       <div class="chart-col chart-col-wide">
-        <div class="chart-box" id="rr-chart-box"></div>
+        <div class="chart-box-row">
+          <div class="chart-axis" id="rr-chart-axis"></div>
+          <div class="chart-box" id="rr-chart-box"></div>
+        </div>
       </div>
       <div class="legend" id="rr-legend"></div>
     </div>
@@ -857,7 +875,10 @@ p.hint.collapsible-hint.show{display:block;}
     </div>
     <div class="chart-section">
       <div class="chart-col chart-col-wide">
-        <div class="chart-box" id="rc-chart-box"></div>
+        <div class="chart-box-row">
+          <div class="chart-axis" id="rc-chart-axis"></div>
+          <div class="chart-box" id="rc-chart-box"></div>
+        </div>
       </div>
       <div class="legend" id="rc-legend"></div>
     </div>
@@ -896,7 +917,10 @@ p.hint.collapsible-hint.show{display:block;}
     </div>
     <div class="chart-section">
       <div class="chart-col chart-col-wide">
-        <div class="chart-box" id="rk-chart-box"></div>
+        <div class="chart-box-row">
+          <div class="chart-axis" id="rk-chart-axis"></div>
+          <div class="chart-box" id="rk-chart-box"></div>
+        </div>
       </div>
       <div class="legend" id="rk-legend"></div>
     </div>
@@ -931,7 +955,10 @@ p.hint.collapsible-hint.show{display:block;}
     </div>
     <div class="chart-section">
       <div class="chart-col chart-col-wide">
-        <div class="chart-box" id="rp-chart-box"></div>
+        <div class="chart-box-row">
+          <div class="chart-axis" id="rp-chart-axis"></div>
+          <div class="chart-box" id="rp-chart-box"></div>
+        </div>
       </div>
       <div class="legend" id="rp-legend"></div>
     </div>
@@ -2798,18 +2825,22 @@ function renderReport(){
 }
 
 function renderChart(data){
-  renderChartInto(data, 'chartBoxBar', 'chartBoxPie', 'chartLegend');
+  renderChartInto(data, 'chartBoxBar', 'chartBoxPie', 'chartLegend', 'chartAxisBar');
 }
-function renderChartInto(data, barBoxId, pieBoxId, legendId){
+function renderChartInto(data, barBoxId, pieBoxId, legendId, axisBoxId){
   const boxBar = document.getElementById(barBoxId), boxPie = document.getElementById(pieBoxId), legend = document.getElementById(legendId);
+  const axisBox = axisBoxId ? document.getElementById(axisBoxId) : null;
   if(!data.length || data.every(d=>d.value===0)){
     boxBar.innerHTML = '<div class="empty-state">ไม่มีข้อมูลในช่วงที่เลือก</div>';
     boxPie.innerHTML = '';
     legend.innerHTML = '';
+    if(axisBox) axisBox.innerHTML = '';
     return;
   }
   const total = data.reduce((s,d)=>s+d.value,0)||1;
-  boxBar.innerHTML = svgBar(data);
+  const barChart = svgBar(data);
+  boxBar.innerHTML = barChart.bars;
+  if(axisBox) axisBox.innerHTML = barChart.axis;
   boxPie.innerHTML = svgPie(data,total);
   legend.innerHTML = data.map(d=>`
     <div class="legend-row">
@@ -2830,7 +2861,7 @@ function renderPaymentBreakdown(list){
     byMethod[key] = (byMethod[key]||0) + amt;
   });
   const data = Object.keys(byMethod).map((k,i)=>({label:k, value:byMethod[k], color:PALETTE[(i+3)%PALETTE.length]})).sort((a,b)=>b.value-a.value);
-  renderChartInto(data, 'pmChartBoxBar', 'pmChartBoxPie', 'pmChartLegend');
+  renderChartInto(data, 'pmChartBoxBar', 'pmChartBoxPie', 'pmChartLegend', 'pmChartAxisBar');
 
   const paidList = list.filter(o=>o._amt.amountReceived>0).slice().sort((a,b)=>b.orderDate.localeCompare(a.orderDate));
   const tbody = document.getElementById('slipBody');
@@ -2864,19 +2895,26 @@ function svgBar(data){
      to divide the same width between. Explicit width/height (not scaled to fit its box — see
      .chart-svg-bar); .chart-box scrolls horizontally if there isn't room. */
   const {w,h,padL,padR,padT,padB} = GROUPED_BAR_LAYOUT;
-  const max = Math.max(1,...data.map(d=>d.value));
+  const rawMax = Math.max(1,...data.map(d=>d.value));
+  const {niceMax, ticks} = computeNiceTicks(rawMax);
   const n = data.length, gap = (w-padL-padR)/n, barW = gap*0.55;
+  let grid = '';
+  ticks.forEach(t=>{
+    const y = h-padB-(t/niceMax)*(h-padT-padB);
+    grid += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="#f0e6d8" stroke-width="1"/>`;
+  });
   let bars='';
   data.forEach((d,i)=>{
     const x = padL + i*gap + (gap-barW)/2;
-    const barH = (h-padT-padB) * (d.value/max);
+    const barH = (h-padT-padB) * (d.value/niceMax);
     const y = h-padB-barH;
     bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="6" fill="${d.color}"><title>${esc(d.label)}: ${fmt(d.value)}</title></rect>`;
     bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="12" text-anchor="middle" fill="#5c4530">${fmt(d.value)}</text>`;
     const short = d.label.length>10 ? d.label.slice(0,9)+'…' : d.label;
     bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+24}" font-size="13" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
   });
-  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar"><line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
+  const barsSvg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar">${grid}<line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
+  return {axis: svgYAxis(niceMax, ticks), bars: barsSvg};
 }
 function svgPie(data,total){
   const size=280,r=105,cx=140,cy=140;
@@ -2901,24 +2939,65 @@ function svgPie(data,total){
 /* Shared with centerChartOnToday() below, which needs the same padL/padR/w to work out where a
    given category's bar center falls without re-parsing the rendered SVG. */
 const GROUPED_BAR_LAYOUT = {w:1100,h:460,padL:60,padR:20,padT:34,padB:80};
+/* Picks a "nice" round tick step (1/2/5×10^n) for a Y-axis given the data's max value, the same
+   way most charting libraries do — so as totals grow over time the axis re-spaces itself into
+   fewer, rounder, more-widely-spaced gridlines instead of the chart just growing tall and thin
+   with no scale reference at all. Returns niceMax (>= maxVal, used as the new 100%-height
+   reference for bars so the tallest bar doesn't necessarily touch the very top) and the list of
+   tick values from 0 to niceMax. */
+function computeNiceTicks(maxVal, targetCount){
+  targetCount = targetCount||5;
+  if(!(maxVal>0)) maxVal = 1;
+  const rawStep = maxVal/targetCount;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const residual = rawStep/magnitude;
+  let step;
+  if(residual>5) step=10*magnitude; else if(residual>2) step=5*magnitude; else if(residual>1) step=2*magnitude; else step=magnitude;
+  const niceMax = Math.ceil(maxVal/step)*step;
+  const ticks=[];
+  for(let v=0; v<=niceMax+step*0.001; v+=step) ticks.push(Math.round(v*1e6)/1e6);
+  return {niceMax, ticks};
+}
+const CHART_AXIS_WIDTH = 56;
+/* Renders just the Y-axis value labels as their own small SVG — kept as a separate element (not
+   part of the scrollable bars SVG) so it can sit in a non-scrolling column and stay pinned to the
+   left of the chart while the bars scroll horizontally underneath/beside it. Shares h/padT/padB
+   with GROUPED_BAR_LAYOUT so its tick positions line up exactly with the gridlines drawn into the
+   bars SVG at the same values. */
+function svgYAxis(niceMax, ticks){
+  const {h,padT,padB} = GROUPED_BAR_LAYOUT;
+  const aw = CHART_AXIS_WIDTH;
+  let labels='';
+  ticks.forEach(t=>{
+    const y = h-padB-(t/niceMax)*(h-padT-padB);
+    labels += `<text x="${aw-8}" y="${(y+4).toFixed(1)}" font-size="12" text-anchor="end" fill="#8a7566">${fmt(t)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${aw} ${h}" width="${aw}" height="${h}" class="chart-svg-bar chart-axis-svg">${labels}</svg>`;
+}
 function svgGroupedBar(categories, series){
   /* Explicit width/height (not scaled to fit its box — see .chart-svg-bar) so text/bars render
      at a fixed, comfortably-legible size on a phone screen instead of shrinking to fit; .chart-box
      scrolls horizontally to reach categories that don't fit (typically ~4-5 months visible at
      once out of 12). Tuned down from an earlier 3x pass that read as too large. */
   const {w,h,padL,padR,padT,padB} = GROUPED_BAR_LAYOUT;
-  const max = Math.max(1, ...series.flatMap(s=>s.values));
+  const rawMax = Math.max(1, ...series.flatMap(s=>s.values));
+  const {niceMax, ticks} = computeNiceTicks(rawMax);
   const n = categories.length || 1;
   const groupGap = (w-padL-padR)/n;
   const seriesN = Math.max(1, series.length);
   const groupW = groupGap*0.78;
   const barW = groupW/seriesN;
+  let grid = '';
+  ticks.forEach(t=>{
+    const y = h-padB-(t/niceMax)*(h-padT-padB);
+    grid += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="#f0e6d8" stroke-width="1"/>`;
+  });
   let bars='';
   categories.forEach((cat,ci)=>{
     const groupX = padL + ci*groupGap + (groupGap-groupW)/2;
     series.forEach((s,si)=>{
       const val = s.values[ci]||0;
-      const barH = (h-padT-padB) * (val/max);
+      const barH = (h-padT-padB) * (val/niceMax);
       const x = groupX + si*barW;
       const y = h-padB-barH;
       const bw = barW*0.82;
@@ -2930,7 +3009,8 @@ function svgGroupedBar(categories, series){
     const short = cat.label.length>9 ? cat.label.slice(0,8)+'…' : cat.label;
     bars += `<text x="${(groupX+groupW/2).toFixed(1)}" y="${h-padB+24}" font-size="13" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
   });
-  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar"><line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
+  const barsSvg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar">${grid}<line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
+  return {axis: svgYAxis(niceMax, ticks), bars: barsSvg};
 }
 
 /* Scrolls a report's chart-box so today's bar (the current month/week/day, whichever bucket
@@ -2988,9 +3068,10 @@ function daysOfWeek(weekStartISO){
   return days;
 }
 
-function renderGroupedChartInto(buckets, series, barBoxId, legendId, totalBoxId, totalOverride){
+function renderGroupedChartInto(buckets, series, barBoxId, legendId, totalBoxId, totalOverride, axisBoxId){
   const box = document.getElementById(barBoxId), legend = document.getElementById(legendId);
   const totalBox = totalBoxId ? document.getElementById(totalBoxId) : null;
+  const axisBox = axisBoxId ? document.getElementById(axisBoxId) : null;
   // totalOverride lets a report supply the "whole" a % breakdown is relative to when its series
   // aren't mutually-exclusive slices of one total — e.g. report 2's กำไร is รายได้−ต้นทุน, so
   // summing all 3 series would double-count and make รายได้ always read exactly 50%.
@@ -2999,9 +3080,12 @@ function renderGroupedChartInto(buckets, series, barBoxId, legendId, totalBoxId,
     box.innerHTML = '<div class="empty-state">ไม่มีข้อมูลในช่วงที่เลือก</div>';
     legend.innerHTML = '';
     if(totalBox) totalBox.innerHTML = '';
+    if(axisBox) axisBox.innerHTML = '';
     return;
   }
-  box.innerHTML = svgGroupedBar(buckets, series);
+  const chart = svgGroupedBar(buckets, series);
+  box.innerHTML = chart.bars;
+  if(axisBox) axisBox.innerHTML = chart.axis;
   legend.innerHTML = series.map(s=>{
     const sTotal = s.values.reduce((a,b)=>a+b,0);
     const pct = grandTotal ? (sTotal/grandTotal*100).toFixed(1) : '0.0';
@@ -3051,7 +3135,7 @@ function initReportModule(cfg){
     updateVisibility(); refreshLabels();
     const buckets = currentBuckets();
     const result = cfg.computeSeries(buckets) || {series:[]};
-    renderGroupedChartInto(buckets, result.series, `${P}-chart-box`, `${P}-legend`, `${P}-total-box`, result.totalOverride);
+    renderGroupedChartInto(buckets, result.series, `${P}-chart-box`, `${P}-legend`, `${P}-total-box`, result.totalOverride, `${P}-chart-axis`);
     if(cfg.onRender) cfg.onRender(result, buckets);
     // Only re-center on today when explicitly asked (opening the page, switching granularity) —
     // never on a background refresh (e.g. renderAllReports() after an order saves elsewhere),
