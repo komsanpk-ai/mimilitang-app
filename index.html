@@ -241,10 +241,15 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
 .stat-card .stat-sub{font-size:11px;color:var(--muted);margin-top:3px;}
 
 .chart-section{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;}
-.chart-box{flex:1;min-width:260px;max-width:420px;}
-.chart-col{flex:1;min-width:260px;max-width:420px;}
-.chart-col-wide{flex:2;min-width:280px;max-width:680px;}
+.chart-box{flex:1;min-width:260px;max-width:520px;overflow-x:auto;}
+.chart-col{flex:1;min-width:260px;max-width:520px;}
+.chart-col-wide{flex:2;min-width:280px;max-width:960px;}
 .chart-svg{width:100%;height:auto;}
+/* Bar charts (svgBar/svgGroupedBar) render 3x their old pixel size and are NOT scaled down to
+   fit — .chart-box scrolls horizontally instead, so bars/numbers/labels stay readable instead of
+   shrinking back to illegible on a narrow screen. Pie charts keep the old shrink-to-fit .chart-svg
+   behavior, since there's no "scroll to see more" concept for a pie. */
+.chart-svg-bar{display:block;height:auto;}
 .legend{flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px;}
 .legend-row{display:flex;align-items:center;gap:10px;font-size:13px;}
 .legend-swatch{width:13px;height:13px;border-radius:4px;flex:none;}
@@ -659,7 +664,7 @@ p.hint.collapsible-hint.show{display:block;}
       <span class="home-tile-icon">💳</span>
       <span class="home-tile-label">รายงานประเภทการจ่ายเงิน</span>
     </button>
-    <button type="button" class="home-tile home-tile-wide" data-page="report-overview">
+    <button type="button" class="home-tile" data-page="report-overview">
       <span class="home-tile-icon">📊</span>
       <span class="home-tile-label">ภาพรวมยอดขาย</span>
     </button>
@@ -2853,7 +2858,10 @@ document.getElementById('closeSlipViewBtn').addEventListener('click', ()=>docume
 document.getElementById('slipViewModal').addEventListener('click', e=>{ if(e.target.id==='slipViewModal') document.getElementById('slipViewModal').classList.remove('show'); });
 
 function svgBar(data){
-  const w=520,h=280,padL=44,padR=16,padT=26,padB=56;
+  /* Rendered 3x the original size (explicit width/height, not scaled to fit its box — see
+     .chart-svg-bar) so the chart itself scrolls horizontally when it doesn't fit, instead of
+     shrinking back down to illegibility. */
+  const w=1560,h=840,padL=132,padR=48,padT=78,padB=168;
   const max = Math.max(1,...data.map(d=>d.value));
   const n = data.length, gap = (w-padL-padR)/n, barW = gap*0.55;
   let bars='';
@@ -2861,12 +2869,12 @@ function svgBar(data){
     const x = padL + i*gap + (gap-barW)/2;
     const barH = (h-padT-padB) * (d.value/max);
     const y = h-padB-barH;
-    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="6" fill="${d.color}"><title>${esc(d.label)}: ${fmt(d.value)}</title></rect>`;
-    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="11" text-anchor="middle" fill="#5c4530">${fmt(d.value)}</text>`;
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="16" fill="${d.color}"><title>${esc(d.label)}: ${fmt(d.value)}</title></rect>`;
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-16).toFixed(1)}" font-size="33" text-anchor="middle" fill="#5c4530">${fmt(d.value)}</text>`;
     const short = d.label.length>10 ? d.label.slice(0,9)+'…' : d.label;
-    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+18}" font-size="10.5" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+50}" font-size="32" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
   });
-  return `<svg viewBox="0 0 ${w} ${h}" class="chart-svg"><line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar"><line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
 }
 function svgPie(data,total){
   const size=280,r=105,cx=140,cy=140;
@@ -2889,7 +2897,10 @@ function svgPie(data,total){
 
 /* ============ Detailed reports: shared grouped-bar engine ============ */
 function svgGroupedBar(categories, series){
-  const w=680,h=300,padL=48,padR=16,padT=26,padB=56;
+  /* Rendered 3x the original size (explicit width/height, not scaled to fit its box — see
+     .chart-svg-bar) so the chart itself scrolls horizontally when it doesn't fit, instead of
+     shrinking back down to illegibility. */
+  const w=2040,h=900,padL=144,padR=48,padT=78,padB=168;
   const max = Math.max(1, ...series.flatMap(s=>s.values));
   const n = categories.length || 1;
   const groupGap = (w-padL-padR)/n;
@@ -2905,15 +2916,15 @@ function svgGroupedBar(categories, series){
       const x = groupX + si*barW;
       const y = h-padB-barH;
       const bw = barW*0.82;
-      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${barH.toFixed(1)}" rx="4" fill="${s.color}"><title>${esc(s.name)} · ${esc(cat.label)}: ${fmt(val)}</title></rect>`;
-      if(val>0 && barH>15){
-        bars += `<text x="${(x+bw/2).toFixed(1)}" y="${(y-4).toFixed(1)}" font-size="9" text-anchor="middle" fill="#5c4530">${fmt(val)}</text>`;
+      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${barH.toFixed(1)}" rx="12" fill="${s.color}"><title>${esc(s.name)} · ${esc(cat.label)}: ${fmt(val)}</title></rect>`;
+      if(val>0 && barH>45){
+        bars += `<text x="${(x+bw/2).toFixed(1)}" y="${(y-12).toFixed(1)}" font-size="27" text-anchor="middle" fill="#5c4530">${fmt(val)}</text>`;
       }
     });
     const short = cat.label.length>9 ? cat.label.slice(0,8)+'…' : cat.label;
-    bars += `<text x="${(groupX+groupW/2).toFixed(1)}" y="${h-padB+18}" font-size="10.5" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
+    bars += `<text x="${(groupX+groupW/2).toFixed(1)}" y="${h-padB+50}" font-size="32" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
   });
-  return `<svg viewBox="0 0 ${w} ${h}" class="chart-svg"><line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar"><line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
 }
 
 /* Month(12 of a picked year) / week(the ~4-5 weeks of a picked month) / day(the 7 days of a
