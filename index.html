@@ -147,13 +147,20 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowr
 tbody tr:nth-child(even){background:#f6fbf5;}
 tbody tr:hover{background:#fdf3df;}
 tbody td.wrap{white-space:normal;max-width:180px;}
-/* Pin the "No." column of the main orders table so it stays visible while scrolling right
-   through its many columns — otherwise it's easy to lose track of which row number you're
-   editing/deleting once it's scrolled off-screen. */
-#ordersTable thead th[data-key="_no"]{position:sticky;left:0;z-index:3;box-shadow:2px 0 4px rgba(0,0,0,.08);}
-#ordersTable tbody td:first-child{position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
-#ordersTable tbody tr:nth-child(even) td:first-child{background:#f6fbf5;}
-#ordersTable tbody tr:hover td:first-child{background:#fdf3df;}
+/* Pin the "ชื่อลูกค้า" column of the main orders table so it stays visible while scrolling right
+   through its many columns — otherwise it's easy to lose track of whose row you're
+   editing/deleting once it's scrolled off-screen. Customer name was picked over the row number
+   (tried first) since it's easier to recognize at a glance. */
+#ordersTable thead th[data-key="customerName"]{position:sticky;left:0;z-index:3;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#ordersTable tbody td:nth-child(2){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#ordersTable tbody tr:nth-child(even) td:nth-child(2){background:#f6fbf5;}
+#ordersTable tbody tr:hover td:nth-child(2){background:#fdf3df;}
+/* Same pin, applied to the "สรุปสินค้าเตรียมส่ง" (delivery) table — its ชื่อลูกค้า column is
+   the 4th cell (after the drag-handle, No., and ยืนยันการส่ง button columns). */
+#deliveryTable thead th:nth-child(4){position:sticky;left:0;z-index:3;background:#fff3d6;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#deliveryTable tbody td:nth-child(4){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#deliveryTable tbody tr:nth-child(even) td:nth-child(4){background:#f6fbf5;}
+#deliveryTable tbody tr:hover td:nth-child(4){background:#fdf3df;}
 .day-group-row td{
   background:#fbe9c8!important;font-weight:700;color:var(--maroon-dark);padding:8px 10px;position:sticky;left:0;
 }
