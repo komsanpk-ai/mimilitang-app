@@ -1400,6 +1400,10 @@ p.hint.collapsible-hint.show{display:block;}
       <span class="home-tile-icon">💾</span>
       <span class="home-tile-label">สำรอง/กู้ข้อมูล</span>
     </button>
+    <button type="button" class="home-tile" data-page="settings-account">
+      <span class="home-tile-icon">👤</span>
+      <span class="home-tile-label">บัญชีผู้ใช้</span>
+    </button>
   </div>
 </main>
 
@@ -1460,6 +1464,33 @@ p.hint.collapsible-hint.show{display:block;}
   </section>
 </main>
 
+<main id="page-settings-account" class="page-view">
+  <section class="card">
+    <div class="card-head"><h2><span class="emoji">👤</span>บัญชีผู้ใช้</h2></div>
+    <p class="hint">เปลี่ยนอีเมล/รหัสผ่านที่ใช้เข้าสู่ระบบ — ต้องกรอกรหัสผ่านปัจจุบันเพื่อยืนยันตัวตนก่อนทุกครั้ง (ข้อกำหนดด้านความปลอดภัยของระบบล็อกอิน) หลังเปลี่ยนอีเมลแล้ว ให้ใช้อีเมลใหม่เข้าสู่ระบบในครั้งถัดไป</p>
+    <p style="margin:0 0 18px;">อีเมลปัจจุบัน: <b id="acctCurrentEmail">-</b></p>
+
+    <form id="changeEmailForm" class="form-grid">
+      <h3 style="font-size:15px;margin:0;color:var(--maroon-dark);">เปลี่ยนอีเมล (Username)</h3>
+      <div class="field"><label>รหัสผ่านปัจจุบัน</label><input type="password" id="acctEmailCurrentPassword" autocomplete="current-password" required></div>
+      <div class="field"><label>อีเมลใหม่</label><input type="email" id="acctNewEmail" autocomplete="username" required></div>
+      <p class="hint" id="acctEmailMsg" style="display:none;"></p>
+      <button type="submit" class="btn btn-primary btn-small" id="acctEmailSubmitBtn" style="align-self:flex-start;">บันทึกอีเมลใหม่</button>
+    </form>
+
+    <hr class="section-divider">
+
+    <form id="changePasswordForm" class="form-grid">
+      <h3 style="font-size:15px;margin:0;color:var(--maroon-dark);">เปลี่ยนรหัสผ่าน</h3>
+      <div class="field"><label>รหัสผ่านปัจจุบัน</label><input type="password" id="acctPwCurrentPassword" autocomplete="current-password" required></div>
+      <div class="field"><label>รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)</label><input type="password" id="acctNewPassword" autocomplete="new-password" required minlength="6"></div>
+      <div class="field"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" id="acctNewPasswordConfirm" autocomplete="new-password" required minlength="6"></div>
+      <p class="hint" id="acctPwMsg" style="display:none;"></p>
+      <button type="submit" class="btn btn-primary btn-small" id="acctPwSubmitBtn" style="align-self:flex-start;">บันทึกรหัสผ่านใหม่</button>
+    </form>
+  </section>
+</main>
+
 <footer class="appfoot">ข้อมูลถูกบันทึกไว้ในเบราว์เซอร์นี้ (localStorage) — กรุณาใช้ปุ่ม &ldquo;สำรองข้อมูล&rdquo; ใน ⚙️ ตั้งค่า เพื่อกันข้อมูลสูญหาย</footer>
 
 <!-- Delivery-complete confirm modal -->
@@ -1509,6 +1540,7 @@ p.hint.collapsible-hint.show{display:block;}
   <div class="modal" style="max-width:360px;text-align:center;">
     <div style="font-size:40px;margin-bottom:6px;">🍐</div>
     <h3 style="text-align:center;">มีมี่ ลี่ถัง — เข้าสู่ระบบ</h3>
+    <p class="hint" id="loginSessionExpiredMsg" style="display:none;color:var(--red);font-weight:600;text-align:center;">⏰ เซสชันของคุณหมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่อีกครั้ง</p>
     <form id="loginForm">
       <div class="field" style="text-align:left;margin-bottom:10px;">
         <label>อีเมล</label>
@@ -1579,16 +1611,113 @@ document.getElementById('loginForm').addEventListener('submit', e=>{
     btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
   });
 });
+/* ============ Session timeout: sign out after 5h of true inactivity ============ */
+// Kept separate from Firebase's own auth token (which already persists far longer than this) —
+// this is purely a "how long since the user last actually touched the app" idle clock, stored in
+// localStorage so it survives closing the tab/browser entirely. Explicitly asked for: reloading
+// the page should NOT re-show the login screen just because a reload happened (that was the
+// annoying part) — only real inactivity past the limit should.
+const SESSION_TIMEOUT_MS = 5*60*60*1000; // 5 hours
+const SESSION_KEY = 'mml_session_lastactive_v1';
+let sessionExpiredBySystem = false;
+function touchSession(){ localStorage.setItem(SESSION_KEY, String(Date.now())); }
+function checkSessionExpiry(){
+  const last = Number(localStorage.getItem(SESSION_KEY))||0;
+  if(last && (Date.now()-last) > SESSION_TIMEOUT_MS){
+    sessionExpiredBySystem = true;
+    localStorage.removeItem(SESSION_KEY);
+    auth.signOut();
+    return true;
+  }
+  return false;
+}
+setInterval(checkSessionExpiry, 5*60*1000); // catches a tab left open past the limit without a reload
+// Any real interaction resets the 5h clock (sliding idle timeout) — throttled so this isn't a
+// localStorage write on every single keystroke/click.
+let _lastTouchAt = 0;
+function touchSessionThrottled(){
+  const now = Date.now();
+  if(now-_lastTouchAt < 60000) return;
+  _lastTouchAt = now;
+  touchSession();
+}
+['click','keydown','touchstart'].forEach(evt=>{
+  document.addEventListener(evt, ()=>{ if(auth.currentUser) touchSessionThrottled(); }, {passive:true});
+});
+
 document.getElementById('logoutDrawerBtn').addEventListener('click', ()=>{
-  if(confirm('ออกจากระบบ?')) auth.signOut();
+  if(confirm('ออกจากระบบ?')){ localStorage.removeItem(SESSION_KEY); auth.signOut(); }
 });
 auth.onAuthStateChanged(user=>{
   fsDebugLog(user ? ('auth: signed in as '+user.email+' (uid '+user.uid+')') : 'auth: signed out');
+  if(user && checkSessionExpiry()) return; // signOut() just fired; this callback re-runs shortly with user=null
   document.getElementById('loginOverlay').classList.toggle('show', !user);
+  document.getElementById('loginSessionExpiredMsg').style.display = (!user && sessionExpiredBySystem) ? 'block' : 'none';
   if(user){
+    sessionExpiredBySystem = false;
+    touchSession();
     document.getElementById('loginPassword').value = '';
     fsPersistenceReady.then(fsAttachListeners);
+    updateAccountEmailDisplay();
   }
+});
+
+/* ============ Account settings: change email/password (Firebase Auth) ============ */
+function updateAccountEmailDisplay(){
+  const el = document.getElementById('acctCurrentEmail');
+  if(el) el.textContent = (auth.currentUser && auth.currentUser.email) || '-';
+}
+function accountAuthErrorMessage(err){
+  if(err.code==='auth/wrong-password' || err.code==='auth/invalid-credential') return 'รหัสผ่านปัจจุบันไม่ถูกต้อง';
+  if(err.code==='auth/email-already-in-use') return 'อีเมลนี้ถูกใช้งานโดยบัญชีอื่นแล้ว';
+  if(err.code==='auth/invalid-email') return 'รูปแบบอีเมลไม่ถูกต้อง';
+  if(err.code==='auth/weak-password') return 'รหัสผ่านใหม่ไม่ปลอดภัยพอ (ต้องมีอย่างน้อย 6 ตัวอักษร)';
+  if(err.code==='auth/requires-recent-login') return 'ต้องยืนยันตัวตนใหม่ก่อนทำรายการนี้ — ออกจากระบบแล้วเข้าสู่ระบบใหม่ แล้วลองอีกครั้ง';
+  return 'ทำรายการไม่สำเร็จ: '+err.message;
+}
+document.getElementById('changeEmailForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const user = auth.currentUser; if(!user) return;
+  const currentPassword = document.getElementById('acctEmailCurrentPassword').value;
+  const newEmail = document.getElementById('acctNewEmail').value.trim();
+  const msgEl = document.getElementById('acctEmailMsg'), btn = document.getElementById('acctEmailSubmitBtn');
+  msgEl.style.display='none';
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+  const cred = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
+  user.reauthenticateWithCredential(cred).then(()=>user.updateEmail(newEmail)).then(()=>{
+    msgEl.textContent = 'เปลี่ยนอีเมลสำเร็จ — ใช้อีเมลใหม่นี้เข้าสู่ระบบในครั้งถัดไป';
+    msgEl.style.color = 'var(--green)'; msgEl.style.display = 'block';
+    document.getElementById('changeEmailForm').reset();
+    updateAccountEmailDisplay();
+  }).catch(err=>{
+    msgEl.textContent = accountAuthErrorMessage(err);
+    msgEl.style.color = 'var(--red)'; msgEl.style.display = 'block';
+  }).finally(()=>{ btn.disabled = false; btn.textContent = 'บันทึกอีเมลใหม่'; });
+});
+document.getElementById('changePasswordForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const user = auth.currentUser; if(!user) return;
+  const currentPassword = document.getElementById('acctPwCurrentPassword').value;
+  const newPassword = document.getElementById('acctNewPassword').value;
+  const confirmPassword = document.getElementById('acctNewPasswordConfirm').value;
+  const msgEl = document.getElementById('acctPwMsg'), btn = document.getElementById('acctPwSubmitBtn');
+  msgEl.style.display = 'none';
+  if(newPassword !== confirmPassword){
+    msgEl.textContent = 'รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน'; msgEl.style.color = 'var(--red)'; msgEl.style.display = 'block'; return;
+  }
+  if(newPassword.length<6){
+    msgEl.textContent = 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'; msgEl.style.color = 'var(--red)'; msgEl.style.display = 'block'; return;
+  }
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+  const cred = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
+  user.reauthenticateWithCredential(cred).then(()=>user.updatePassword(newPassword)).then(()=>{
+    msgEl.textContent = 'เปลี่ยนรหัสผ่านสำเร็จ';
+    msgEl.style.color = 'var(--green)'; msgEl.style.display = 'block';
+    document.getElementById('changePasswordForm').reset();
+  }).catch(err=>{
+    msgEl.textContent = accountAuthErrorMessage(err);
+    msgEl.style.color = 'var(--red)'; msgEl.style.display = 'block';
+  }).finally(()=>{ btn.disabled = false; btn.textContent = 'บันทึกรหัสผ่านใหม่'; });
 });
 
 /* ============ Storage ============ */
@@ -3400,13 +3529,13 @@ let activeSubview = 'overview';
 
 const ALL_PAGES = ['home','order','prep','delivery','stock','report',
   'report-overview','report-sales','report-revenue','report-customers','report-stock','report-payment',
-  'settings','settings-products','settings-channels','settings-payment','settings-materials','settings-units','settings-backup'];
+  'settings','settings-products','settings-channels','settings-payment','settings-materials','settings-units','settings-backup','settings-account'];
 const PAGE_PARENT = {
   order:'home', prep:'home', delivery:'home', stock:'home', report:'home', settings:'home',
   'report-overview':'report', 'report-sales':'report', 'report-revenue':'report',
   'report-customers':'report', 'report-stock':'report', 'report-payment':'report',
   'settings-products':'settings', 'settings-channels':'settings', 'settings-payment':'settings',
-  'settings-materials':'settings', 'settings-units':'settings', 'settings-backup':'settings'
+  'settings-materials':'settings', 'settings-units':'settings', 'settings-backup':'settings', 'settings-account':'settings'
 };
 const HUB_LABEL = {settings:'ตั้งค่า', report:'รายงานสรุป'};
 function switchPage(pageName){
@@ -3427,6 +3556,7 @@ function switchPage(pageName){
   if(pageName==='report-stock') reportStockModule.render(true);
   if(pageName==='report-payment') reportPaymentModule.render(true);
   if(pageName==='settings' || pageName.indexOf('settings-')===0){ renderSettingsLists(); renderMaterialSettingsList(); renderUnitSettingsList(); }
+  if(pageName==='settings-account') updateAccountEmailDisplay();
   window.scrollTo({top:0, behavior:'smooth'});
 }
 function switchSubview(name){
