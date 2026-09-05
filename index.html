@@ -1648,10 +1648,10 @@ function fsSyncArray(name, currentArr){
   });
   prevMap.forEach((_,id)=>{ if(!currMap.has(id)){ batch.delete(firestore.collection(name).doc(id)); ops++; } });
   _fsPrevSnapshot[name] = currentArr.map(x=>Object.assign({},x));
-  if(ops) batch.commit().catch(e=>console.error('Firestore sync failed:',name,e));
+  if(ops) batch.commit().catch(e=>{ console.error('Firestore sync failed:',name,e); fsDebugLog('❌ push FAILED: '+name+' ('+ops+' op(s)) — '+(e.code||e.message||e)); });
 }
 function fsSyncValue(key, value){
-  firestore.collection('settings').doc(key).set({value}).catch(e=>console.error('Firestore sync failed: settings/'+key, e));
+  firestore.collection('settings').doc(key).set({value}).catch(e=>{ console.error('Firestore sync failed: settings/'+key, e); fsDebugLog('❌ push FAILED: settings/'+key+' — '+(e.code||e.message||e)); });
 }
 // Self-healing listener: Firestore does NOT auto-retry permission-denied/unauthenticated errors
 // (unlike transient network errors), so a listener that errors once would otherwise die silently
