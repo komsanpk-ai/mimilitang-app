@@ -256,12 +256,12 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
    the two up exactly (see GROUPED_BAR_LAYOUT / computeNiceTicks). */
 .chart-box-row{display:flex;align-items:flex-start;}
 .chart-axis{flex:none;overflow:hidden;}
-.legend{flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px;}
-.legend-row{display:flex;align-items:center;gap:10px;font-size:13px;}
-.legend-swatch{width:13px;height:13px;border-radius:4px;flex:none;}
+.legend{flex:1;min-width:220px;display:flex;flex-direction:column;gap:10px;}
+.legend-row{display:flex;align-items:center;gap:10px;font-size:16px;}
+.legend-swatch{width:15px;height:15px;border-radius:4px;flex:none;}
 .legend-row .lname{flex:1;color:var(--ink);}
-.legend-row .lval{color:var(--muted);font-size:12px;}
-.legend-row .lpct{font-weight:700;color:var(--maroon-dark);min-width:46px;text-align:right;}
+.legend-row .lval{color:var(--muted);font-size:15px;}
+.legend-row .lpct{font-weight:700;color:var(--maroon-dark);min-width:54px;text-align:right;}
 .chart-toggle{display:flex;gap:6px;}
 
 /* ---------- Modal ---------- */
@@ -752,11 +752,22 @@ p.hint.collapsible-hint.show{display:block;}
         </div>
         <div class="legend" id="pmChartLegend"></div>
       </div>
-      <div class="table-scroll" style="margin-top:14px;">
+      <div class="toolbar" style="margin-top:14px;">
+        <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
+          <select id="sp_pageSize">
+            <option value="10">10</option><option value="25" selected>25</option>
+            <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
+          </select></div>
+      </div>
+      <div class="table-scroll">
         <table id="slipTable">
           <thead><tr><th>วันที่สั่ง</th><th>ชื่อลูกค้า</th><th>ประเภทการจ่ายเงิน</th><th>ยอดที่ได้รับ</th><th>สลิปการโอน</th></tr></thead>
           <tbody id="slipBody"></tbody>
         </table>
+      </div>
+      <div class="table-footer">
+        <div class="summary-strip" id="spSummary"></div>
+        <div class="pagination" id="spPagination"></div>
       </div>
     </div>
 
@@ -3002,6 +3013,7 @@ function renderChartInto(data, barBoxId, pieBoxId, legendId, axisBoxId){
 }
 
 /* ============ Payment method (cash/transfer) breakdown + slip attachment ============ */
+let slipPage = 1;
 function renderPaymentBreakdown(list){
   const byMethod = {};
   list.forEach(o=>{
@@ -3015,8 +3027,26 @@ function renderPaymentBreakdown(list){
 
   const paidList = list.filter(o=>o._amt.amountReceived>0).slice().sort((a,b)=>b.orderDate.localeCompare(a.orderDate));
   const tbody = document.getElementById('slipBody');
-  if(!paidList.length){ tbody.innerHTML = `<tr><td colspan="5" class="empty-state">ยังไม่มีรายการรับเงินในช่วงนี้</td></tr>`; return; }
-  tbody.innerHTML = paidList.map(o=>{
+  if(!paidList.length){
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">ยังไม่มีรายการรับเงินในช่วงนี้</td></tr>`;
+    document.getElementById('spSummary').innerHTML = '';
+    document.getElementById('spPagination').innerHTML = '';
+    return;
+  }
+  const pageSizeSel = document.getElementById('sp_pageSize').value;
+  const pageSize = pageSizeSel==='all' ? paidList.length : Number(pageSizeSel);
+  const totalPages = Math.max(1, Math.ceil(paidList.length/pageSize));
+  if(slipPage>totalPages) slipPage = totalPages;
+  const start = (slipPage-1)*pageSize;
+  const pageItems = paidList.slice(start, start+pageSize);
+  document.getElementById('spSummary').innerHTML = `แสดง <b>${pageItems.length}</b> จาก ${paidList.length} รายการ`;
+  document.getElementById('spPagination').innerHTML = `
+    <button id="spPrevPageBtn" ${slipPage<=1?'disabled':''}>‹</button>
+    <span>หน้า ${slipPage}/${totalPages}</span>
+    <button id="spNextPageBtn" ${slipPage>=totalPages?'disabled':''}>›</button>`;
+  document.getElementById('spPrevPageBtn').onclick = ()=>{ slipPage--; renderPaymentBreakdown(list); };
+  document.getElementById('spNextPageBtn').onclick = ()=>{ slipPage++; renderPaymentBreakdown(list); };
+  tbody.innerHTML = pageItems.map(o=>{
     const slipCell = o.paymentSlip
       ? `<button type="button" class="btn btn-outline btn-small slip-view-btn" data-id="${o.id}">🖼️ ดูสลิป</button>`
       : `<span class="subtle-note">-</span>`;
@@ -3035,6 +3065,7 @@ function renderPaymentBreakdown(list){
     });
   });
 }
+document.getElementById('sp_pageSize').addEventListener('change', ()=>{ slipPage = 1; renderReport(); });
 document.getElementById('closeSlipViewBtn').addEventListener('click', ()=>document.getElementById('slipViewModal').classList.remove('show'));
 document.getElementById('slipViewModal').addEventListener('click', e=>{ if(e.target.id==='slipViewModal') document.getElementById('slipViewModal').classList.remove('show'); });
 
@@ -3047,7 +3078,14 @@ function svgBar(data){
   const {w,h,padL,padR,padT,padB} = GROUPED_BAR_LAYOUT;
   const rawMax = Math.max(1,...data.map(d=>d.value));
   const {niceMax, ticks} = computeNiceTicks(rawMax);
-  const n = data.length, gap = (w-padL-padR)/n, barW = gap*0.55;
+  const n = data.length;
+  // Capped so a chart with very few categories (e.g. 1-2 products) doesn't stretch a single bar
+  // across almost the whole canvas — bars stay a normal, consistent width regardless of n.
+  const gap = Math.min((w-padL-padR)/n, 160);
+  const barW = gap*0.55;
+  // When the cap kicks in, the bars no longer fill the plot width on their own — center the
+  // whole cluster instead of leaving it flush left with empty space trailing off to the right.
+  const startX = padL + Math.max(0, ((w-padL-padR) - n*gap)/2);
   let grid = '';
   ticks.forEach(t=>{
     const y = h-padB-(t/niceMax)*(h-padT-padB);
@@ -3055,7 +3093,7 @@ function svgBar(data){
   });
   let bars='';
   data.forEach((d,i)=>{
-    const x = padL + i*gap + (gap-barW)/2;
+    const x = startX + i*gap + (gap-barW)/2;
     const barH = (h-padT-padB) * (d.value/niceMax);
     const y = h-padB-barH;
     bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="6" fill="${d.color}"><title>${esc(d.label)}: ${fmt(d.value)}</title></rect>`;
@@ -3153,7 +3191,15 @@ function svgGroupedBar(categories, series){
       const bw = barW*0.82;
       bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${barH.toFixed(1)}" rx="6" fill="${s.color}"><title>${esc(s.name)} · ${esc(cat.label)}: ${fmt(val)}</title></rect>`;
       if(val>0 && barH>20){
-        bars += `<text x="${(x+bw/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="12" text-anchor="middle" fill="#5c4530">${fmt(val)}</text>`;
+        // Adjacent series' bars sit close together within a group, so a label placed directly
+        // above each one can crowd into its neighbor's — stagger each series' label a bit higher
+        // than the last (a "staircase") so they never land at the same height, with a short
+        // leader line back down to the bar it belongs to once it's been pushed up.
+        const labelY = Math.max(12, y - 6 - si*14);
+        if(si>0){
+          bars += `<line x1="${(x+bw/2).toFixed(1)}" y1="${(y-3).toFixed(1)}" x2="${(x+bw/2).toFixed(1)}" y2="${(labelY+3).toFixed(1)}" stroke="#c9beb2" stroke-width="1"/>`;
+        }
+        bars += `<text x="${(x+bw/2).toFixed(1)}" y="${labelY.toFixed(1)}" font-size="12" text-anchor="middle" fill="#5c4530">${fmt(val)}</text>`;
       }
     });
     const short = cat.label.length>9 ? cat.label.slice(0,8)+'…' : cat.label;
