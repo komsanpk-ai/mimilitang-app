@@ -2897,12 +2897,15 @@ function svgPie(data,total){
 }
 
 /* ============ Detailed reports: shared grouped-bar engine ============ */
+/* Shared with centerChartOnToday() below, which needs the same padL/padR/w to work out where a
+   given category's bar center falls without re-parsing the rendered SVG. */
+const GROUPED_BAR_LAYOUT = {w:1100,h:460,padL:60,padR:20,padT:34,padB:80};
 function svgGroupedBar(categories, series){
   /* Explicit width/height (not scaled to fit its box — see .chart-svg-bar) so text/bars render
      at a fixed, comfortably-legible size on a phone screen instead of shrinking to fit; .chart-box
      scrolls horizontally to reach categories that don't fit (typically ~4-5 months visible at
      once out of 12). Tuned down from an earlier 3x pass that read as too large. */
-  const w=1100,h=460,padL=60,padR=20,padT=34,padB=80;
+  const {w,h,padL,padR,padT,padB} = GROUPED_BAR_LAYOUT;
   const max = Math.max(1, ...series.flatMap(s=>s.values));
   const n = categories.length || 1;
   const groupGap = (w-padL-padR)/n;
@@ -2927,6 +2930,23 @@ function svgGroupedBar(categories, series){
     bars += `<text x="${(groupX+groupW/2).toFixed(1)}" y="${h-padB+24}" font-size="13" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
   });
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar"><line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
+}
+
+/* Scrolls a report's chart-box so today's bar (the current month/week/day, whichever bucket
+   contains todayISO()) sits centered in view the moment the page opens or its granularity
+   changes — matches svgGroupedBar's own category-center math exactly, using the shared
+   GROUPED_BAR_LAYOUT constants, so it stays in sync if that layout is ever retuned again. No-op
+   (leaves scroll at 0) when the visible range doesn't include today, e.g. a past/future year. */
+function centerChartOnToday(boxId, buckets){
+  const box = document.getElementById(boxId);
+  if(!box || !buckets.length) return;
+  const today = todayISO();
+  const idx = buckets.findIndex(b=>today>=b.from && today<=b.to);
+  if(idx===-1) return;
+  const {w,padL,padR} = GROUPED_BAR_LAYOUT;
+  const groupGap = (w-padL-padR)/buckets.length;
+  const centerX = padL + idx*groupGap + groupGap/2;
+  box.scrollLeft = Math.max(0, centerX - box.clientWidth/2);
 }
 
 /* Month(12 of a picked year) / week(the ~4-5 weeks of a picked month) / day(the 7 days of a
@@ -3026,18 +3046,22 @@ function initReportModule(cfg){
       wLabel.textContent = `สัปดาห์: ${fmtDate(s)} – ${fmtDate(addDaysISO(s,6))}`;
     }
   }
-  function render(){
+  function render(center){
     updateVisibility(); refreshLabels();
     const buckets = currentBuckets();
     const result = cfg.computeSeries(buckets) || {series:[]};
     renderGroupedChartInto(buckets, result.series, `${P}-chart-box`, `${P}-legend`, `${P}-total-box`, result.totalOverride);
     if(cfg.onRender) cfg.onRender(result, buckets);
+    // Only re-center on today when explicitly asked (opening the page, switching granularity) —
+    // never on a background refresh (e.g. renderAllReports() after an order saves elsewhere),
+    // which would otherwise yank the view away from wherever the user had scrolled to.
+    if(center) centerChartOnToday(`${P}-chart-box`, buckets);
   }
 
   document.querySelectorAll(`#page-${cfg.page} .tabs button`).forEach(btn=>{
     btn.addEventListener('click', ()=>{
       document.querySelectorAll(`#page-${cfg.page} .tabs button`).forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active'); gran = btn.dataset.tab; render();
+      btn.classList.add('active'); gran = btn.dataset.tab; render(true);
     });
   });
   const yPrev=document.getElementById(`${P}-yprev`), yNext=document.getElementById(`${P}-ynext`);
@@ -3312,11 +3336,11 @@ function switchPage(pageName){
   if(pageName==='prep') renderPrepPage();
   if(pageName==='delivery') renderDeliveryReport();
   if(pageName==='report-overview') renderReport();
-  if(pageName==='report-sales') reportSalesModule.render();
-  if(pageName==='report-revenue') reportRevenueModule.render();
-  if(pageName==='report-customers') reportCustomerModule.render();
-  if(pageName==='report-stock') reportStockModule.render();
-  if(pageName==='report-payment') reportPaymentModule.render();
+  if(pageName==='report-sales') reportSalesModule.render(true);
+  if(pageName==='report-revenue') reportRevenueModule.render(true);
+  if(pageName==='report-customers') reportCustomerModule.render(true);
+  if(pageName==='report-stock') reportStockModule.render(true);
+  if(pageName==='report-payment') reportPaymentModule.render(true);
   if(pageName==='settings' || pageName.indexOf('settings-')===0){ renderSettingsLists(); renderMaterialSettingsList(); renderUnitSettingsList(); }
   window.scrollTo({top:0, behavior:'smooth'});
 }
