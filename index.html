@@ -3940,7 +3940,10 @@ function populateMaterialSelects(){
   updateAdjustPreview();
   const suppliers = [...new Set(stockins.map(s=>s.supplier).filter(Boolean))];
   document.getElementById('supplierList').innerHTML = suppliers.map(s=>`<option value="${esc(s)}">`).join('');
-  fillSelectPreserve(f('rc_product'), products.map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('') || '<option value="">— ไม่มีสินค้า —</option>');
+  // A blank option first so opening this page never silently lands on some existing product's
+  // real recipe (which reads exactly like a blank template for a brand new one) -- the user has
+  // to actually pick a product before any recipe data shows.
+  fillSelectPreserve(f('rc_product'), '<option value="">— เลือกสินค้า —</option>'+products.map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join(''));
   const subUnitNames = materials.map(m=>m.subUnitName).filter(Boolean);
   const unitSuggestions = [...new Set([...units, ...subUnitNames])];
   document.getElementById('unitSuggestList').innerHTML = unitSuggestions.map(u=>`<option value="${esc(u)}">`).join('');
@@ -4172,9 +4175,13 @@ function loadRecipeIntoBuilder(){
   const recipe = getRecipe(product, size);
   builderIngredients = recipe ? recipe.ingredients.map(i=>Object.assign({}, i)) : [];
   builderOtherCosts = recipe ? recipe.otherCosts.map(c=>Object.assign({}, c)) : [];
-  const prod = getProduct(product);
-  const price = size==='small' ? prod.priceSmall : prod.priceLarge;
-  document.getElementById('rc_priceTag').textContent = `ราคาขาย: ${fmt(price)} บาท`;
+  if(!product){
+    document.getElementById('rc_priceTag').textContent = 'ราคาขาย: -';
+  } else {
+    const prod = getProduct(product);
+    const price = size==='small' ? prod.priceSmall : prod.priceLarge;
+    document.getElementById('rc_priceTag').textContent = `ราคาขาย: ${fmt(price)} บาท`;
+  }
   renderIngredientRows();
   renderOtherCostRows();
   updateCostSummary();
