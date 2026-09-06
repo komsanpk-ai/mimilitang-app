@@ -1792,6 +1792,7 @@ document.getElementById('changeEmailForm').addEventListener('submit', e=>{
     msgEl.style.color = 'var(--green)'; msgEl.style.display = 'block';
     document.getElementById('changeEmailForm').reset();
     updateAccountEmailDisplay();
+    toast('แก้ไขสำเร็จ');
   }).catch(err=>{
     msgEl.textContent = accountAuthErrorMessage(err);
     msgEl.style.color = 'var(--red)'; msgEl.style.display = 'block';
@@ -1817,6 +1818,7 @@ document.getElementById('changePasswordForm').addEventListener('submit', e=>{
     msgEl.textContent = 'เปลี่ยนรหัสผ่านสำเร็จ';
     msgEl.style.color = 'var(--green)'; msgEl.style.display = 'block';
     document.getElementById('changePasswordForm').reset();
+    toast('แก้ไขสำเร็จ');
   }).catch(err=>{
     msgEl.textContent = accountAuthErrorMessage(err);
     msgEl.style.color = 'var(--red)'; msgEl.style.display = 'block';
@@ -2697,6 +2699,7 @@ document.getElementById('deliveryMapPhotoInput').addEventListener('change', e=>{
     persistDeliveryRouteMaps();
     renderDeliveryMapPhoto(date);
     e.target.value = '';
+    toast('แก้ไขสำเร็จ');
   }).catch(()=>toast('อัปโหลดรูปแผนที่ไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 document.getElementById('deliveryMapPhotoRemoveBtn').addEventListener('click', ()=>{
@@ -2704,6 +2707,7 @@ document.getElementById('deliveryMapPhotoRemoveBtn').addEventListener('click', (
   delete deliveryRouteMaps[date];
   persistDeliveryRouteMaps();
   renderDeliveryMapPhoto(date);
+  toast('ลบรายการแล้ว');
 });
 
 /* ============ Prep checklist (materials + products to prepare for a delivery date) ============ */
@@ -2832,7 +2836,7 @@ document.getElementById('prep_date').addEventListener('input', renderPrepPage);
 document.getElementById('prep_resetBtn').addEventListener('click', ()=>{
   const d = document.getElementById('prep_date').value || addDaysISO(todayISO(),1);
   if(!confirm('ล้างสถานะติ๊กถูกทั้งหมดของวันที่ '+fmtDate(d)+' หรือไม่?')) return;
-  delete prepChecklist[d]; persistPrepChecklist(); renderPrepPage();
+  delete prepChecklist[d]; persistPrepChecklist(); renderPrepPage(); toast('ล้างเช็คลิสต์แล้ว');
 });
 
 /* ============ Delivery-complete quick action ============ */
@@ -3591,39 +3595,44 @@ function renderSettingsLists(){
       products[i][field] = field==='name' ? inp.value : Number(inp.value)||0;
       persistProducts(); populateSelects(); renderTable(); renderAllReports(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable();
     });
+    // Fires once per edit (on blur, only if the value actually changed) rather than per
+    // keystroke like 'input' above — so this confirms a save without spamming a toast per letter typed.
+    inp.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
   });
   document.getElementById('productList').querySelectorAll('.product-photo-input').forEach(inp=>{
     inp.addEventListener('change', e=>{
       const file = e.target.files[0]; if(!file) return;
       const i = Number(inp.dataset.i);
-      compressImageFile(file).then(dataUrl=>{ products[i].image = dataUrl; persistProducts(); renderSettingsLists(); })
+      compressImageFile(file).then(dataUrl=>{ products[i].image = dataUrl; persistProducts(); renderSettingsLists(); toast('แก้ไขสำเร็จ'); })
         .catch(()=>toast('อัปโหลดรูปสินค้าไม่สำเร็จ ลองใหม่อีกครั้ง'));
     });
   });
   document.getElementById('productList').querySelectorAll('[data-act="delProduct"]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ products.splice(Number(btn.dataset.i),1); persistProducts(); renderSettingsLists(); populateSelects(); renderTable(); renderAllReports(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable(); });
+    btn.addEventListener('click', ()=>{ products.splice(Number(btn.dataset.i),1); persistProducts(); renderSettingsLists(); populateSelects(); renderTable(); renderAllReports(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable(); toast('ลบรายการแล้ว'); });
   });
   document.getElementById('channelList').querySelectorAll('input').forEach(inp=>{
     inp.addEventListener('input', ()=>{ channels[Number(inp.dataset.i)] = inp.value; persistChannels(); populateSelects(); renderTable(); });
+    inp.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
   });
   document.getElementById('channelList').querySelectorAll('[data-act="delChannel"]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ channels.splice(Number(btn.dataset.i),1); persistChannels(); renderSettingsLists(); populateSelects(); renderTable(); });
+    btn.addEventListener('click', ()=>{ channels.splice(Number(btn.dataset.i),1); persistChannels(); renderSettingsLists(); populateSelects(); renderTable(); toast('ลบรายการแล้ว'); });
   });
   document.getElementById('paymentMethodList').querySelectorAll('input').forEach(inp=>{
     inp.addEventListener('input', ()=>{ paymentMethods[Number(inp.dataset.i)] = inp.value; persistPaymentMethods(); populateSelects(); renderTable(); });
+    inp.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
   });
   document.getElementById('paymentMethodList').querySelectorAll('[data-act="delPaymentMethod"]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ paymentMethods.splice(Number(btn.dataset.i),1); persistPaymentMethods(); renderSettingsLists(); populateSelects(); renderTable(); });
+    btn.addEventListener('click', ()=>{ paymentMethods.splice(Number(btn.dataset.i),1); persistPaymentMethods(); renderSettingsLists(); populateSelects(); renderTable(); toast('ลบรายการแล้ว'); });
   });
 }
 document.getElementById('addProductBtn').addEventListener('click', ()=>{
-  products.push({name:'สินค้าใหม่', priceSmall:0, priceLarge:0}); persistProducts(); renderSettingsLists(); populateSelects(); populateMaterialSelects();
+  products.push({name:'สินค้าใหม่', priceSmall:0, priceLarge:0}); persistProducts(); renderSettingsLists(); populateSelects(); populateMaterialSelects(); toast('เพิ่มรายการแล้ว');
 });
 document.getElementById('addChannelBtn').addEventListener('click', ()=>{
-  channels.push('ช่องทางใหม่'); persistChannels(); renderSettingsLists(); populateSelects();
+  channels.push('ช่องทางใหม่'); persistChannels(); renderSettingsLists(); populateSelects(); toast('เพิ่มรายการแล้ว');
 });
 document.getElementById('addPaymentMethodBtn').addEventListener('click', ()=>{
-  paymentMethods.push('ประเภทใหม่'); persistPaymentMethods(); renderSettingsLists(); populateSelects();
+  paymentMethods.push('ประเภทใหม่'); persistPaymentMethods(); renderSettingsLists(); populateSelects(); toast('เพิ่มรายการแล้ว');
 });
 
 document.getElementById('downloadBackupBtn').addEventListener('click', ()=>{
@@ -3902,6 +3911,7 @@ function renderMaterialsTable(){
       const st = materialStatus(mat), badgeClass = st.level==='danger'?'red':st.level==='warn'?'orange':'green';
       inp.closest('tr').querySelector('.status-cell').innerHTML = `<span class="badge ${badgeClass}">${st.label}</span>`;
     });
+    inp.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
   });
 }
 
@@ -4449,16 +4459,22 @@ function renderStartupCostRows(){
           <div class="record-field"><label>จำนวนเงิน</label><input type="number" min="0" step="any" class="sc-amount" data-i="${i}" value="${c.amount}" placeholder="บาท"></div>
         </div>
       </div>`).join('');
-    box.querySelectorAll('.sc-label').forEach(el=>el.addEventListener('input', ()=>{ startupCosts[Number(el.dataset.i)].label = el.value; persistStartupCosts(); }));
-    box.querySelectorAll('.sc-amount').forEach(el=>el.addEventListener('input', ()=>{ startupCosts[Number(el.dataset.i)].amount = Number(el.value)||0; persistStartupCosts(); renderStartupTotal(); renderBreakEven(); renderCashFlow(); }));
-    box.querySelectorAll('.sc-remove').forEach(el=>el.addEventListener('click', ()=>{ startupCosts.splice(Number(el.dataset.i),1); persistStartupCosts(); renderStartupCostRows(); renderStartupTotal(); renderBreakEven(); renderCashFlow(); }));
+    box.querySelectorAll('.sc-label').forEach(el=>{
+      el.addEventListener('input', ()=>{ startupCosts[Number(el.dataset.i)].label = el.value; persistStartupCosts(); });
+      el.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
+    });
+    box.querySelectorAll('.sc-amount').forEach(el=>{
+      el.addEventListener('input', ()=>{ startupCosts[Number(el.dataset.i)].amount = Number(el.value)||0; persistStartupCosts(); renderStartupTotal(); renderBreakEven(); renderCashFlow(); });
+      el.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
+    });
+    box.querySelectorAll('.sc-remove').forEach(el=>el.addEventListener('click', ()=>{ startupCosts.splice(Number(el.dataset.i),1); persistStartupCosts(); renderStartupCostRows(); renderStartupTotal(); renderBreakEven(); renderCashFlow(); toast('ลบรายการแล้ว'); }));
   }
   renderStartupTotal();
 }
 function computeStartupTotal(){ return startupCosts.reduce((s,c)=>s+(Number(c.amount)||0),0); }
 function renderStartupTotal(){ document.getElementById('startupCostTotal').textContent = fmt(computeStartupTotal())+' บาท'; }
 document.getElementById('addStartupCostBtn').addEventListener('click', ()=>{
-  startupCosts.push({label:'', amount:0}); persistStartupCosts(); renderStartupCostRows(); renderBreakEven(); renderCashFlow();
+  startupCosts.push({label:'', amount:0}); persistStartupCosts(); renderStartupCostRows(); renderBreakEven(); renderCashFlow(); toast('เพิ่มรายการแล้ว');
 });
 
 /* ============ Operating expenses ============ */
@@ -4878,25 +4894,26 @@ function renderMaterialSettingsList(){
       materials[i][field] = (field==='name'||field==='unit'||field==='subUnitName'||field==='category') ? el.value : Number(el.value)||0;
       persistMaterials(); renderStockPage(); loadRecipeIntoBuilder();
     });
+    el.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
   });
   document.getElementById('materialSettingsList').querySelectorAll('.material-photo-input').forEach(inp=>{
     inp.addEventListener('change', e=>{
       const file = e.target.files[0]; if(!file) return;
       const i = Number(inp.dataset.i);
-      compressImageFile(file).then(dataUrl=>{ materials[i].image = dataUrl; persistMaterials(); renderMaterialSettingsList(); })
+      compressImageFile(file).then(dataUrl=>{ materials[i].image = dataUrl; persistMaterials(); renderMaterialSettingsList(); toast('แก้ไขสำเร็จ'); })
         .catch(()=>toast('อัปโหลดรูปวัตถุดิบไม่สำเร็จ ลองใหม่อีกครั้ง'));
     });
   });
   document.getElementById('materialSettingsList').querySelectorAll('[data-act="delMaterial"]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       if(!confirm('ลบวัตถุดิบนี้หรือไม่? ประวัติการซื้อ/สูตรที่เคยอ้างอิงจะยังอยู่แต่จะไม่พบชื่อวัตถุดิบ')) return;
-      materials.splice(Number(btn.dataset.i),1); persistMaterials(); renderMaterialSettingsList(); renderStockPage();
+      materials.splice(Number(btn.dataset.i),1); persistMaterials(); renderMaterialSettingsList(); renderStockPage(); toast('ลบรายการแล้ว');
     });
   });
 }
 document.getElementById('addMaterialBtn').addEventListener('click', ()=>{
   materials.push({id:uid(), name:'วัตถุดิบใหม่', unit:units[0]||'กรัม', category:'food', reorderPoint:0, currentStock:0, latestPrice:null, latestSupplier:null, latestDate:null, subUnitName:null, subUnitCount:null, pieceWeight:null});
-  persistMaterials(); renderMaterialSettingsList(); renderStockPage();
+  persistMaterials(); renderMaterialSettingsList(); renderStockPage(); toast('เพิ่มรายการแล้ว');
 });
 function renderUnitSettingsList(){
   document.getElementById('unitList').innerHTML = units.map((u,i)=>`
@@ -4906,12 +4923,13 @@ function renderUnitSettingsList(){
     </div>`).join('') || '<p class="hint">ยังไม่มีหน่วยนับ</p>';
   document.getElementById('unitList').querySelectorAll('input').forEach(inp=>{
     inp.addEventListener('input', ()=>{ units[Number(inp.dataset.i)] = inp.value; persistUnits(); renderMaterialSettingsList(); });
+    inp.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
   });
   document.getElementById('unitList').querySelectorAll('[data-act="delUnit"]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ units.splice(Number(btn.dataset.i),1); persistUnits(); renderUnitSettingsList(); renderMaterialSettingsList(); });
+    btn.addEventListener('click', ()=>{ units.splice(Number(btn.dataset.i),1); persistUnits(); renderUnitSettingsList(); renderMaterialSettingsList(); toast('ลบรายการแล้ว'); });
   });
 }
-document.getElementById('addUnitBtn').addEventListener('click', ()=>{ units.push('หน่วยใหม่'); persistUnits(); renderUnitSettingsList(); });
+document.getElementById('addUnitBtn').addEventListener('click', ()=>{ units.push('หน่วยใหม่'); persistUnits(); renderUnitSettingsList(); toast('เพิ่มรายการแล้ว'); });
 
 /* ============ Collapsible help text (saves screen space on mobile) ============ */
 function makeHintsCollapsible(scopeEl){
