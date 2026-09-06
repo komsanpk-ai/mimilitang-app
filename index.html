@@ -2299,12 +2299,15 @@ function fillFormFromOrder(o){
   f('f_customerName').value=o.customerName; f('f_phone').value=o.phone;
   f('f_orderDate').value=o.orderDate; f('f_deliveryDate').value=o.deliveryDate;
   f('f_address').value=o.address; f('f_product').value=o.product; f('f_channel').value=o.channel;
-  f('f_jarSmall').value=o.jarSmall; f('f_jarLarge').value=o.jarLarge;
+  // A stored 0 shows as an empty field (with its placeholder) rather than a literal "0" to
+  // delete before typing over it — same reasoning as the fresh-entry defaults: 0 cups/บาท here
+  // means "nothing entered," so there's no information lost by not spelling it out digit-for-digit.
+  f('f_jarSmall').value=o.jarSmall||''; f('f_jarLarge').value=o.jarLarge||'';
   f('f_shippingStatus').value=o.shippingStatus; f('f_paymentStatus').value=o.paymentStatus;
   f('f_paymentMethod').value=o.paymentMethod||paymentMethods[0]||'';
-  f('f_note').value=o.note||''; f('f_shippingFee').value=o.shippingFee;
-  f('f_discountValue').value=o.discountValue; f('f_discountType').value=o.discountType;
-  f('f_deposit').value=o.deposit;
+  f('f_note').value=o.note||''; f('f_shippingFee').value=o.shippingFee||'';
+  f('f_discountValue').value=o.discountValue||''; f('f_discountType').value=o.discountType;
+  f('f_deposit').value=o.deposit||'';
   formSlipData = o.paymentSlip || null; f('f_paymentSlip').value=''; updateSlipPreview();
   updateTotalPreview();
 }
@@ -3574,8 +3577,8 @@ function renderSettingsLists(){
         <input type="file" accept="image/*" data-i="${i}" class="product-photo-input">
       </label>
       <input type="text" data-i="${i}" data-f="name" value="${esc(p.name)}" placeholder="ชื่อสินค้า">
-      <input type="number" data-i="${i}" data-f="priceSmall" value="${p.priceSmall}" placeholder="ราคาเล็ก">
-      <input type="number" data-i="${i}" data-f="priceLarge" value="${p.priceLarge}" placeholder="ราคาใหญ่">
+      <input type="number" data-i="${i}" data-f="priceSmall" value="${p.priceSmall||''}" placeholder="ราคาเล็ก">
+      <input type="number" data-i="${i}" data-f="priceLarge" value="${p.priceLarge||''}" placeholder="ราคาใหญ่">
       <button class="icon-mini danger" data-i="${i}" data-act="delProduct">✕</button>
     </div>`).join('') || '<p class="hint">ยังไม่มีสินค้า</p>';
   document.getElementById('channelList').innerHTML = channels.map((c,i)=>`
@@ -4195,7 +4198,7 @@ function renderIngredientRows(){
         <button type="button" class="icon-mini danger ing-remove" data-i="${i}">✕</button>
       </div>
       <div class="record-card-fields">
-        <div class="record-field"><label>จำนวน</label><input type="number" min="0" step="any" class="ing-qty" data-i="${i}" value="${ing.qty}" placeholder="จำนวน"></div>
+        <div class="record-field"><label>จำนวน</label><input type="number" min="0" step="any" class="ing-qty" data-i="${i}" value="${ing.qty||''}" placeholder="จำนวน"></div>
         <div class="record-field"><label>หน่วย</label>${unitField}</div>
       </div>
       <div class="record-row-cost">${costDisplay}</div>
@@ -4280,7 +4283,7 @@ function renderOtherCostRows(){
         <button type="button" class="icon-mini danger oc-remove" data-i="${i}">✕</button>
       </div>
       <div class="record-card-fields">
-        <div class="record-field"><label>จำนวน</label><input type="number" min="0" step="any" class="oc-qty" data-i="${i}" value="${entry.qty}" placeholder="จำนวน"></div>
+        <div class="record-field"><label>จำนวน</label><input type="number" min="0" step="any" class="oc-qty" data-i="${i}" value="${entry.qty||''}" placeholder="จำนวน"></div>
         <div class="record-field"><label>หน่วย</label>${unitField}</div>
       </div>
       <div class="record-row-cost">${costDisplay}</div>
@@ -4294,7 +4297,7 @@ function renderOtherCostRows(){
       </div>
       <div class="record-card-fields">
         <div class="record-field"><label>หน่วย (ถ้ามี)</label><input type="text" class="cost-unit" data-i="${i}" list="unitSuggestList" value="${esc(entry.unit||'')}" placeholder="หน่วย (ถ้ามี)"></div>
-        <div class="record-field"><label>จำนวนเงิน</label><input type="number" min="0" step="any" class="cost-amount" data-i="${i}" value="${entry.amount}" placeholder="บาท"></div>
+        <div class="record-field"><label>จำนวนเงิน</label><input type="number" min="0" step="any" class="cost-amount" data-i="${i}" value="${entry.amount||''}" placeholder="บาท"></div>
       </div>
     </div>`;
   }
@@ -4456,7 +4459,7 @@ function renderStartupCostRows(){
           <button type="button" class="icon-mini danger sc-remove" data-i="${i}">✕</button>
         </div>
         <div class="record-card-fields">
-          <div class="record-field"><label>จำนวนเงิน</label><input type="number" min="0" step="any" class="sc-amount" data-i="${i}" value="${c.amount}" placeholder="บาท"></div>
+          <div class="record-field"><label>จำนวนเงิน</label><input type="number" min="0" step="any" class="sc-amount" data-i="${i}" value="${c.amount||''}" placeholder="บาท"></div>
         </div>
       </div>`).join('');
     box.querySelectorAll('.sc-label').forEach(el=>{
