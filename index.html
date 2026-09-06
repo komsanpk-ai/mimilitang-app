@@ -1520,6 +1520,10 @@ p.hint.collapsible-hint.show{display:block;}
     "หมวด" แยกระหว่าง <b>วัตถุดิบอาหาร</b> (ใช้เลือกในช่อง "วัตถุดิบที่ใช้" ของสูตร) กับ <b>อุปกรณ์/บรรจุภัณฑ์</b> เช่น ถ้วย ฝา สติ๊กเกอร์ (ใช้เลือกในช่อง "ต้นทุนผันแปรอื่นๆ" ของสูตรแทน) จะได้ไม่ปนกัน<br>
     "หน่วยย่อย" ใช้เมื่อซื้อเป็นหน่วยใหญ่แต่ใช้ในสูตรเป็นหน่วยเล็ก เช่น ซื้อสาลี่เป็น "ลูก" แต่หั่นได้ 8 "ชิ้น" ต่อลูก หรือซื้อสติ๊กเกอร์เป็น "ม้วน" แต่ใช้ทีละ "ดวง" — ใส่หน่วยย่อยแล้วในหน้าสูตรจะเลือกกรอกเป็นหน่วยย่อยได้ ระบบคำนวณต้นทุนและตัดสต๊อกให้ถูกต้องอัตโนมัติ (เว้นว่างได้ถ้าไม่มีหน่วยย่อย) — ช่องนี้ใช้ไม่ได้กับวัตถุดิบที่ซื้อเป็นกรัม/กิโลกรัม (ดูช่องถัดไปแทน)<br>
     "กรัม/ชิ้น" ใช้กับวัตถุดิบที่ซื้อเป็นกรัม/กิโลกรัม แต่เวลาใส่สูตรอยากนับเป็น "ชิ้น" แทน (เช่น พุทราจีน แปะก๊วย แปะฮะ ลำไย เก๋ากี้ ที่ซื้อชั่งน้ำหนักแต่ตักใส่ถ้วยเป็นชิ้น) — ชั่งวัตถุดิบ 10 ชิ้นแล้วหารด้วย 10 เพื่อหาน้ำหนักเฉลี่ยต่อชิ้น กรอกที่นี่ หน้าสูตรจะมีตัวเลือกหน่วย "ชิ้น" ให้เลือกเพิ่ม (เว้นว่างได้ถ้าไม่ได้นับเป็นชิ้น)</p>
+    <div class="pill-toggle" style="margin-bottom:14px;">
+      <button type="button" data-cat="food" class="active" id="matSetFoodBtn">วัตถุดิบอาหาร</button>
+      <button type="button" data-cat="supply" id="matSetSupplyBtn">อุปกรณ์/บรรจุภัณฑ์</button>
+    </div>
     <div class="record-list" id="materialSettingsList"></div>
     <button type="button" class="btn btn-outline btn-small" id="addMaterialBtn">+ เพิ่มวัตถุดิบ</button>
   </section>
@@ -4864,10 +4868,15 @@ function initMaterialDragReorder(){
     loadRecipeIntoBuilder();
   });
 }
+let materialSettingsFilter = 'food';
 function renderMaterialSettingsList(){
   const list = document.getElementById('materialSettingsList');
-  if(!materials.length){ list.innerHTML = '<p class="hint">ยังไม่มีวัตถุดิบ</p>'; return; }
-  list.innerHTML = materials.map((m,i)=>`
+  // Map to {m,i} BEFORE filtering so data-i always stays the item's real index in the full
+  // `materials` array (used by every field-edit/delete handler below) even though only one
+  // category's cards are actually rendered at a time.
+  const rows = materials.map((m,i)=>({m,i})).filter(({m})=>(m.category||'food')===materialSettingsFilter);
+  if(!rows.length){ list.innerHTML = '<p class="hint">ยังไม่มีวัตถุดิบในหมวดนี้</p>'; return; }
+  list.innerHTML = rows.map(({m,i})=>`
     <div class="record-card" data-id="${esc(m.id)}">
       <div class="record-card-head">
         <span class="drag-handle" title="ลากเพื่อจัดเรียงลำดับ">⠿</span>
@@ -4879,7 +4888,7 @@ function renderMaterialSettingsList(){
         <button class="icon-mini danger" data-i="${i}" data-act="delMaterial">✕</button>
       </div>
       <div class="record-card-fields">
-        <div class="record-field"><label>หมวด</label><select data-i="${i}" data-f="category">
+        <div class="record-field"><label>หมวด</label><select data-i="${i}" data-f="category" class="rc-category">
           <option value="food" ${(m.category||'food')==='food'?'selected':''}>วัตถุดิบอาหาร</option>
           <option value="supply" ${m.category==='supply'?'selected':''}>อุปกรณ์/บรรจุภัณฑ์</option>
         </select></div>
@@ -4896,6 +4905,10 @@ function renderMaterialSettingsList(){
       const i = Number(el.dataset.i), field = el.dataset.f;
       materials[i][field] = (field==='name'||field==='unit'||field==='subUnitName'||field==='category') ? el.value : Number(el.value)||0;
       persistMaterials(); renderStockPage(); loadRecipeIntoBuilder();
+      // Changing the category moves the card to the other tab -- re-render right away so it
+      // doesn't linger in a list it no longer belongs to (every other field skips this on purpose,
+      // so retyping a name doesn't rebuild the list mid-keystroke and drop focus).
+      if(field==='category') renderMaterialSettingsList();
     });
     el.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
   });
@@ -4914,8 +4927,16 @@ function renderMaterialSettingsList(){
     });
   });
 }
+['matSetFoodBtn','matSetSupplyBtn'].forEach(id=>{
+  document.getElementById(id).addEventListener('click', ()=>{
+    materialSettingsFilter = document.getElementById(id).dataset.cat;
+    ['matSetFoodBtn','matSetSupplyBtn'].forEach(x=>document.getElementById(x).classList.toggle('active', x===id));
+    renderMaterialSettingsList();
+  });
+});
 document.getElementById('addMaterialBtn').addEventListener('click', ()=>{
-  materials.push({id:uid(), name:'วัตถุดิบใหม่', unit:units[0]||'กรัม', category:'food', reorderPoint:0, currentStock:0, latestPrice:null, latestSupplier:null, latestDate:null, subUnitName:null, subUnitCount:null, pieceWeight:null});
+  // New item lands in whichever tab is currently open, matching where the user clicked "add" from.
+  materials.push({id:uid(), name:'วัตถุดิบใหม่', unit:units[0]||'กรัม', category:materialSettingsFilter, reorderPoint:0, currentStock:0, latestPrice:null, latestSupplier:null, latestDate:null, subUnitName:null, subUnitCount:null, pieceWeight:null});
   persistMaterials(); renderMaterialSettingsList(); renderStockPage(); toast('เพิ่มรายการแล้ว');
 });
 function renderUnitSettingsList(){
