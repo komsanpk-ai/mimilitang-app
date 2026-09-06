@@ -3701,6 +3701,10 @@ function applyPage(pageName){
    "was already idling on home and got another back press" (ask before exiting),
    without caring about how many history entries happen to exist. */
 let currentDisplayedPage = null;
+let navSeq = 0; // guarantees every pushState below gets a genuinely distinct URL —
+// some Android WebView/WebAPK back-button implementations reportedly special-case
+// "every history entry has the identical URL" and skip calling goBack() entirely;
+// varying it defensively rules that out even though this app has no real routes.
 function landOnPage(pageName){
   const wasAlreadyHome = currentDisplayedPage==='home';
   applyPage(pageName);
@@ -3709,35 +3713,44 @@ function landOnPage(pageName){
     // Just arrived at home (boot, or back from a sub-page) — arm one extra history
     // entry so the *next* back press has something to pop, giving popstate below a
     // chance to intercept it instead of Android exiting the app before we can react.
-    history.pushState({page:'home'}, '');
+    navSeq++;
+    history.pushState({page:'home'}, '', '#nav'+navSeq);
+    fsDebugLog('back-nav: armed exit-guard #'+navSeq+' (history.length='+history.length+')');
   }
 }
 function switchPage(pageName){
   if(!history.state || history.state.page!==pageName){
-    history.pushState({page:pageName}, '');
+    navSeq++;
+    history.pushState({page:pageName}, '', '#nav'+navSeq);
   }
   landOnPage(pageName);
 }
 function showExitConfirm(){
+  fsDebugLog('back-nav: showing exit-confirm dialog');
   document.getElementById('exitConfirmModal').classList.add('show');
 }
 document.getElementById('exitConfirmNo').addEventListener('click', ()=>{
+  fsDebugLog('back-nav: user chose to stay');
   document.getElementById('exitConfirmModal').classList.remove('show');
 });
 document.getElementById('exitConfirmYes').addEventListener('click', ()=>{
+  fsDebugLog('back-nav: user confirmed exit, calling window.close()');
   document.getElementById('exitConfirmModal').classList.remove('show');
   window.close(); // works for the installed standalone PWA; a harmless no-op in a normal browser tab
 });
 window.addEventListener('popstate', (e)=>{
   const pageName = (e.state && e.state.page) || 'home';
+  fsDebugLog('back-nav: popstate fired -> page='+pageName+', currentDisplayedPage='+currentDisplayedPage+', history.length='+history.length);
   if(pageName==='home' && currentDisplayedPage==='home'){
-    history.pushState({page:'home'}, ''); // re-arm so a second decline doesn't get caught out
+    navSeq++;
+    history.pushState({page:'home'}, '', '#nav'+navSeq); // re-arm so a second decline doesn't get caught out
     showExitConfirm();
     return;
   }
   landOnPage(pageName);
 });
 history.replaceState({page:'home'}, '');
+fsDebugLog('back-nav: boot, history.length='+history.length);
 /* Light haptic tick on tap, mirroring the CSS press-scale feedback above — silently
    no-ops on browsers without the Vibration API (iOS Safari, older Android). */
 document.addEventListener('click', (e)=>{
