@@ -173,6 +173,13 @@ tbody td.wrap{white-space:normal;max-width:180px;}
 #materialsTable tbody td:nth-child(1){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
 #materialsTable tbody tr:nth-child(even) td:nth-child(1){background:#f6fbf5;}
 #materialsTable tbody tr:hover td:nth-child(1){background:#fdf3df;}
+/* Same pin, applied to the 3 "เช็คลิสต์เตรียมของ" tables — their 1st column is just the checkbox
+   (36px), so the name column (สินค้า/วัตถุดิบ/อุปกรณ์) is the 2nd one to pin instead. All three
+   share the identical layout, so one shared rule covers them. */
+#prepProductTable thead th:nth-child(2),#prepMaterialFoodTable thead th:nth-child(2),#prepMaterialSupplyTable thead th:nth-child(2){position:sticky;left:0;z-index:3;background:#fff3d6;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#prepProductTable tbody td:nth-child(2),#prepMaterialFoodTable tbody td:nth-child(2),#prepMaterialSupplyTable tbody td:nth-child(2){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#prepProductTable tbody tr:nth-child(even) td:nth-child(2),#prepMaterialFoodTable tbody tr:nth-child(even) td:nth-child(2),#prepMaterialSupplyTable tbody tr:nth-child(even) td:nth-child(2){background:#f6fbf5;}
+#prepProductTable tbody tr:hover td:nth-child(2),#prepMaterialFoodTable tbody tr:hover td:nth-child(2),#prepMaterialSupplyTable tbody tr:hover td:nth-child(2){background:#fdf3df;}
 .day-group-row td{
   background:#fbe9c8!important;font-weight:700;color:var(--maroon-dark);padding:8px 10px;position:sticky;left:0;
 }
