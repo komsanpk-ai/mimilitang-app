@@ -167,6 +167,12 @@ tbody td.wrap{white-space:normal;max-width:180px;}
 #deliveryTable tbody td:nth-child(4){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);width:110px;max-width:110px;}
 #deliveryTable tbody tr:nth-child(even) td:nth-child(4){background:#f6fbf5;}
 #deliveryTable tbody tr:hover td:nth-child(4){background:#fdf3df;}
+/* Same pin, applied to the stock-overview "วัตถุดิบ" (material name) table — it's the 1st column
+   already, so no need to target a specific th/td index by data-key like the orders table above. */
+#materialsTable thead th:nth-child(1){position:sticky;left:0;z-index:3;background:#fff3d6;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#materialsTable tbody td:nth-child(1){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#materialsTable tbody tr:nth-child(even) td:nth-child(1){background:#f6fbf5;}
+#materialsTable tbody tr:hover td:nth-child(1){background:#fdf3df;}
 .day-group-row td{
   background:#fbe9c8!important;font-weight:700;color:var(--maroon-dark);padding:8px 10px;position:sticky;left:0;
 }
