@@ -1,0 +1,29 @@
+name: Daily Firestore Backup
+
+on:
+  schedule:
+    - cron: '0 17 * * *' # 00:00 Asia/Bangkok (UTC+7) every day
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install firebase-admin
+      - run: node scripts/backup-firestore.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Commit backup file
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backups/*.json
+          git diff --staged --quiet || git commit -m "Automated Firestore backup $(date -u +%F)"
+          git push

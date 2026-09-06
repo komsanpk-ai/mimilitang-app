@@ -3,3 +3,4 @@
 *.json
 !package.json
 !manifest.json
+!backups/*.json
