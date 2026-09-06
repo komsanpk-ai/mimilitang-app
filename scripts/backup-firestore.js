@@ -35,6 +35,19 @@ async function main() {
   const fileName = `mimilitang_backup_${backup.exportedAt.slice(0, 10)}.json`;
   fs.writeFileSync(path.join(dir, fileName), JSON.stringify(backup, null, 2));
   console.log('Wrote backups/' + fileName);
+
+  // Keep the repo from growing forever: drop any daily backup older than the retention
+  // window. Parsed from the filename (not file mtime — actions/checkout resets mtimes
+  // on every run, so mtime can't tell an old backup from a fresh checkout).
+  const RETENTION_DAYS = 30;
+  const cutoff = Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  for (const f of fs.readdirSync(dir)) {
+    const m = f.match(/^mimilitang_backup_(\d{4}-\d{2}-\d{2})\.json$/);
+    if (m && Date.parse(m[1] + 'T00:00:00Z') < cutoff) {
+      fs.unlinkSync(path.join(dir, f));
+      console.log('Deleted old backup: ' + f);
+    }
+  }
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
