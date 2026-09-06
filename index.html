@@ -4207,7 +4207,13 @@ function renderIngredientRows(){
         }).join('')}</select>`
       : `<div class="unit-tag">${mat?esc(mat.unit):'-'}</div>`;
     const foodMaterials = materials.filter(m=>(m.category||'food')==='food');
-    const missingOption = mat ? '' : `<option value="" selected>⚠️ ไม่พบวัตถุดิบเดิม — กรุณาเลือกใหม่</option>`;
+    // Distinguish "this row never had a material chosen yet" (a fresh row from "+ เพิ่มวัตถุดิบ")
+    // from "the material it used to point at got deleted since" -- same underlying mat-is-falsy
+    // state, but very different messages; showing "ไม่พบวัตถุดิบเดิม" (previous one not found) on a
+    // brand new row that never had a previous selection is confusing/wrong.
+    const missingOption = mat ? '' : ing.materialId
+      ? `<option value="" selected>⚠️ ไม่พบวัตถุดิบเดิม — กรุณาเลือกใหม่</option>`
+      : `<option value="" selected>— เลือกวัตถุดิบ —</option>`;
     const costInfo = recipeIngredientCost(ing);
     const costDisplay = !mat ? '' : costInfo.invalidUnit ? `<span class="row-cost warn">⚠️ หน่วยไม่ตรง — เลือกใหม่</span>` : costInfo.missingPrice ? `<span class="row-cost warn">⚠️ ไม่มีราคา</span>` : `<span class="row-cost">= ${fmt(costInfo.cost)} บ.</span>`;
     return `<div class="record-card">
@@ -4273,8 +4279,9 @@ function renderIngredientRows(){
 document.getElementById('addIngredientBtn').addEventListener('click', ()=>{
   const foodMaterials = materials.filter(m=>(m.category||'food')==='food');
   if(!foodMaterials.length){ toast('กรุณาเพิ่มวัตถุดิบอาหารก่อนที่ ⚙️ ตั้งค่า'); return; }
-  const mat = foodMaterials[0];
-  builderIngredients.push({materialId:mat.id, qty:0, unit: getIngredientUnitOptions(mat)[0] || mat.unit});
+  // materialId starts null (not the first food material) so the new row's own select shows
+  // "— เลือกวัตถุดิบ —" instead of a real material that reads as if it were added automatically.
+  builderIngredients.push({materialId:null, qty:0, unit:''});
   renderIngredientRows(); updateCostSummary();
 });
 function renderOtherCostRows(){
@@ -4292,7 +4299,9 @@ function renderOtherCostRows(){
           return `<option value="${esc(u)}" ${entry.unit===u?'selected':''}>${esc(label)}</option>`;
         }).join('')}</select>`
       : `<div class="unit-tag">${mat?esc(mat.unit):'-'}</div>`;
-    const missingOption = mat ? '' : `<option value="" selected>⚠️ ไม่พบวัตถุดิบเดิม — กรุณาเลือกใหม่</option>`;
+    const missingOption = mat ? '' : entry.materialId
+      ? `<option value="" selected>⚠️ ไม่พบวัตถุดิบเดิม — กรุณาเลือกใหม่</option>`
+      : `<option value="" selected>— เลือกวัตถุดิบ —</option>`;
     const costInfo = recipeIngredientCost(entry);
     const costDisplay = !mat ? '' : costInfo.invalidUnit ? `<span class="row-cost warn">⚠️ หน่วยไม่ตรง — เลือกใหม่</span>` : costInfo.missingPrice ? `<span class="row-cost warn">⚠️ ไม่มีราคา</span>` : `<span class="row-cost">= ${fmt(costInfo.cost)} บ.</span>`;
     return `<div class="record-card">
@@ -4388,8 +4397,7 @@ function renderOtherCostRows(){
 document.getElementById('addCostBtn').addEventListener('click', ()=>{
   const supplyMaterials = materials.filter(m=>m.category==='supply');
   if(!supplyMaterials.length){ toast('กรุณาเพิ่มวัตถุดิบหมวด "อุปกรณ์/บรรจุภัณฑ์" ก่อนที่ ⚙️ ตั้งค่า'); return; }
-  const mat = supplyMaterials[0];
-  builderOtherCosts.push({materialId:mat.id, qty:0, unit: getIngredientUnitOptions(mat)[0] || mat.unit});
+  builderOtherCosts.push({materialId:null, qty:0, unit:''});
   renderOtherCostRows(); updateCostSummary();
 });
 document.getElementById('addFlatCostBtn').addEventListener('click', ()=>{
