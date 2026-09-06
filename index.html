@@ -3751,6 +3751,23 @@ window.addEventListener('popstate', (e)=>{
 });
 history.replaceState({page:'home'}, '');
 fsDebugLog('back-nav: boot, history.length='+history.length);
+/* Second, independent safety net for devices whose back-gesture skips straight past
+   the pushState-based guard above (confirmed happening on at least one real Android
+   phone — its back button jumped clean over our in-page history entries to a totally
+   different site that was open in the same tab before this app, never firing our
+   popstate handler at all). beforeunload fires at a lower level — right when the
+   browser is actually about to tear down this document, no matter what gesture or
+   shortcut triggered that — so it doesn't depend on the OS/skin respecting same-
+   document history the way pushState/popstate does. The dialog text itself is fixed
+   by the browser (can't be customized to Thai) — this is a fallback, not a full
+   replacement for the nicer custom dialog above. */
+window.addEventListener('beforeunload', (e)=>{
+  if(currentDisplayedPage==='home'){
+    fsDebugLog('back-nav: beforeunload fired while at home, blocking exit');
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
 /* Light haptic tick on tap, mirroring the CSS press-scale feedback above — silently
    no-ops on browsers without the Vibration API (iOS Safari, older Android). */
 document.addEventListener('click', (e)=>{
