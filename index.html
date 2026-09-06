@@ -346,6 +346,11 @@ footer.appfoot{text-align:center;color:var(--muted);font-size:11.5px;padding:26p
   .stat-card{padding:12px;}
   .stat-card .stat-value{font-size:18px;}
   .record-card-fields{grid-template-columns:1fr 1fr;}
+  /* On mobile the phone's own back button/gesture now navigates within the app
+     (see the history/popstate handling in the script), so the on-screen "กลับ"
+     bar is redundant there — hide it. !important is needed since JS also sets
+     an inline display style on this element when switching pages. */
+  .page-switch{display:none !important;}
 }
 
 /* ---------- Page switch (back-to-home bar) ---------- */
@@ -1572,6 +1577,17 @@ p.hint.collapsible-hint.show{display:block;}
       <div><div class="cs-label">กำไรขั้นต้นวันนี้</div><div class="cs-value positive" id="celebrateProfit">0 บาท</div></div>
     </div>
     <button type="button" class="btn btn-primary" id="closeCelebrateBtn2" style="margin-top:16px;width:100%;">เยี่ยมมาก! 🎊</button>
+  </div>
+</div>
+
+<!-- Exit confirmation: shown when the phone's back button is pressed again while already at the home screen -->
+<div class="modal-overlay" id="exitConfirmModal">
+  <div class="modal" style="max-width:320px;text-align:center;">
+    <p style="font-size:16px;font-weight:600;margin:6px 0 18px;">ต้องการออกจากแอปหรือไม่?</p>
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" id="exitConfirmNo" style="flex:1;">ไม่ใช่</button>
+      <button type="button" class="btn btn-primary" id="exitConfirmYes" style="flex:1;">ใช่</button>
+    </div>
   </div>
 </div>
 
@@ -3667,15 +3683,47 @@ function applyPage(pageName){
 }
 /* Push a history entry per page visited so the phone's hardware/gesture back
    button steps back through the app's own pages first (via popstate below)
-   instead of immediately exiting the installed PWA. */
+   instead of immediately exiting the installed PWA. currentDisplayedPage tracks
+   what was on screen right before the current navigation — that's what lets us
+   tell "back navigated from a sub-page to home" (just show home) apart from
+   "was already idling on home and got another back press" (ask before exiting),
+   without caring about how many history entries happen to exist. */
+let currentDisplayedPage = null;
+function landOnPage(pageName){
+  const wasAlreadyHome = currentDisplayedPage==='home';
+  applyPage(pageName);
+  currentDisplayedPage = pageName;
+  if(pageName==='home' && !wasAlreadyHome){
+    // Just arrived at home (boot, or back from a sub-page) — arm one extra history
+    // entry so the *next* back press has something to pop, giving popstate below a
+    // chance to intercept it instead of Android exiting the app before we can react.
+    history.pushState({page:'home'}, '');
+  }
+}
 function switchPage(pageName){
   if(!history.state || history.state.page!==pageName){
     history.pushState({page:pageName}, '');
   }
-  applyPage(pageName);
+  landOnPage(pageName);
 }
+function showExitConfirm(){
+  document.getElementById('exitConfirmModal').classList.add('show');
+}
+document.getElementById('exitConfirmNo').addEventListener('click', ()=>{
+  document.getElementById('exitConfirmModal').classList.remove('show');
+});
+document.getElementById('exitConfirmYes').addEventListener('click', ()=>{
+  document.getElementById('exitConfirmModal').classList.remove('show');
+  window.close(); // works for the installed standalone PWA; a harmless no-op in a normal browser tab
+});
 window.addEventListener('popstate', (e)=>{
-  applyPage((e.state && e.state.page) || 'home');
+  const pageName = (e.state && e.state.page) || 'home';
+  if(pageName==='home' && currentDisplayedPage==='home'){
+    history.pushState({page:'home'}, ''); // re-arm so a second decline doesn't get caught out
+    showExitConfirm();
+    return;
+  }
+  landOnPage(pageName);
 });
 history.replaceState({page:'home'}, '');
 /* Light haptic tick on tap, mirroring the CSS press-scale feedback above — silently
