@@ -356,22 +356,6 @@ footer.appfoot{text-align:center;color:var(--muted);font-size:11.5px;padding:26p
      bar is redundant there — hide it. !important is needed since JS also sets
      an inline display style on this element when switching pages. */
   .page-switch{display:none !important;}
-  /* The product row (photo + name + 2 prices + delete, 5 fixed-ish columns) still
-     can't fit on one line on a real phone even with the min-width:0 fix above —
-     the name would be squeezed to ~30px, unreadable. Wrap it onto two lines
-     instead: photo+name+delete on top, both prices below, name gets real width. */
-  .settings-list .item-row.product{
-    grid-template-columns:44px 1fr 1fr 34px;
-    grid-template-areas:"photo name name name" "photo price1 price2 del";
-    row-gap:6px;
-    padding-bottom:10px;border-bottom:1px solid var(--border);
-  }
-  .settings-list .item-row.product:last-child{border-bottom:none;padding-bottom:0;}
-  .settings-list .item-row.product .item-photo{grid-area:photo;align-self:start;}
-  .settings-list .item-row.product input[data-f="name"]{grid-area:name;}
-  .settings-list .item-row.product input[data-f="priceSmall"]{grid-area:price1;}
-  .settings-list .item-row.product input[data-f="priceLarge"]{grid-area:price2;}
-  .settings-list .item-row.product button[data-act="delProduct"]{grid-area:del;}
 }
 
 /* ---------- Page switch (back-to-home bar) ---------- */
@@ -487,6 +471,13 @@ button:active,.btn:active,.icon-btn:active,.icon-mini:active,.drawer-link:active
 .section-divider{border:none;border-top:1.5px dashed var(--border);margin:22px 0;}
 .mini-title{font-size:14px;font-weight:600;color:var(--maroon-dark);margin-bottom:10px;}
 .settings-list .item-row.product{grid-template-columns:44px 1fr 90px 90px 34px;}
+/* The 90px price columns are sized generously for desktop, but a price is only
+   ever 2-4 digits — on a narrow phone they were eating space the product name
+   actually needed, forcing it down to an unreadable sliver (or overflowing the
+   screen before this). Shrink them on mobile so the row still fits on one line. */
+@media(max-width:640px){
+  .settings-list .item-row.product{grid-template-columns:38px 1fr 54px 54px 28px;gap:5px;}
+}
 
 .category-block{margin-bottom:6px;}
 .category-label{font-size:12.5px;font-weight:700;color:var(--maroon);text-transform:uppercase;letter-spacing:.2px;margin-bottom:14px;}
