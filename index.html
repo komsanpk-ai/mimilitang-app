@@ -637,8 +637,8 @@ p.hint.collapsible-hint.show{display:block;}
       </div>
 
       <div class="row">
-        <div class="field"><label>🔹 ถ้วยเล็ก (จำนวน)</label><input type="number" min="0" id="f_jarSmall" value="0"></div>
-        <div class="field"><label>🔷 ถ้วยใหญ่ (จำนวน)</label><input type="number" min="0" id="f_jarLarge" value="0"></div>
+        <div class="field"><label>🔹 ถ้วยเล็ก (จำนวน)</label><input type="number" min="0" id="f_jarSmall" value="" placeholder="0"></div>
+        <div class="field"><label>🔷 ถ้วยใหญ่ (จำนวน)</label><input type="number" min="0" id="f_jarLarge" value="" placeholder="0"></div>
       </div>
 
       <div class="row cols-3">
@@ -661,13 +661,13 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="field"><label>📝 หมายเหตุ</label><textarea id="f_note" placeholder="หมายเหตุ"></textarea></div>
 
       <div class="row cols-3">
-        <div class="field"><label>💴 ค่าจัดส่ง (บาท)</label><input type="number" min="0" id="f_shippingFee" value="0"></div>
-        <div class="field"><label>🏷️ ส่วนลด</label><input type="number" min="0" id="f_discountValue" value="0"></div>
+        <div class="field"><label>💴 ค่าจัดส่ง (บาท)</label><input type="number" min="0" id="f_shippingFee" value="" placeholder="0"></div>
+        <div class="field"><label>🏷️ ส่วนลด</label><input type="number" min="0" id="f_discountValue" value="" placeholder="0"></div>
         <div class="field"><label>🏷️ ประเภทส่วนลด</label>
           <select id="f_discountType"><option value="baht">บาท</option><option value="percent">เปอร์เซ็นต์ (%)</option></select></div>
       </div>
 
-      <div class="field"><label>💳 มัดจำ (บาท)</label><input type="number" min="0" id="f_deposit" value="0"></div>
+      <div class="field"><label>💳 มัดจำ (บาท)</label><input type="number" min="0" id="f_deposit" value="" placeholder="0"></div>
 
       <div class="total-box">
         <div>
@@ -1167,9 +1167,9 @@ p.hint.collapsible-hint.show{display:block;}
       </div>
       <datalist id="supplierList"></datalist>
       <div class="row cols-3">
-        <div class="field"><label>จำนวนที่ซื้อ</label><input type="number" min="0" step="any" id="si_qty" value="0"></div>
+        <div class="field"><label>จำนวนที่ซื้อ</label><input type="number" min="0" step="any" id="si_qty" value="" placeholder="0"></div>
         <div class="field"><label>หน่วย</label><input type="text" id="si_unit" disabled></div>
-        <div class="field"><label>ราคาต่อหน่วย (บาท)</label><input type="number" min="0" step="any" id="si_price" value="0"></div>
+        <div class="field"><label>ราคาต่อหน่วย (บาท)</label><input type="number" min="0" step="any" id="si_price" value="" placeholder="0"></div>
       </div>
       <div class="field"><label>หมายเหตุ</label><input type="text" id="si_note" placeholder="หมายเหตุ (ถ้ามี)"></div>
       <div class="total-box">
@@ -1361,7 +1361,7 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="row cols-3">
         <div class="field"><label>วันที่</label><input type="date" id="opex_date"></div>
         <div class="field"><label>หมวดค่าใช้จ่าย</label><input type="text" id="opex_category" list="opexCategoryList" placeholder="เช่น ค่าน้ำมัน"></div>
-        <div class="field"><label>จำนวนเงิน (บาท)</label><input type="number" min="0" step="any" id="opex_amount" value="0"></div>
+        <div class="field"><label>จำนวนเงิน (บาท)</label><input type="number" min="0" step="any" id="opex_amount" value="" placeholder="0"></div>
       </div>
       <datalist id="opexCategoryList">
         <option value="ค่าน้ำมัน"><option value="ค่าเช่า"><option value="ค่าจ้าง/เงินเดือน"><option value="ค่าไฟ"><option value="ค่าน้ำ"><option value="ค่าอินเทอร์เน็ต/โทรศัพท์">
@@ -2311,8 +2311,8 @@ function fillFormFromOrder(o){
 function resetForm(){
   document.getElementById('orderForm').reset();
   f('f_orderDate').value = todayISO(); f('f_deliveryDate').value = addDaysISO(todayISO(),1);
-  f('f_jarSmall').value=0; f('f_jarLarge').value=0; f('f_shippingFee').value=0;
-  f('f_discountValue').value=0; f('f_deposit').value=0; f('f_discountType').value='baht';
+  f('f_jarSmall').value=''; f('f_jarLarge').value=''; f('f_shippingFee').value='';
+  f('f_discountValue').value=''; f('f_deposit').value=''; f('f_discountType').value='baht';
   formSlipData = null; f('f_paymentSlip').value=''; updateSlipPreview();
   populateSelects();
   editingId = null;
@@ -4077,7 +4077,7 @@ function recomputeMaterialLatest(materialId){
 }
 
 function stockInFormReset(){
-  f('si_qty').value = 0; f('si_price').value = 0; f('si_note').value=''; f('si_supplier').value='';
+  f('si_qty').value = ''; f('si_price').value = ''; f('si_note').value=''; f('si_supplier').value='';
   f('si_date').value = todayISO(); updateStockInPreview();
 }
 document.getElementById('stockInResetBtn').addEventListener('click', stockInFormReset);
@@ -4489,7 +4489,7 @@ document.getElementById('opexForm').addEventListener('submit', e=>{
   operatingExpenses.push({id:uid(), date, category, amount, note});
   persistOperatingExpenses();
   toast('บันทึกค่าใช้จ่ายแล้ว');
-  f('opex_category').value=''; f('opex_amount').value=0; f('opex_note').value=''; f('opex_date').value=todayISO();
+  f('opex_category').value=''; f('opex_amount').value=''; f('opex_note').value=''; f('opex_date').value=todayISO();
   renderOpex(); renderCashFlow();
 });
 function renderOpex(){
