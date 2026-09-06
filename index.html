@@ -1224,7 +1224,7 @@ p.hint.collapsible-hint.show{display:block;}
       </datalist>
       <div class="row">
         <div class="field"><label>ยอดคงเหลือในระบบตอนนี้</label><input type="text" id="sa_current" disabled></div>
-        <div class="field"><label>ยอดคงเหลือจริง (ใหม่)</label><input type="number" min="0" step="any" id="sa_newQty" value="0"></div>
+        <div class="field"><label>ยอดคงเหลือจริง (ใหม่)</label><input type="number" min="0" step="any" id="sa_newQty" value="" placeholder="0"></div>
       </div>
       <div class="row cols-3">
         <div class="field"><label>ราคาต่อหน่วย (ถ้าทราบ)</label><input type="number" min="0" step="any" id="sa_price" placeholder="เว้นว่างได้ถ้าไม่ทราบ"></div>
@@ -3932,10 +3932,17 @@ function updateStockInPreview(){
 
 function populateMaterialSelects(){
   const matOptions = materials.map(m=>`<option value="${m.id}">${esc(m.name)} (${esc(m.unit)})</option>`).join('');
-  fillSelectPreserve(f('si_material'), matOptions || '<option value="">— ไม่มีวัตถุดิบ —</option>');
+  // Same reasoning as rc_product below: a blank "— เลือกวัตถุดิบ —" first option so these never
+  // silently default to the first material in the list -- rับเข้าสต๊อก/ปรับปรุงยอด/รายงานสต๊อก all
+  // show that material's real data (current stock, latest price, purchase history) the instant a
+  // material is selected, which reads exactly like it was already acted on if it happened by
+  // itself. sh_material (the purchase-history filter) is deliberately left alone -- "— ทั้งหมด —"
+  // (show all) is already the correct, intentional default there, not a bug.
+  const blankMat = materials.length ? '<option value="">— เลือกวัตถุดิบ —</option>' : '<option value="">— ไม่มีวัตถุดิบ —</option>';
+  fillSelectPreserve(f('si_material'), blankMat+matOptions);
   fillSelectPreserve(f('sh_material'), `<option value="">— ทั้งหมด —</option>`+matOptions);
-  fillSelectPreserve(f('sa_material'), matOptions || '<option value="">— ไม่มีวัตถุดิบ —</option>');
-  fillSelectPreserve(f('rk-material-pick'), matOptions || '<option value="">— ไม่มีวัตถุดิบ —</option>');
+  fillSelectPreserve(f('sa_material'), blankMat+matOptions);
+  fillSelectPreserve(f('rk-material-pick'), blankMat+matOptions);
   updateStockInPreview();
   updateAdjustPreview();
   const suppliers = [...new Set(stockins.map(s=>s.supplier).filter(Boolean))];
@@ -3995,12 +4002,12 @@ function updateAdjustPreview(){
 });
 f('sa_material').addEventListener('change', ()=>{
   const mat = getMaterial(f('sa_material').value);
-  f('sa_newQty').value = mat ? mat.currentStock||0 : 0;
+  f('sa_newQty').value = mat ? mat.currentStock||0 : '';
   updateAdjustPreview();
 });
 function stockAdjustFormReset(){
   const mat = getMaterial(f('sa_material').value);
-  f('sa_newQty').value = mat ? mat.currentStock||0 : 0;
+  f('sa_newQty').value = mat ? mat.currentStock||0 : '';
   f('sa_note').value=''; f('sa_date').value = todayISO();
   f('sa_price').value=''; f('sa_supplier').value=''; updateAdjustPreview();
 }
@@ -4008,7 +4015,7 @@ document.getElementById('stockAdjustResetBtn').addEventListener('click', stockAd
 document.getElementById('stockAdjustForm').addEventListener('submit', e=>{
   e.preventDefault();
   const mat = getMaterial(f('sa_material').value);
-  if(!mat){ toast('กรุณาเพิ่มวัตถุดิบก่อนที่ ⚙️ ตั้งค่า'); return; }
+  if(!mat){ toast(materials.length ? 'กรุณาเลือกวัตถุดิบ' : 'กรุณาเพิ่มวัตถุดิบก่อนที่ ⚙️ ตั้งค่า'); return; }
   const newQty = Number(f('sa_newQty').value)||0;
   const date = f('sa_date').value || todayISO();
   const note = f('sa_note').value.trim();
@@ -4095,7 +4102,7 @@ document.getElementById('stockInResetBtn').addEventListener('click', stockInForm
 document.getElementById('stockInForm').addEventListener('submit', e=>{
   e.preventDefault();
   const mat = getMaterial(f('si_material').value);
-  if(!mat){ toast('กรุณาเพิ่มวัตถุดิบก่อนที่ ⚙️ ตั้งค่า'); return; }
+  if(!mat){ toast(materials.length ? 'กรุณาเลือกวัตถุดิบ' : 'กรุณาเพิ่มวัตถุดิบก่อนที่ ⚙️ ตั้งค่า'); return; }
   const qty = Number(f('si_qty').value)||0, price = Number(f('si_price').value)||0;
   if(qty<=0){ toast('กรุณากรอกจำนวนที่ซื้อมากกว่า 0'); return; }
   const date = f('si_date').value || todayISO();
