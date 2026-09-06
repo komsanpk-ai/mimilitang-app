@@ -1605,17 +1605,6 @@ p.hint.collapsible-hint.show{display:block;}
   </div>
 </div>
 
-<!-- Exit confirmation: shown when the phone's back button is pressed again while already at the home screen -->
-<div class="modal-overlay" id="exitConfirmModal">
-  <div class="modal" style="max-width:320px;text-align:center;">
-    <p style="font-size:16px;font-weight:600;margin:6px 0 18px;">ต้องการออกจากแอปหรือไม่?</p>
-    <div class="form-actions">
-      <button type="button" class="btn btn-secondary" id="exitConfirmNo" style="flex:1;">ไม่ใช่</button>
-      <button type="button" class="btn btn-primary" id="exitConfirmYes" style="flex:1;">ใช่</button>
-    </div>
-  </div>
-</div>
-
 <!-- Payment slip viewer -->
 <div class="modal-overlay" id="slipViewModal">
   <div class="modal" style="max-width:420px;text-align:center;">
@@ -3738,26 +3727,26 @@ function switchPage(pageName){
   }
   landOnPage(pageName);
 }
-function showExitConfirm(){
-  fsDebugLog('back-nav: showing exit-confirm dialog');
-  document.getElementById('exitConfirmModal').classList.add('show');
-}
-document.getElementById('exitConfirmNo').addEventListener('click', ()=>{
-  fsDebugLog('back-nav: user chose to stay');
-  document.getElementById('exitConfirmModal').classList.remove('show');
-});
-document.getElementById('exitConfirmYes').addEventListener('click', ()=>{
-  fsDebugLog('back-nav: user confirmed exit, calling window.close()');
-  document.getElementById('exitConfirmModal').classList.remove('show');
-  window.close(); // works for the installed standalone PWA; a harmless no-op in a normal browser tab
-});
+/* "Press back again to exit" (the standard Android double-tap-to-exit pattern) instead of a
+   blocking modal — lighter-weight, and matches what most native Android apps do. A second
+   back-at-home within EXIT_DOUBLE_TAP_MS of the first is what actually exits. */
+let lastExitAttemptAt = 0;
+const EXIT_DOUBLE_TAP_MS = 2000;
 window.addEventListener('popstate', (e)=>{
   const pageName = (e.state && e.state.page) || 'home';
   fsDebugLog('back-nav: popstate fired -> page='+pageName+', currentDisplayedPage='+currentDisplayedPage+', history.length='+history.length);
   if(pageName==='home' && currentDisplayedPage==='home'){
     navSeq++;
-    history.pushState({page:'home'}, '', '#nav'+navSeq); // re-arm so a second decline doesn't get caught out
-    showExitConfirm();
+    history.pushState({page:'home'}, '', '#nav'+navSeq); // re-arm so this doesn't get caught out
+    const now = Date.now();
+    if(now - lastExitAttemptAt < EXIT_DOUBLE_TAP_MS){
+      fsDebugLog('back-nav: second back within '+EXIT_DOUBLE_TAP_MS+'ms, exiting');
+      window.close(); // works for the installed standalone PWA; a harmless no-op in a normal browser tab
+    } else {
+      lastExitAttemptAt = now;
+      fsDebugLog('back-nav: first back at home, showing press-again toast');
+      toast('กดอีกครั้งเพื่อออกจากแอป');
+    }
     return;
   }
   landOnPage(pageName);
@@ -3771,9 +3760,9 @@ fsDebugLog('back-nav: boot, history.length='+history.length);
    popstate handler at all). beforeunload fires at a lower level — right when the
    browser is actually about to tear down this document, no matter what gesture or
    shortcut triggered that — so it doesn't depend on the OS/skin respecting same-
-   document history the way pushState/popstate does. The dialog text itself is fixed
-   by the browser (can't be customized to Thai) — this is a fallback, not a full
-   replacement for the nicer custom dialog above. */
+   document history the way pushState/popstate does. Its dialog text is fixed by the
+   browser (can't be customized to Thai, unlike the toast above) — a fallback for
+   devices where even the toast/double-tap path above never gets triggered at all. */
 window.addEventListener('beforeunload', (e)=>{
   if(currentDisplayedPage==='home'){
     fsDebugLog('back-nav: beforeunload fired while at home, blocking exit');
