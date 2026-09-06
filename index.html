@@ -365,6 +365,22 @@ footer.appfoot{text-align:center;color:var(--muted);font-size:11.5px;padding:26p
 .home-tile-label{font-size:14.5px;font-weight:700;color:var(--maroon-dark);text-align:center;line-height:1.3;}
 .home-tile-wide{grid-column:1/-1;aspect-ratio:auto;flex-direction:row;padding:18px;}
 
+/* Tactile press feedback for every clickable control — a quick, slightly bouncy
+   scale-down on tap. Mobile browsers never fire :hover on a touchscreen, so :active
+   is the only visual signal a tap actually landed; without this, buttons on a phone
+   feel dead/unresponsive even though their click handlers work fine. */
+button,.btn,.home-tile,.icon-btn,.icon-mini,.drawer-link,.drawer-sublink,.badge,
+.tabs button,.slip-thumb,label.btn{
+  transition:transform .16s cubic-bezier(.34,1.56,.64,1),background .15s,box-shadow .15s,border-color .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+button:active,.btn:active,.icon-btn:active,.icon-mini:active,.drawer-link:active,
+.drawer-sublink:active,.badge:active,.tabs button:active,.slip-thumb:active,label.btn:active{
+  transform:scale(.94);
+}
+.home-tile:active{transform:scale(.96);box-shadow:var(--shadow);}
+.home-tile.home-tile-row:active{transform:scale(.98);background:var(--cream);}
+
 /* Compact horizontal-row hub layout (settings hub, reports hub) — same overall frame weight as a
    form field (1.5px border, 10px radius — see .field input) instead of one big bordered card per
    item, so the whole list of headings fits on a phone screen without much scrolling. Reuses
@@ -3662,6 +3678,12 @@ window.addEventListener('popstate', (e)=>{
   applyPage((e.state && e.state.page) || 'home');
 });
 history.replaceState({page:'home'}, '');
+/* Light haptic tick on tap, mirroring the CSS press-scale feedback above — silently
+   no-ops on browsers without the Vibration API (iOS Safari, older Android). */
+document.addEventListener('click', (e)=>{
+  const target = e.target.closest('button,.home-tile,.drawer-link,.drawer-sublink,.badge,.icon-btn,.icon-mini,label.btn');
+  if(target && navigator.vibrate) navigator.vibrate(8);
+});
 function switchSubview(name){
   activeSubview = name;
   document.querySelectorAll('.stock-subview').forEach(el=>el.classList.toggle('active', el.id==='sv-'+name));
