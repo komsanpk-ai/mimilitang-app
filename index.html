@@ -3633,13 +3633,13 @@ function renderSettingsLists(){
   });
 }
 document.getElementById('addProductBtn').addEventListener('click', ()=>{
-  products.push({name:'สินค้าใหม่', priceSmall:0, priceLarge:0}); persistProducts(); renderSettingsLists(); populateSelects(); populateMaterialSelects(); toast('เพิ่มรายการแล้ว');
+  products.push({name:'', priceSmall:0, priceLarge:0}); persistProducts(); renderSettingsLists(); populateSelects(); populateMaterialSelects(); toast('เพิ่มรายการแล้ว');
 });
 document.getElementById('addChannelBtn').addEventListener('click', ()=>{
-  channels.push('ช่องทางใหม่'); persistChannels(); renderSettingsLists(); populateSelects(); toast('เพิ่มรายการแล้ว');
+  channels.push(''); persistChannels(); renderSettingsLists(); populateSelects(); toast('เพิ่มรายการแล้ว');
 });
 document.getElementById('addPaymentMethodBtn').addEventListener('click', ()=>{
-  paymentMethods.push('ประเภทใหม่'); persistPaymentMethods(); renderSettingsLists(); populateSelects(); toast('เพิ่มรายการแล้ว');
+  paymentMethods.push(''); persistPaymentMethods(); renderSettingsLists(); populateSelects(); toast('เพิ่มรายการแล้ว');
 });
 
 document.getElementById('downloadBackupBtn').addEventListener('click', ()=>{
@@ -4936,7 +4936,7 @@ function renderMaterialSettingsList(){
 });
 document.getElementById('addMaterialBtn').addEventListener('click', ()=>{
   // New item lands in whichever tab is currently open, matching where the user clicked "add" from.
-  materials.push({id:uid(), name:'วัตถุดิบใหม่', unit:units[0]||'กรัม', category:materialSettingsFilter, reorderPoint:0, currentStock:0, latestPrice:null, latestSupplier:null, latestDate:null, subUnitName:null, subUnitCount:null, pieceWeight:null});
+  materials.push({id:uid(), name:'', unit:units[0]||'กรัม', category:materialSettingsFilter, reorderPoint:0, currentStock:0, latestPrice:null, latestSupplier:null, latestDate:null, subUnitName:null, subUnitCount:null, pieceWeight:null});
   persistMaterials(); renderMaterialSettingsList(); renderStockPage(); toast('เพิ่มรายการแล้ว');
 });
 function renderUnitSettingsList(){
@@ -4953,7 +4953,7 @@ function renderUnitSettingsList(){
     btn.addEventListener('click', ()=>{ units.splice(Number(btn.dataset.i),1); persistUnits(); renderUnitSettingsList(); renderMaterialSettingsList(); toast('ลบรายการแล้ว'); });
   });
 }
-document.getElementById('addUnitBtn').addEventListener('click', ()=>{ units.push('หน่วยใหม่'); persistUnits(); renderUnitSettingsList(); toast('เพิ่มรายการแล้ว'); });
+document.getElementById('addUnitBtn').addEventListener('click', ()=>{ units.push(''); persistUnits(); renderUnitSettingsList(); toast('เพิ่มรายการแล้ว'); });
 
 /* ============ Collapsible help text (saves screen space on mobile) ============ */
 function makeHintsCollapsible(scopeEl){
