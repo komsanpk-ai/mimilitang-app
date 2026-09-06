@@ -3628,7 +3628,7 @@ const PAGE_PARENT = {
   'settings-materials':'settings', 'settings-units':'settings', 'settings-backup':'settings', 'settings-account':'settings'
 };
 const HUB_LABEL = {settings:'ตั้งค่า', report:'รายงานสรุป'};
-function switchPage(pageName){
+function applyPage(pageName){
   document.querySelectorAll('.drawer-link').forEach(b=>b.classList.toggle('active', b.dataset.page===pageName));
   ALL_PAGES.forEach(p=>{ const el=document.getElementById('page-'+p); if(el) el.classList.toggle('active', p===pageName); });
   const parent = PAGE_PARENT[pageName] || 'home';
@@ -3649,13 +3649,32 @@ function switchPage(pageName){
   if(pageName==='settings-account') updateAccountEmailDisplay();
   window.scrollTo({top:0, behavior:'smooth'});
 }
+/* Push a history entry per page visited so the phone's hardware/gesture back
+   button steps back through the app's own pages first (via popstate below)
+   instead of immediately exiting the installed PWA. */
+function switchPage(pageName){
+  if(!history.state || history.state.page!==pageName){
+    history.pushState({page:pageName}, '');
+  }
+  applyPage(pageName);
+}
+window.addEventListener('popstate', (e)=>{
+  applyPage((e.state && e.state.page) || 'home');
+});
+history.replaceState({page:'home'}, '');
 function switchSubview(name){
   activeSubview = name;
   document.querySelectorAll('.stock-subview').forEach(el=>el.classList.toggle('active', el.id==='sv-'+name));
   document.querySelectorAll('.drawer-sublink').forEach(b=>b.classList.toggle('active', b.dataset.subview===name));
   window.scrollTo({top:0, behavior:'smooth'});
 }
-document.getElementById('backHomeBtn').addEventListener('click', ()=>switchPage(document.getElementById('backHomeBtn').dataset.target || 'home'));
+document.getElementById('backHomeBtn').addEventListener('click', ()=>{
+  if(history.state && history.state.page && history.state.page!=='home'){
+    history.back();
+  } else {
+    switchPage(document.getElementById('backHomeBtn').dataset.target || 'home');
+  }
+});
 document.querySelectorAll('.home-tile').forEach(btn=>{
   btn.addEventListener('click', ()=>switchPage(btn.dataset.page));
 });
