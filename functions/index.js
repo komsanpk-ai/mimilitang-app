@@ -145,6 +145,10 @@ function parseKeyValueLines(lines) {
 
 const SHIPPING_STATUSES = ['รอเตรียมส่ง', 'กำลังจัดส่ง', 'ส่งลูกค้าเรียบร้อย', 'ยกเลิก'];
 const PAYMENT_STATUSES = ['ยังไม่ได้รับเงิน', 'มัดจำ', 'ได้รับเงินแล้ว'];
+// Left blank, "สินค้า"/"ช่องทาง" fall back to these rather than erroring or staying empty —
+// the shop's overwhelming majority case, so typing them every single time is pure friction.
+const DEFAULT_PRODUCT_NAME = 'ลี่ถัง 8 เซียน';
+const DEFAULT_CHANNEL = 'Facebook';
 
 // Kept short deliberately — this fires on every unrecognized message, so it must never be
 // the long field-by-field reference that used to live here.
@@ -160,11 +164,11 @@ const ORDER_TEMPLATE_FIELDS = [
   { label: 'ชื่อลูกค้า', key: 'ลูกค้า' },
   { label: 'เบอร์โทร', key: 'เบอร์' },
   { label: 'ที่อยู่', key: 'ที่อยู่' },
-  { label: 'สินค้า', key: 'สินค้า' },
+  { label: 'สินค้า', key: 'สินค้า', default: DEFAULT_PRODUCT_NAME },
   { label: 'ถ้วยเล็ก', key: 'ถ้วยเล็ก' },
   { label: 'ถ้วยใหญ่', key: 'ถ้วยใหญ่' },
   { label: 'วันที่จัดส่ง', key: 'วันที่จัดส่ง' },
-  { label: 'ช่องทาง', key: 'ช่องทาง' },
+  { label: 'ช่องทาง', key: 'ช่องทาง', default: DEFAULT_CHANNEL },
   { label: 'สถานะการจัดส่ง', key: 'สถานะจัดส่ง', default: 'รอเตรียมส่ง' },
   { label: 'การชำระเงิน', key: 'การชำระเงิน', default: 'ยังไม่ได้รับเงิน' },
   { label: 'ประเภทการจ่ายเงิน', key: 'ประเภทการจ่ายเงิน', default: 'เงินสด' },
@@ -198,11 +202,11 @@ function parseTemplateOrder(rawText) {
   return fields;
 }
 
-// ISO 'YYYY-MM-DD' -> 'D/M/YYYY', matching the plain style people actually type (no
-// leading zeros) so a re-copied prefill round-trips through parseThaiDate unchanged.
+// ISO 'YYYY-MM-DD' -> 'D/M/YY', matching the plain style people actually type (no leading
+// zeros, 2-digit year) so a re-copied prefill round-trips through parseThaiDate unchanged.
 function isoToThaiDateDisplay(iso) {
   const [y, m, d] = iso.split('-');
-  return `${Number(d)}/${Number(m)}/${y}`;
+  return `${Number(d)}/${Number(m)}/${y.slice(2)}`;
 }
 
 // An existing order's current values keyed the same way buildOrderDraft's `fields` are, so
@@ -286,11 +290,13 @@ function resolveAgainstList(wanted, options, aliases = {}) {
   return options.find(o => { const ol = o.trim().toLowerCase(); return ol.includes(wl) || wl.includes(ol); }) || null;
 }
 
-// DD/MM/YYYY (Gregorian) -> YYYY-MM-DD, or null if not a real calendar date.
+// D/M/YY or D/M/YYYY (Gregorian) -> YYYY-MM-DD, or null if not a real calendar date.
+// A 2-digit year is treated as 20YY — this app has no plausible dates before 2000.
 function parseThaiDate(s) {
-  const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
   if (!m) return null;
-  const [, dd, mm, yyyy] = m;
+  const [, dd, mm, yyRaw] = m;
+  const yyyy = yyRaw.length === 2 ? '20' + yyRaw : yyRaw;
   const iso = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
   const d = new Date(iso + 'T00:00:00Z');
   if (Number.isNaN(d.getTime()) || d.getUTCDate() !== Number(dd) || d.getUTCMonth() + 1 !== Number(mm)) return null;
@@ -315,7 +321,6 @@ async function buildOrderDraft(fields) {
   const missing = [];
   if (!fields['ลูกค้า']) missing.push('ลูกค้า');
   if (!fields['เบอร์']) missing.push('เบอร์');
-  if (!fields['สินค้า']) missing.push('สินค้า');
   if (missing.length) return { ok: false, message: `❌ ข้อมูลไม่ครบ: ขาด ${missing.join(', ')}ค่ะ` };
 
   const phoneDigits = fields['เบอร์'].replace(/[^0-9]/g, '');
@@ -329,20 +334,17 @@ async function buildOrderDraft(fields) {
 
   const productsDoc = await db.collection('settings').doc('products').get();
   const products = (productsDoc.exists && productsDoc.data().value) || [];
-  const wanted = fields['สินค้า'].trim().toLowerCase();
-  const productMatch = products.find(p => p.name && p.name.trim().toLowerCase() === wanted);
+  const wantedProduct = fields['สินค้า'] || DEFAULT_PRODUCT_NAME;
+  const productMatch = products.find(p => p.name && p.name.trim().toLowerCase() === wantedProduct.trim().toLowerCase());
   if (!productMatch) {
     const names = products.map(p => p.name).join(', ') || '(ยังไม่มีสินค้าตั้งค่าไว้)';
-    return { ok: false, message: `❌ ไม่พบสินค้า "${fields['สินค้า']}" ในระบบ\nสินค้าที่มี: ${names}` };
+    return { ok: false, message: `❌ ไม่พบสินค้า "${wantedProduct}" ในระบบ\nสินค้าที่มี: ${names}` };
   }
 
-  let channel = '';
-  if (fields['ช่องทาง']) {
-    const channelsDoc = await db.collection('settings').doc('channels').get();
-    const channels = (channelsDoc.exists && channelsDoc.data().value) || [];
-    const wantedChannel = fields['ช่องทาง'].trim().toLowerCase();
-    channel = channels.find(c => c.trim().toLowerCase() === wantedChannel) || fields['ช่องทาง'];
-  }
+  const channelsDoc = await db.collection('settings').doc('channels').get();
+  const channels = (channelsDoc.exists && channelsDoc.data().value) || [];
+  const wantedChannel = fields['ช่องทาง'] || DEFAULT_CHANNEL;
+  const channel = resolveAgainstList(wantedChannel, channels) || wantedChannel;
 
   let paymentMethod = '';
   if (fields['ประเภทการจ่ายเงิน']) {
@@ -357,7 +359,7 @@ async function buildOrderDraft(fields) {
   let deliveryDate = addDaysISO(today, 1);
   if (fields['วันที่จัดส่ง']) {
     const parsed = parseThaiDate(fields['วันที่จัดส่ง']);
-    if (!parsed) return { ok: false, message: `❌ วันที่จัดส่ง "${fields['วันที่จัดส่ง']}" ไม่ถูกต้อง (รูปแบบ วัน/เดือน/ปี เช่น 25/12/2026)` };
+    if (!parsed) return { ok: false, message: `❌ วันที่จัดส่ง "${fields['วันที่จัดส่ง']}" ไม่ถูกต้อง (รูปแบบ วัน/เดือน/ปี เช่น 25/12/26)` };
     deliveryDate = parsed;
   }
 
