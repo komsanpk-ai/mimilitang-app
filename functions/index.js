@@ -64,6 +64,7 @@ const PAYMENT_STATUSES = ['ยังไม่ได้รับเงิน', '�
 const HELP_TEXT = `พิมพ์คำสั่งตามแบบนี้ครับ
 
 💡 พิมพ์คำว่า "ออเดอร์" เฉยๆ คำเดียว แล้วบอทจะบอกให้พิมพ์ข้อมูลทีละบรรทัดต่อเอง (ไม่ต้องจำชื่อฟิลด์)
+💡 พิมพ์คำว่า "แก้ออเดอร์" เพื่อเรียกออเดอร์ล่าสุดที่บันทึกไว้กลับมาแก้ไข
 💡 หรือพิมพ์คำว่า "ฟอร์ม" เพื่อเปิดหน้ากรอกข้อมูลแบบมีปุ่มกดแทนได้เลย
 
 📦 บันทึกออเดอร์แบบพิมพ์รวดเดียว (จำเป็น: ลูกค้า, เบอร์, สินค้า, ถ้วยเล็ก/ถ้วยใหญ่ อย่างน้อย 1 อย่าง — ที่เหลือไม่ใส่ก็ได้ ระบบจะใช้ค่าเริ่มต้นให้):
@@ -136,16 +137,36 @@ function parsePositionalOrder(rawText) {
   return fields;
 }
 
-async function setAwaitingInput(userId, type) {
-  await db.collection('lineAwaitingInput').doc(userId).set({ type, createdAt: Date.now() });
+// ISO 'YYYY-MM-DD' -> 'D/M/YYYY', matching the plain style people actually type (no
+// leading zeros) so a re-copied prefill round-trips through parseThaiDate unchanged.
+function isoToThaiDateDisplay(iso) {
+  const [y, m, d] = iso.split('-');
+  return `${Number(d)}/${Number(m)}/${y}`;
 }
+
+// Renders an existing order back into the same 11 lines/order as ORDER_PASTE_PROMPT, so
+// "แก้ออเดอร์" can hand the user something they copy, tweak one line of, and send back.
+function orderToPositionalText(order) {
+  return [
+    order.customerName, order.phone, order.address, order.product,
+    String(order.jarSmall), String(order.jarLarge),
+    isoToThaiDateDisplay(order.deliveryDate), order.channel || '',
+    String(order.shippingFee), String(order.discountValue), String(order.deposit)
+  ].join('\n');
+}
+
+async function setAwaitingInput(userId, data) {
+  await db.collection('lineAwaitingInput').doc(userId).set({ ...data, createdAt: Date.now() });
+}
+// Returns the whole staged {type, ...} payload (not just the type) so callers like
+// "edit-order" can carry along which orderId is being edited; null if none/expired.
 async function popAwaitingInput(userId) {
   const ref = db.collection('lineAwaitingInput').doc(userId);
   const doc = await ref.get();
   if (!doc.exists) return null;
   await ref.delete();
-  const { type, createdAt } = doc.data();
-  return (Date.now() - createdAt <= CONFIRM_WINDOW_MS) ? type : null;
+  const data = doc.data();
+  return (Date.now() - data.createdAt <= CONFIRM_WINDOW_MS) ? data : null;
 }
 
 // DD/MM/YYYY (Gregorian) -> YYYY-MM-DD, or null if not a real calendar date.
@@ -312,6 +333,8 @@ async function handleConfirmCommand(userId) {
   }
 
   await db.collection('orders').doc(order.id).set(order);
+  // Remembered so "แก้ออเดอร์" (with no order specified) knows which order to reopen.
+  await db.collection('lineLastOrder').doc(userId).set({ orderId: order.id, at: Date.now() });
   return `✅ บันทึกออเดอร์แล้ว\n\n${formatOrderSummary(order)}`;
 }
 
@@ -321,6 +344,47 @@ async function handleCancelCommand(userId) {
   if (!doc.exists) return 'ไม่มีรายการที่ค้างไว้ครับ';
   await ref.delete();
   return 'ยกเลิกรายการที่ค้างไว้แล้วครับ';
+}
+
+// "แก้ออเดอร์" reopens the last order THIS LINE user saved, pre-filled with its current
+// values in the same 11-line order as the paste flow — copy, fix the one wrong line, resend.
+async function handleEditOrderStart(userId) {
+  const lastDoc = await db.collection('lineLastOrder').doc(userId).get();
+  if (!lastDoc.exists) return 'ยังไม่มีออเดอร์ล่าสุดที่บันทึกไว้ในแชทนี้ครับ ต้องบันทึกออเดอร์ก่อนถึงจะแก้ไขได้';
+  const orderDoc = await db.collection('orders').doc(lastDoc.data().orderId).get();
+  if (!orderDoc.exists) return 'ไม่พบออเดอร์ล่าสุดในระบบแล้วครับ (อาจถูกลบไปแล้ว)';
+  const order = orderDoc.data();
+
+  await setAwaitingInput(userId, { type: 'edit-order', orderId: order.id });
+  return `นี่คือข้อมูลออเดอร์ล่าสุดของคุณครับ (${order.customerName})\nคัดลอกข้อความด้านล่าง แก้เฉพาะบรรทัดที่ผิด แล้วส่งกลับมาทั้งหมด:\n\n${orderToPositionalText(order)}`;
+}
+
+// Re-validates the edited lines exactly like a fresh order, then overwrites the SAME
+// order id — preserving orderDate and the fields the positional format doesn't cover
+// (shippingStatus/paymentStatus/paymentMethod/discountType/note/paymentSlip) so editing
+// the address, say, can't silently reset a delivery status someone already set on the web.
+async function handleEditOrderCommand(rawText, userId, orderId) {
+  const origDoc = await db.collection('orders').doc(orderId).get();
+  if (!origDoc.exists) return 'ไม่พบออเดอร์นี้ในระบบแล้วครับ (อาจถูกลบไปแล้ว) พิมพ์ "แก้ออเดอร์" ใหม่อีกครั้ง';
+  const original = origDoc.data();
+
+  const result = await buildOrderDraft(parsePositionalOrder(rawText));
+  if (!result.ok) return result.message;
+
+  const merged = {
+    ...result.order,
+    id: original.id,
+    orderDate: original.orderDate,
+    shippingStatus: original.shippingStatus,
+    paymentStatus: original.paymentStatus,
+    paymentMethod: original.paymentMethod,
+    discountType: original.discountType,
+    note: original.note,
+    paymentSlip: original.paymentSlip
+  };
+
+  await db.collection('linePendingOrders').doc(userId).set({ order: merged, createdAt: Date.now() });
+  return `📝 ตรวจสอบข้อมูลที่แก้ไขก่อนบันทึกครับ\n\n${formatOrderSummary(merged)}\n\nถ้าถูกต้อง พิมพ์ "ยืนยัน" เพื่อบันทึกจริง หรือ "ยกเลิก" เพื่อยกเลิก`;
 }
 
 // Shared by the text-command bot and the LIFF form submit endpoint — validates + builds
@@ -395,22 +459,25 @@ exports.lineWebhook = onRequest(
 
       let replyText;
       try {
-        if (['ออเดอร์', 'ยืนยัน', 'ยกเลิก'].includes(cmd) && !userId) {
+        if (['ออเดอร์', 'ยืนยัน', 'ยกเลิก', 'แก้ออเดอร์'].includes(cmd) && !userId) {
           replyText = '❌ ใช้คำสั่งนี้ได้เฉพาะแชทส่วนตัวกับร้านครับ';
         } else if (cmd === 'ออเดอร์' && lines.length === 1) {
           // "ออเดอร์" typed alone (no label:value lines attached) -> switch to the
           // positional paste flow instead of immediately complaining about missing fields.
-          await setAwaitingInput(userId, 'order');
+          await setAwaitingInput(userId, { type: 'order' });
           replyText = ORDER_PASTE_PROMPT;
         } else if (cmd === 'ออเดอร์') replyText = await handleOrderCommand(fields, userId);
         else if (cmd === 'ยืนยัน') replyText = await handleConfirmCommand(userId);
         else if (cmd === 'ยกเลิก') replyText = await handleCancelCommand(userId);
         else if (cmd === 'รับสต๊อก') replyText = await handleStockinCommand(fields);
+        else if (cmd === 'แก้ออเดอร์') replyText = await handleEditOrderStart(userId);
         else if (cmd === 'ฟอร์ม') replyText = `📝 เปิดฟอร์มบันทึกข้อมูลได้ที่นี่ครับ:\nhttps://liff.line.me/${LIFF_ID}`;
         else {
           const awaiting = userId ? await popAwaitingInput(userId) : null;
-          if (awaiting === 'order') {
+          if (awaiting && awaiting.type === 'order') {
             replyText = await handleOrderCommand(parsePositionalOrder(event.message.text), userId);
+          } else if (awaiting && awaiting.type === 'edit-order') {
+            replyText = await handleEditOrderCommand(event.message.text, userId, awaiting.orderId);
           } else {
             replyText = HELP_TEXT;
           }
