@@ -36,6 +36,91 @@ function setCors(res) {
 // the web app or from LINE.
 function uid() { return 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
+// --- Recipe-based stock consumption — mirrors index.html's unitFactor/isWeightUnit/
+// getIngredientUnitOptions/ingredientUnitToMaterialUnitFactor/computeConsumptionForOrder/
+// applyConsumption exactly, so an order placed via LINE deducts raw-material stock the same
+// way one placed through the web form does (the web app never recomputes this after the
+// fact, so any order created without going through this math leaves stock permanently wrong).
+function unitFactor(unitName) {
+  if (unitName === 'กรัม') return { base: 'g', factor: 1 };
+  if (unitName === 'กิโลกรัม') return { base: 'g', factor: 1000 };
+  return { base: unitName, factor: 1 };
+}
+function isWeightUnit(unitName) { return unitFactor(unitName).base === 'g'; }
+function isIngredientUnitAmbiguous(mat, ingUnit) {
+  if (!mat) return false;
+  let options;
+  if (isWeightUnit(mat.unit)) {
+    options = ['กรัม', 'กิโลกรัม'];
+    if (Number(mat.pieceWeight) > 0) options.push('ชิ้น');
+  } else if (mat.subUnitName && mat.subUnitCount > 0) {
+    options = [mat.subUnitName, mat.unit];
+  } else {
+    options = [mat.unit];
+  }
+  return options.length > 1 && !options.includes(ingUnit);
+}
+function ingredientUnitToMaterialUnitFactor(mat, ingUnit) {
+  if (!mat) return 1;
+  if (isWeightUnit(mat.unit)) {
+    if (ingUnit === 'ชิ้น' && Number(mat.pieceWeight) > 0) return Number(mat.pieceWeight) / unitFactor(mat.unit).factor;
+    const ingF = unitFactor(ingUnit), matF = unitFactor(mat.unit);
+    return ingF.factor / matF.factor;
+  }
+  if (mat.subUnitName && mat.subUnitCount > 0 && ingUnit === mat.subUnitName) return 1 / mat.subUnitCount;
+  return 1;
+}
+function computeConsumptionForOrder(order, recipes, materialsById) {
+  const usage = {};
+  [['jarSmall', 'small'], ['jarLarge', 'large']].forEach(([field, size]) => {
+    const qtyOrdered = Number(order[field]) || 0;
+    if (qtyOrdered <= 0) return;
+    const recipe = recipes.find(r => r.product === order.product && r.size === size);
+    if (!recipe) return;
+    const items = [...(recipe.ingredients || []), ...(recipe.otherCosts || []).filter(e => e.materialId !== undefined)];
+    items.forEach(ing => {
+      const mat = materialsById.get(ing.materialId);
+      if (!mat) return;
+      if (isIngredientUnitAmbiguous(mat, ing.unit)) return; // stale unit — skip rather than deduct a wrong amount
+      const qtyInMatUnit = Number(ing.qty || 0) * ingredientUnitToMaterialUnitFactor(mat, ing.unit) * qtyOrdered;
+      usage[mat.id] = (usage[mat.id] || 0) + qtyInMatUnit;
+    });
+  });
+  return Object.keys(usage).map(id => ({ materialId: id, qty: usage[id] }));
+}
+// Writes the order AND applies its stock effect in one batch. For a fresh order pass no
+// previousStockConsumed; for an edit pass the original order's _stockConsumed so that amount
+// is restored before the newly-computed amount is deducted (exactly index.html's edit path:
+// applyConsumption(old, +1) then applyConsumption(new, -1)).
+async function commitOrderWithStockConsumption(order, previousStockConsumed) {
+  const [recipesDoc, materialsSnap] = await Promise.all([
+    db.collection('settings').doc('recipes').get(),
+    db.collection('materials').get()
+  ]);
+  const recipes = (recipesDoc.exists && recipesDoc.data().value) || [];
+  const materialsById = new Map(materialsSnap.docs.map(d => [d.id, d.data()]));
+
+  const newConsumption = computeConsumptionForOrder(order, recipes, materialsById);
+
+  const delta = {};
+  (previousStockConsumed || []).forEach(c => { delta[c.materialId] = (delta[c.materialId] || 0) + c.qty; });
+  newConsumption.forEach(c => { delta[c.materialId] = (delta[c.materialId] || 0) - c.qty; });
+
+  const batch = db.batch();
+  Object.entries(delta).forEach(([materialId, d]) => {
+    if (!d) return;
+    const mat = materialsById.get(materialId);
+    if (!mat) return;
+    const newStock = Math.round(((mat.currentStock || 0) + d) * 1e6) / 1e6;
+    batch.update(db.collection('materials').doc(materialId), { currentStock: newStock });
+  });
+
+  const finalOrder = { ...order, _stockConsumed: newConsumption };
+  batch.set(db.collection('orders').doc(finalOrder.id), finalOrder);
+  await batch.commit();
+  return finalOrder;
+}
+
 function todayISOBangkok() {
   return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
@@ -101,7 +186,7 @@ const CONFIRM_WINDOW_MS = 10 * 60 * 1000; // pending order draft / awaiting-inpu
 // Positional paste flow: type "ออเดอร์" alone -> bot asks for these values, one per line,
 // no labels -> next message is parsed by position. Lines split on '\n' only (never ',') so
 // a Thai address's own commas can't shift every field after it out of alignment.
-const ORDER_FIELD_SEQUENCE = ['ลูกค้า', 'เบอร์', 'ที่อยู่', 'สินค้า', 'ถ้วยเล็ก', 'ถ้วยใหญ่', 'วันที่จัดส่ง', 'ช่องทาง', 'ค่าจัดส่ง', 'ส่วนลด', 'มัดจำ'];
+const ORDER_FIELD_SEQUENCE = ['ลูกค้า', 'เบอร์', 'ที่อยู่', 'สินค้า', 'ถ้วยเล็ก', 'ถ้วยใหญ่', 'วันที่จัดส่ง', 'สถานะจัดส่ง', 'การชำระเงิน', 'ประเภทการจ่ายเงิน', 'หมายเหตุ', 'ค่าจัดส่ง', 'ส่วนลด', 'มัดจำ'];
 
 function parsePositionalOrder(rawText) {
   const rows = rawText.split('\n').map(l => l.trim());
@@ -117,13 +202,15 @@ function isoToThaiDateDisplay(iso) {
   return `${Number(d)}/${Number(m)}/${y}`;
 }
 
-// Renders an existing order back into the same 11-line order as ORDER_FIELD_SEQUENCE, so
-// "แก้ออเดอร์" can hand the user something they copy, tweak one line of, and send back.
+// Renders an existing order back into the same line order as ORDER_FIELD_SEQUENCE, so
+// "แก้ออเดอร์" can show the user its current values and mergeEditLines can fall back to
+// them line-by-line for whatever the reply leaves unchanged.
 function orderToPositionalText(order) {
   return [
     order.customerName, order.phone, order.address, order.product,
     String(order.jarSmall), String(order.jarLarge),
-    isoToThaiDateDisplay(order.deliveryDate), order.channel || '',
+    isoToThaiDateDisplay(order.deliveryDate),
+    order.shippingStatus, order.paymentStatus, order.paymentMethod || '', order.note || '',
     String(order.shippingFee), String(order.discountValue), String(order.deposit)
   ].join('\n');
 }
@@ -140,6 +227,44 @@ async function popAwaitingInput(userId) {
   await ref.delete();
   const data = doc.data();
   return (Date.now() - data.createdAt <= CONFIRM_WINDOW_MS) ? data : null;
+}
+
+// A payment-slip photo can arrive as its own message, before, during, or after the order's
+// text — so it's staged separately per user and picked up whenever an order gets built/
+// committed, rather than requiring a strict order of messages.
+const MAX_SLIP_BYTES = 700 * 1000; // stays comfortably under Firestore's ~1MiB per-document cap
+async function downloadLineImageAsDataUrl(messageId, accessToken) {
+  const res = await fetch(`https://api-data.line.me/v2/bot/message/${messageId}/content`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if (!res.ok) throw new Error('LINE content download failed: ' + res.status);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length > MAX_SLIP_BYTES) return { error: 'too_large' };
+  const contentType = res.headers.get('content-type') || 'image/jpeg';
+  return { dataUrl: `data:${contentType};base64,${buf.toString('base64')}` };
+}
+async function stageSlipImage(userId, dataUrl) {
+  await db.collection('lineSlipStaging').doc(userId).set({ dataUrl, createdAt: Date.now() });
+}
+async function popStagedSlip(userId) {
+  const ref = db.collection('lineSlipStaging').doc(userId);
+  const doc = await ref.get();
+  if (!doc.exists) return null;
+  await ref.delete();
+  const { dataUrl, createdAt } = doc.data();
+  return (Date.now() - createdAt <= CONFIRM_WINDOW_MS) ? dataUrl : null;
+}
+
+// Resolves shorthand against a canonical list: an explicit alias first, then an exact
+// (case-insensitive) match, then a substring match either direction — so "สด" matches
+// "เงินสด" and "ส่งแล้ว" (via the alias map) resolves to "ส่งลูกค้าเรียบร้อย". Null if nothing fits.
+function resolveAgainstList(wanted, options, aliases = {}) {
+  const w = wanted.trim();
+  if (aliases[w]) return aliases[w];
+  const wl = w.toLowerCase();
+  const exact = options.find(o => o.trim().toLowerCase() === wl);
+  if (exact) return exact;
+  return options.find(o => { const ol = o.trim().toLowerCase(); return ol.includes(wl) || wl.includes(ol); }) || null;
 }
 
 // DD/MM/YYYY (Gregorian) -> YYYY-MM-DD, or null if not a real calendar date.
@@ -200,8 +325,9 @@ async function buildOrderDraft(fields) {
   if (fields['ประเภทการจ่ายเงิน']) {
     const pmDoc = await db.collection('settings').doc('paymentMethods').get();
     const methods = (pmDoc.exists && pmDoc.data().value) || [];
-    const wantedMethod = fields['ประเภทการจ่ายเงิน'].trim().toLowerCase();
-    paymentMethod = methods.find(m => m.trim().toLowerCase() === wantedMethod) || fields['ประเภทการจ่ายเงิน'];
+    // Fuzzy so shorthand like "สด"/"โอน"/"สแกน" matches the real configured
+    // "เงินสด"/"โอนเงิน"/"สแกนจ่าย" without needing the full name typed out.
+    paymentMethod = resolveAgainstList(fields['ประเภทการจ่ายเงิน'], methods) || fields['ประเภทการจ่ายเงิน'];
   }
 
   const today = todayISOBangkok();
@@ -215,15 +341,17 @@ async function buildOrderDraft(fields) {
   let shippingStatus = SHIPPING_STATUSES[0];
   if (fields['สถานะจัดส่ง']) {
     const wanted = fields['สถานะจัดส่ง'].trim();
-    if (!SHIPPING_STATUSES.includes(wanted)) return { ok: false, message: `❌ สถานะจัดส่ง "${wanted}" ไม่ถูกต้อง (เลือกจาก: ${SHIPPING_STATUSES.join('/')})` };
-    shippingStatus = wanted;
+    const resolved = resolveAgainstList(wanted, SHIPPING_STATUSES, { 'ส่งแล้ว': 'ส่งลูกค้าเรียบร้อย' });
+    if (!resolved) return { ok: false, message: `❌ สถานะจัดส่ง "${wanted}" ไม่ถูกต้อง (เลือกจาก: ${SHIPPING_STATUSES.join('/')} หรือ "ส่งแล้ว")` };
+    shippingStatus = resolved;
   }
 
   let paymentStatus = PAYMENT_STATUSES[0];
   if (fields['การชำระเงิน']) {
     const wanted = fields['การชำระเงิน'].trim();
-    if (!PAYMENT_STATUSES.includes(wanted)) return { ok: false, message: `❌ การชำระเงิน "${wanted}" ไม่ถูกต้อง (เลือกจาก: ${PAYMENT_STATUSES.join('/')})` };
-    paymentStatus = wanted;
+    const resolved = resolveAgainstList(wanted, PAYMENT_STATUSES, { 'รับเงินแล้ว': 'ได้รับเงินแล้ว' });
+    if (!resolved) return { ok: false, message: `❌ การชำระเงิน "${wanted}" ไม่ถูกต้อง (เลือกจาก: ${PAYMENT_STATUSES.join('/')})` };
+    paymentStatus = resolved;
   }
 
   let discountType = 'baht';
@@ -280,7 +408,8 @@ function formatOrderSummary(order) {
     `ค่าจัดส่ง: ${order.shippingFee} บาท`,
     `ส่วนลด: ${discountLabel}`,
     `มัดจำ: ${order.deposit} บาท`,
-    `หมายเหตุ: ${order.note}`
+    `หมายเหตุ: ${order.note}`,
+    `สลิป: ${order.paymentSlip ? '📎 แนบแล้ว' : '-'}`
   ].join('\n');
 }
 
@@ -289,6 +418,9 @@ function formatOrderSummary(order) {
 async function handleOrderCommand(fields, userId) {
   const result = await buildOrderDraft(fields);
   if (!result.ok) return result.message;
+
+  const stagedSlip = await popStagedSlip(userId);
+  if (stagedSlip) result.order.paymentSlip = stagedSlip;
 
   await db.collection('linePendingOrders').doc(userId).set({ order: result.order, createdAt: Date.now() });
   return `📝 ตรวจสอบข้อมูลก่อนบันทึกค่ะ\n\n${formatOrderSummary(result.order)}\n\nถ้าถูกต้อง พิมพ์ "ยืนยัน" เพื่อบันทึกจริง หรือ "ยกเลิก" เพื่อยกเลิกรายการนี้นะคะ`;
@@ -299,14 +431,21 @@ async function handleConfirmCommand(userId) {
   const doc = await ref.get();
   if (!doc.exists) return 'ไม่มีรายการที่รอยืนยันค่ะ พิมพ์คำสั่ง "ออเดอร์" ใหม่ได้เลยนะคะ';
 
-  const { order, createdAt } = doc.data();
+  const { order, createdAt, previousStockConsumed } = doc.data();
   await ref.delete();
   if (Date.now() - createdAt > CONFIRM_WINDOW_MS) {
     return 'รายการที่ค้างไว้หมดอายุแล้ว (เกิน 10 นาที) กรุณาพิมพ์คำสั่ง "ออเดอร์" ใหม่อีกครั้งนะคะ';
   }
 
-  await db.collection('orders').doc(order.id).set(order);
-  return `✅ บันทึกออเดอร์แล้ว\n\n${formatOrderSummary(order)}`;
+  // Covers a slip photo sent after the order text but before "ยืนยัน" — it wasn't attached
+  // yet when the draft above was staged.
+  if (!order.paymentSlip) {
+    const stagedSlip = await popStagedSlip(userId);
+    if (stagedSlip) order.paymentSlip = stagedSlip;
+  }
+
+  const finalOrder = await commitOrderWithStockConsumption(order, previousStockConsumed);
+  return `✅ บันทึกออเดอร์แล้ว\n\n${formatOrderSummary(finalOrder)}`;
 }
 
 async function handleCancelCommand(userId) {
@@ -320,11 +459,20 @@ async function handleCancelCommand(userId) {
 // "แก้ออเดอร์" step 2: finds the most recent order whose customer name contains what was
 // typed. Good enough for a one-person/small-team shop; doesn't disambiguate multiple matches
 // since picking "the latest one" is what you want almost every time you're fixing a typo.
-async function findOrderByCustomerName(name) {
-  const wanted = name.trim().toLowerCase();
-  if (!wanted) return null;
+// Accepts free text containing a name and, optionally, a phone number (any order/format,
+// e.g. "คุณดาว 0812340000" or two lines) — the phone narrows the match when several
+// customers share a name. Picks the most recent match.
+async function findOrderByCustomerName(text) {
+  const phoneMatch = text.match(/\d[\d\-\s]{7,}\d/);
+  const phoneDigits = phoneMatch ? phoneMatch[0].replace(/\D/g, '') : '';
+  const namePart = text.replace(phoneMatch ? phoneMatch[0] : '', '').trim().toLowerCase();
+  if (!namePart && !phoneDigits) return null;
+
   const snap = await db.collection('orders').get();
-  const matches = snap.docs.map(d => d.data()).filter(o => (o.customerName || '').toLowerCase().includes(wanted));
+  let matches = snap.docs.map(d => d.data()).filter(o =>
+    (!namePart || (o.customerName || '').toLowerCase().includes(namePart)) &&
+    (!phoneDigits || (o.phone || '').includes(phoneDigits))
+  );
   if (!matches.length) return null;
   matches.sort((a, b) => (b.orderDate || '').localeCompare(a.orderDate || ''));
   return matches[0];
@@ -339,10 +487,11 @@ function mergeEditLines(original, editedText) {
   return ORDER_FIELD_SEQUENCE.map((_, i) => editedLines[i] || originalLines[i] || '').join('\n');
 }
 
-// Re-validates the merged lines exactly like a fresh order, then overwrites the SAME
-// order id — preserving orderDate and the fields the positional format doesn't cover
-// (shippingStatus/paymentStatus/paymentMethod/discountType/note/paymentSlip) so editing
-// the address, say, can't silently reset a delivery status someone already set on the web.
+// Re-validates the merged lines exactly like a fresh order, then overwrites the SAME order
+// id — preserving orderDate, channel and discountType, the only order fields the positional
+// format still doesn't cover (channel/discountType aren't askable from LINE at all, so an
+// order that already has them set — e.g. created on the web — can't have them wiped by a
+// LINE-side edit of some unrelated field).
 async function handleEditOrderCommand(rawText, userId, orderId) {
   const origDoc = await db.collection('orders').doc(orderId).get();
   if (!origDoc.exists) return 'ไม่พบออเดอร์นี้ในระบบแล้วค่ะ (อาจถูกลบไปแล้ว) พิมพ์ "แก้ออเดอร์" ใหม่อีกครั้งนะคะ';
@@ -352,19 +501,20 @@ async function handleEditOrderCommand(rawText, userId, orderId) {
   const result = await buildOrderDraft(parsePositionalOrder(mergedText));
   if (!result.ok) return result.message;
 
+  const stagedSlip = await popStagedSlip(userId);
+
   const merged = {
     ...result.order,
     id: original.id,
     orderDate: original.orderDate,
-    shippingStatus: original.shippingStatus,
-    paymentStatus: original.paymentStatus,
-    paymentMethod: original.paymentMethod,
+    channel: original.channel,
     discountType: original.discountType,
-    note: original.note,
-    paymentSlip: original.paymentSlip
+    paymentSlip: stagedSlip || original.paymentSlip
   };
 
-  await db.collection('linePendingOrders').doc(userId).set({ order: merged, createdAt: Date.now() });
+  await db.collection('linePendingOrders').doc(userId).set({
+    order: merged, createdAt: Date.now(), previousStockConsumed: original._stockConsumed || []
+  });
   return `📝 ตรวจสอบข้อมูลที่แก้ไขก่อนบันทึกค่ะ\n\n${formatOrderSummary(merged)}\n\nถ้าถูกต้อง พิมพ์ "ยืนยัน" เพื่อบันทึกจริง หรือ "ยกเลิก" เพื่อยกเลิกนะคะ`;
 }
 
@@ -432,8 +582,28 @@ exports.lineWebhook = onRequest(
     const accessToken = LINE_CHANNEL_ACCESS_TOKEN.value().trim();
 
     for (const event of events) {
-      if (event.type !== 'message' || event.message.type !== 'text') continue;
+      if (event.type !== 'message') continue;
       const userId = event.source && event.source.userId;
+
+      if (event.message.type === 'image') {
+        let imgReply;
+        if (!userId) {
+          imgReply = '❌ ส่งสลิปได้เฉพาะแชทส่วนตัวกับร้านนะคะ';
+        } else {
+          try {
+            const { dataUrl, error } = await downloadLineImageAsDataUrl(event.message.id, accessToken);
+            if (error === 'too_large') imgReply = '❌ ไฟล์รูปใหญ่เกินไปค่ะ ลองส่งรูปที่ขนาดเล็กลงอีกนิด';
+            else { await stageSlipImage(userId, dataUrl); imgReply = '📎 รับสลิปแล้วค่ะ พิมพ์ข้อมูลออเดอร์ต่อได้เลย (หรือพิมพ์ "ยืนยัน" ถ้ารอยืนยันอยู่)'; }
+          } catch (err) {
+            console.error(err);
+            imgReply = '❌ รับรูปไม่สำเร็จ ลองส่งใหม่อีกครั้งนะคะ';
+          }
+        }
+        await replyToLine(event.replyToken, imgReply, accessToken);
+        continue;
+      }
+
+      if (event.message.type !== 'text') continue;
       const lines = event.message.text.split('\n').map(l => l.trim()).filter(Boolean);
       const cmd = (lines[0] || '').trim();
       const fields = parseKeyValueLines(lines.slice(1));
@@ -529,8 +699,8 @@ exports.liffSubmit = onRequest({ region: 'asia-southeast1', invoker: 'public' },
     if (type === 'order') {
       const result = await buildOrderDraft(fields || {});
       if (!result.ok) { res.json(result); return; }
-      await db.collection('orders').doc(result.order.id).set(result.order);
-      res.json({ ok: true, message: '✅ บันทึกออเดอร์สำเร็จ', summary: formatOrderSummary(result.order) });
+      const finalOrder = await commitOrderWithStockConsumption(result.order, null);
+      res.json({ ok: true, message: '✅ บันทึกออเดอร์สำเร็จ', summary: formatOrderSummary(finalOrder) });
     } else if (type === 'stockin') {
       const result = await buildStockinDraft(fields || {});
       if (!result.ok) { res.json(result); return; }
