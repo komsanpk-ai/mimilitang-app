@@ -183,15 +183,49 @@ const HELP_TEXT = `พิมพ์คำสั่งตามแบบนี้�
 
 const CONFIRM_WINDOW_MS = 10 * 60 * 1000; // pending order draft / awaiting-input state expires after 10 minutes
 
-// Positional paste flow: type "ออเดอร์" alone -> bot asks for these values, one per line,
-// no labels -> next message is parsed by position. Lines split on '\n' only (never ',') so
-// a Thai address's own commas can't shift every field after it out of alignment.
-const ORDER_FIELD_SEQUENCE = ['ลูกค้า', 'เบอร์', 'ที่อยู่', 'สินค้า', 'ถ้วยเล็ก', 'ถ้วยใหญ่', 'วันที่จัดส่ง', 'สถานะจัดส่ง', 'การชำระเงิน', 'ประเภทการจ่ายเงิน', 'หมายเหตุ', 'ค่าจัดส่ง', 'ส่วนลด', 'มัดจำ'];
+// Copyable label+dash template flow: type "ออเดอร์" alone -> bot sends a template with every
+// field already labeled ("ชื่อลูกค้า -", "สถานะการจัดส่ง -รอเตรียมส่ง", ...) -> the reply is
+// parsed by matching each line's label, not its position, so leaving lines blank/reordering/
+// skipping some can never misalign a later field the way pure positional parsing could.
+const ORDER_TEMPLATE_FIELDS = [
+  { label: 'ชื่อลูกค้า', key: 'ลูกค้า' },
+  { label: 'เบอร์โทร', key: 'เบอร์' },
+  { label: 'ที่อยู่', key: 'ที่อยู่' },
+  { label: 'สินค้า', key: 'สินค้า' },
+  { label: 'ถ้วยเล็ก', key: 'ถ้วยเล็ก' },
+  { label: 'ถ้วยใหญ่', key: 'ถ้วยใหญ่' },
+  { label: 'วันที่จัดส่ง', key: 'วันที่จัดส่ง' },
+  { label: 'ช่องทาง', key: 'ช่องทาง' },
+  { label: 'สถานะการจัดส่ง', key: 'สถานะจัดส่ง', default: 'รอเตรียมส่ง' },
+  { label: 'การชำระเงิน', key: 'การชำระเงิน', default: 'ยังไม่ได้รับเงิน' },
+  { label: 'ประเภทการจ่ายเงิน', key: 'ประเภทการจ่ายเงิน', default: 'เงินสด' },
+  { label: 'หมายเหตุ', key: 'หมายเหตุ' },
+  { label: 'ค่าจัดส่ง (บาท)', key: 'ค่าจัดส่ง' },
+  { label: 'ส่วนลด', key: 'ส่วนลด' },
+  { label: 'มัดจำ (บาท)', key: 'มัดจำ' }
+];
+// Longest label first so "ค่าจัดส่ง (บาท)" is matched whole rather than being shadowed by
+// a shorter label that happens to be its prefix.
+const TEMPLATE_FIELDS_BY_LABEL_LENGTH = [...ORDER_TEMPLATE_FIELDS].sort((a, b) => b.label.length - a.label.length);
 
-function parsePositionalOrder(rawText) {
-  const rows = rawText.split('\n').map(l => l.trim());
+function blankOrderTemplate() {
+  return ORDER_TEMPLATE_FIELDS.map(f => `${f.label} -${f.default || ''}`).join('\n');
+}
+
+// "label -value" (space before the dash optional, space after optional) on each line, in any
+// order — a line whose label doesn't match anything known, or whose value is empty, is simply
+// skipped, leaving that field absent so buildOrderDraft's own default applies.
+function parseTemplateOrder(rawText) {
   const fields = {};
-  ORDER_FIELD_SEQUENCE.forEach((key, i) => { if (rows[i]) fields[key] = rows[i]; });
+  for (const rawLine of rawText.split('\n')) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const match = TEMPLATE_FIELDS_BY_LABEL_LENGTH.find(f => line.startsWith(f.label));
+    if (!match) continue;
+    let rest = line.slice(match.label.length).trim();
+    if (rest.startsWith('-')) rest = rest.slice(1).trim();
+    if (rest) fields[match.key] = rest;
+  }
   return fields;
 }
 
@@ -202,17 +236,33 @@ function isoToThaiDateDisplay(iso) {
   return `${Number(d)}/${Number(m)}/${y}`;
 }
 
-// Renders an existing order back into the same line order as ORDER_FIELD_SEQUENCE, so
-// "แก้ออเดอร์" can show the user its current values and mergeEditLines can fall back to
-// them line-by-line for whatever the reply leaves unchanged.
-function orderToPositionalText(order) {
-  return [
-    order.customerName, order.phone, order.address, order.product,
-    String(order.jarSmall), String(order.jarLarge),
-    isoToThaiDateDisplay(order.deliveryDate),
-    order.shippingStatus, order.paymentStatus, order.paymentMethod || '', order.note || '',
-    String(order.shippingFee), String(order.discountValue), String(order.deposit)
-  ].join('\n');
+// An existing order's current values keyed the same way buildOrderDraft's `fields` are, so
+// they can seed a template pre-filled with "what's on file now" and be merged with whatever
+// the edited reply actually supplies.
+function orderToFieldsMap(order) {
+  return {
+    'ลูกค้า': order.customerName,
+    'เบอร์': order.phone,
+    'ที่อยู่': order.address || '',
+    'สินค้า': order.product,
+    'ถ้วยเล็ก': String(order.jarSmall),
+    'ถ้วยใหญ่': String(order.jarLarge),
+    'วันที่จัดส่ง': isoToThaiDateDisplay(order.deliveryDate),
+    'ช่องทาง': order.channel || '',
+    'สถานะจัดส่ง': order.shippingStatus,
+    'การชำระเงิน': order.paymentStatus,
+    'ประเภทการจ่ายเงิน': order.paymentMethod || '',
+    'หมายเหตุ': order.note || '',
+    'ค่าจัดส่ง': String(order.shippingFee),
+    'ส่วนลด': String(order.discountValue),
+    'มัดจำ': String(order.deposit)
+  };
+}
+// Same template shape as blankOrderTemplate, but pre-filled with an existing order's values
+// instead of the fresh-order defaults — what "แก้ออเดอร์" hands back to edit.
+function orderToTemplateText(order) {
+  const values = orderToFieldsMap(order);
+  return ORDER_TEMPLATE_FIELDS.map(f => `${f.label} -${values[f.key] || ''}`).join('\n');
 }
 
 async function setAwaitingInput(userId, data) {
@@ -278,11 +328,15 @@ function parseThaiDate(s) {
   return iso;
 }
 
-async function replyToLine(replyToken, text, accessToken) {
+// `textOrTexts` is either one string or an array of up to 5 — e.g. the short greeting as its
+// own bubble followed by the copyable template as a separate one, so pasting the template
+// doesn't drag the greeting sentence along with it.
+async function replyToLine(replyToken, textOrTexts, accessToken) {
+  const texts = Array.isArray(textOrTexts) ? textOrTexts : [textOrTexts];
   await fetch('https://api.line.me/v2/bot/message/reply', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
-    body: JSON.stringify({ replyToken, messages: [{ type: 'text', text }] })
+    body: JSON.stringify({ replyToken, messages: texts.map(text => ({ type: 'text', text })) })
   });
 }
 
@@ -478,27 +532,20 @@ async function findOrderByCustomerName(text) {
   return matches[0];
 }
 
-// Fills in any line the user left blank/omitted with that same line from the order's
-// current value, so "just retype the lines you're changing" works without needing a
-// copy-paste round trip.
-function mergeEditLines(original, editedText) {
-  const originalLines = orderToPositionalText(original).split('\n');
-  const editedLines = editedText.split('\n').map(l => l.trim());
-  return ORDER_FIELD_SEQUENCE.map((_, i) => editedLines[i] || originalLines[i] || '').join('\n');
-}
-
-// Re-validates the merged lines exactly like a fresh order, then overwrites the SAME order
-// id — preserving orderDate, channel and discountType, the only order fields the positional
-// format still doesn't cover (channel/discountType aren't askable from LINE at all, so an
-// order that already has them set — e.g. created on the web — can't have them wiped by a
-// LINE-side edit of some unrelated field).
+// Re-validates the merged fields exactly like a fresh order, then overwrites the SAME order
+// id — preserving orderDate and discountType, the only order field the template still
+// doesn't cover (an order that already has a percent-based discount set on the web can't
+// have that silently reset to "baht" by a LINE-side edit of some unrelated field).
 async function handleEditOrderCommand(rawText, userId, orderId) {
   const origDoc = await db.collection('orders').doc(orderId).get();
   if (!origDoc.exists) return 'ไม่พบออเดอร์นี้ในระบบแล้วค่ะ (อาจถูกลบไปแล้ว) พิมพ์ "แก้ออเดอร์" ใหม่อีกครั้งนะคะ';
   const original = origDoc.data();
 
-  const mergedText = mergeEditLines(original, rawText);
-  const result = await buildOrderDraft(parsePositionalOrder(mergedText));
+  // Values from the reply override the order's current ones; anything not present in the
+  // reply (blank/removed line, or an unrecognized label) keeps its current value — a
+  // template line left untouched already carries that current value verbatim anyway.
+  const mergedFields = { ...orderToFieldsMap(original), ...parseTemplateOrder(rawText) };
+  const result = await buildOrderDraft(mergedFields);
   if (!result.ok) return result.message;
 
   const stagedSlip = await popStagedSlip(userId);
@@ -507,7 +554,6 @@ async function handleEditOrderCommand(rawText, userId, orderId) {
     ...result.order,
     id: original.id,
     orderDate: original.orderDate,
-    channel: original.channel,
     discountType: original.discountType,
     paymentSlip: stagedSlip || original.paymentSlip
   };
@@ -613,10 +659,10 @@ exports.lineWebhook = onRequest(
         if (['ออเดอร์', 'ยืนยัน', 'ยกเลิก', 'แก้ออเดอร์'].includes(cmd) && !userId) {
           replyText = '❌ ใช้คำสั่งนี้ได้เฉพาะแชทส่วนตัวกับร้านนะคะ';
         } else if (cmd === 'ออเดอร์' && lines.length === 1) {
-          // "ออเดอร์" typed alone (no label:value lines attached) -> switch to the
-          // positional paste flow instead of immediately complaining about missing fields.
+          // "ออเดอร์" typed alone (no label:value lines attached) -> send the copyable
+          // template as its own bubble instead of immediately complaining about missing fields.
           await setAwaitingInput(userId, { type: 'order' });
-          replyText = 'มีมี่ยินดีรับใช้ค่ะ กรอกข้อมูลลูกค้าได้เลยค่ะ';
+          replyText = ['มีมี่ยินดีรับใช้ค่ะ กรอกข้อมูลลูกค้าได้เลยค่ะ', blankOrderTemplate()];
         } else if (cmd === 'ออเดอร์') replyText = await handleOrderCommand(fields, userId);
         else if (cmd === 'ยืนยัน') replyText = await handleConfirmCommand(userId);
         else if (cmd === 'ยกเลิก') replyText = await handleCancelCommand(userId);
@@ -628,14 +674,14 @@ exports.lineWebhook = onRequest(
         else {
           const awaiting = userId ? await popAwaitingInput(userId) : null;
           if (awaiting && awaiting.type === 'order') {
-            replyText = await handleOrderCommand(parsePositionalOrder(event.message.text), userId);
+            replyText = await handleOrderCommand(parseTemplateOrder(event.message.text), userId);
           } else if (awaiting && awaiting.type === 'edit-lookup') {
             const found = await findOrderByCustomerName(event.message.text);
             if (!found) {
               replyText = `ไม่พบออเดอร์ของ "${event.message.text.trim()}" ค่ะ พิมพ์ "แก้ออเดอร์" ใหม่อีกครั้งนะคะ`;
             } else {
               await setAwaitingInput(userId, { type: 'edit-order', orderId: found.id });
-              replyText = orderToPositionalText(found);
+              replyText = orderToTemplateText(found);
             }
           } else if (awaiting && awaiting.type === 'edit-order') {
             replyText = await handleEditOrderCommand(event.message.text, userId, awaiting.orderId);
