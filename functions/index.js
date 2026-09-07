@@ -121,6 +121,131 @@ async function commitOrderWithStockConsumption(order, previousStockConsumed) {
   return finalOrder;
 }
 
+// Mirrors index.html's fmt() exactly (Thai locale grouping, up to 2 decimals).
+function fmt(n) { return Number(n || 0).toLocaleString('th-TH', { maximumFractionDigits: 2 }); }
+
+// Mirrors recipeIngredientCost/computeRecipeCost in index.html — reuses the same
+// isIngredientUnitAmbiguous/ingredientUnitToMaterialUnitFactor already defined above for
+// stock consumption, so a recipe's per-cup cost is computed identically in both places.
+function recipeIngredientCostServer(ing, materialsById) {
+  const mat = materialsById.get(ing.materialId);
+  if (!mat || mat.latestPrice == null) return { cost: 0, missingPrice: !!mat };
+  if (isIngredientUnitAmbiguous(mat, ing.unit)) return { cost: 0, missingPrice: false };
+  const qtyInMatUnit = Number(ing.qty || 0) * ingredientUnitToMaterialUnitFactor(mat, ing.unit);
+  return { cost: qtyInMatUnit * mat.latestPrice, missingPrice: false };
+}
+function computeRecipeCostServer(recipe, materialsById) {
+  let cost = 0, hasMissingPrice = false;
+  (recipe.ingredients || []).forEach(ing => {
+    const r = recipeIngredientCostServer(ing, materialsById);
+    cost += r.cost; if (r.missingPrice) hasMissingPrice = true;
+  });
+  (recipe.otherCosts || []).forEach(entry => {
+    if (entry.materialId !== undefined) {
+      const r = recipeIngredientCostServer(entry, materialsById);
+      cost += r.cost; if (r.missingPrice) hasMissingPrice = true;
+    } else {
+      cost += Number(entry.amount) || 0;
+    }
+  });
+  return { cost, hasMissingPrice };
+}
+
+// "รายงานยอดขาย" — today's sales, cost, shipping and profit, mirroring computeAmounts()'s
+// subtotal/discount math from index.html. Cancelled orders (ยกเลิก) are excluded, matching
+// the convention already established for the app's own sales reports.
+async function buildSalesReport(fromISO, toISO, periodLabel) {
+  const [ordersSnap, productsDoc, recipesDoc, materialsSnap] = await Promise.all([
+    db.collection('orders').where('orderDate', '>=', fromISO).where('orderDate', '<=', toISO).get(),
+    db.collection('settings').doc('products').get(),
+    db.collection('settings').doc('recipes').get(),
+    db.collection('materials').get()
+  ]);
+  const periodOrders = ordersSnap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก');
+  const products = (productsDoc.exists && productsDoc.data().value) || [];
+  const recipes = (recipesDoc.exists && recipesDoc.data().value) || [];
+  const materialsById = new Map(materialsSnap.docs.map(d => [d.id, d.data()]));
+
+  const byProduct = {};
+  let totalRevenue = 0, totalCost = 0, totalShipping = 0, hasMissingPrice = false, hasMissingRecipe = false;
+
+  for (const o of periodOrders) {
+    const prod = products.find(p => p.name === o.product) || { priceSmall: 0, priceLarge: 0 };
+    const small = Number(o.jarSmall) || 0, large = Number(o.jarLarge) || 0;
+
+    const entry = byProduct[o.product] || (byProduct[o.product] = { small: 0, large: 0 });
+    entry.small += small;
+    entry.large += large;
+
+    const subtotal = small * prod.priceSmall + large * prod.priceLarge;
+    const discountVal = Number(o.discountValue) || 0;
+    const discountAmount = o.discountType === 'percent' ? subtotal * discountVal / 100 : discountVal;
+    totalRevenue += Math.max(subtotal - discountAmount, 0);
+    totalShipping += Number(o.shippingFee) || 0;
+
+    for (const [field, size] of [['jarSmall', 'small'], ['jarLarge', 'large']]) {
+      const qty = Number(o[field]) || 0;
+      if (qty <= 0) continue;
+      const recipe = recipes.find(r => r.product === o.product && r.size === size);
+      if (!recipe) { hasMissingRecipe = true; continue; }
+      const r = computeRecipeCostServer(recipe, materialsById);
+      totalCost += r.cost * qty;
+      if (r.hasMissingPrice) hasMissingPrice = true;
+    }
+  }
+
+  const profit = totalRevenue - totalCost;
+  const profitPct = totalCost > 0 ? (profit / totalCost * 100) : 0;
+
+  const productLines = Object.entries(byProduct).map(([name, q]) =>
+    `สินค้า "${name}"\nถ้วยเล็ก จำนวน ${fmt(q.small)} ถ้วย\nถ้วยใหญ่ จำนวน ${fmt(q.large)} ถ้วย`
+  ).join('\n\n');
+
+  const lines = [
+    productLines || `ยังไม่มีออเดอร์${periodLabel}ค่ะ`,
+    '',
+    `ยอดขาย${periodLabel} = ${fmt(totalRevenue)} บาท`,
+    `ต้นทุน และค่าใช้จ่ายรวม = ${fmt(totalCost)} บาท`,
+    `ค่าจัดส่งรวม = ${fmt(totalShipping)} บาท`,
+    `กำไร ไม่รวมค่าจัดส่ง = ${fmt(profit)} บาท`,
+    `คิดเป็นกำไร ${fmt(profitPct)}% ของต้นทุนและค่าใช้จ่าย`
+  ];
+  if (hasMissingPrice || hasMissingRecipe) {
+    lines.push('', '⚠️ บางรายการยังไม่มีสูตร/ราคาวัตถุดิบครบ ต้นทุนจริงอาจสูงกว่านี้');
+  }
+  return lines.join('\n');
+}
+
+// Monday..Sunday of the week containing todayISOBangkok(), and the 1st..last day of the
+// current calendar month — the two extra report windows alongside "today".
+function startOfWeekISO(iso) {
+  const d = new Date(iso + 'T00:00:00Z');
+  const day = d.getUTCDay(); // 0=Sun..6=Sat
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diffToMonday);
+  return d.toISOString().slice(0, 10);
+}
+function monthRangeISO(iso) {
+  const [y, m] = iso.split('-');
+  const from = `${y}-${m}-01`;
+  const lastDay = new Date(Date.UTC(Number(y), Number(m), 0)).getUTCDate();
+  const to = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+  return [from, to];
+}
+async function buildDailySalesReport() {
+  const today = todayISOBangkok();
+  return buildSalesReport(today, today, 'วันนี้');
+}
+async function buildWeeklySalesReport() {
+  const today = todayISOBangkok();
+  const from = startOfWeekISO(today);
+  return buildSalesReport(from, addDaysISO(from, 6), 'สัปดาห์นี้');
+}
+async function buildMonthlySalesReport() {
+  const [from, to] = monthRangeISO(todayISOBangkok());
+  return buildSalesReport(from, to, 'เดือนนี้');
+}
+
 function todayISOBangkok() {
   return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
@@ -660,6 +785,9 @@ exports.lineWebhook = onRequest(
           await setAwaitingInput(userId, { type: 'edit-lookup' });
           replyText = 'มีมี่ยินดีรับใช้ค่ะ แจ้งชื่อลูกค้าเพื่อแก้ไขได้เลยค่ะ';
         } else if (cmd === 'ฟอร์ม') replyText = `📝 เปิดฟอร์มบันทึกข้อมูลได้ที่นี่ค่ะ:\nhttps://liff.line.me/${LIFF_ID}`;
+        else if (cmd === 'รายงานยอดขาย') replyText = ['มีมี่ จะสรุปยอดขายวันนี้ให้นะคะ', await buildDailySalesReport()];
+        else if (cmd === 'รายงานยอดขายต่อสัปดาห์') replyText = ['มีมี่ จะสรุปยอดขายสัปดาห์นี้ให้นะคะ', await buildWeeklySalesReport()];
+        else if (cmd === 'รายงานยอดขายต่อเดือน') replyText = ['มีมี่ จะสรุปยอดขายเดือนนี้ให้นะคะ', await buildMonthlySalesReport()];
         else {
           // Recognized by its own labels, independent of whether an "ออเดอร์"/"แก้ออเดอร์"
           // trigger happened first (or its 10-minute window already lapsed) — pasting a
