@@ -453,8 +453,26 @@ async function handleOrderCommand(fields, userId) {
 
 async function handleConfirmCommand(userId) {
   const ref = db.collection('linePendingOrders').doc(userId);
-  const doc = await ref.get();
-  if (!doc.exists) return 'ไม่มีรายการที่รอยืนยันค่ะ พิมพ์คำสั่ง "ออเดอร์" ใหม่ได้เลยนะคะ';
+  let doc = await ref.get();
+
+  if (!doc.exists) {
+    // Nothing staged yet — if an order was pulled up for editing and the only thing sent
+    // since was a slip photo (no text edit), treat "ยืนยัน" as confirming it unchanged
+    // rather than making the user resend the whole template just to attach a slip.
+    const awaiting = await popAwaitingInput(userId);
+    if (awaiting && awaiting.type === 'edit-order') {
+      const orderDoc = await db.collection('orders').doc(awaiting.orderId).get();
+      if (orderDoc.exists) {
+        const stageResult = await handleEditOrderCommand(orderToTemplateText(orderDoc.data()), userId, awaiting.orderId);
+        doc = await ref.get();
+        if (!doc.exists) return stageResult; // staging itself failed — surface why
+      } else {
+        return 'ไม่มีรายการที่รอยืนยันค่ะ พิมพ์คำสั่ง "ออเดอร์" ใหม่ได้เลยนะคะ';
+      }
+    } else {
+      return 'ไม่มีรายการที่รอยืนยันค่ะ พิมพ์คำสั่ง "ออเดอร์" ใหม่ได้เลยนะคะ';
+    }
+  }
 
   const { order, createdAt, previousStockConsumed } = doc.data();
   await ref.delete();
