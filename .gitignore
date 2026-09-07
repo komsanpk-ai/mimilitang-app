@@ -2,5 +2,8 @@
 *.csv
 *.json
 !package.json
+!package-lock.json
 !manifest.json
 !backups/*.json
+node_modules/
+firebase-debug.log

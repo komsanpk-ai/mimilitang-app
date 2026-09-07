@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>บันทึกข้อมูล — มีมี่ ลี่ถัง</title>
+<style>
+  :root{ --brand:#7a1f1f; --bg:#fff8ef; --card:#ffffff; --border:#e8ddd0; --text:#2a1c1c; --muted:#8a7a6d; --danger:#c0392b; --ok:#1e7e34; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{background:var(--brand);color:#fff;padding:16px 18px;font-size:18px;font-weight:700;}
+  .tabs{display:flex;gap:8px;padding:12px 14px 0;}
+  .tabs button{flex:1;padding:10px;border:1px solid var(--border);background:var(--card);border-radius:10px 10px 0 0;font-size:15px;font-weight:600;color:var(--muted);}
+  .tabs button.active{background:var(--card);color:var(--brand);border-bottom:3px solid var(--brand);}
+  main{padding:14px;max-width:520px;margin:0 auto;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:0 10px 10px 10px;padding:16px;}
+  .field{margin-bottom:14px;}
+  label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:5px;}
+  label.req::after{content:" *";color:var(--danger);}
+  input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;font-size:16px;background:#fff;color:var(--text);}
+  textarea{resize:vertical;min-height:60px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .submit-btn{width:100%;padding:14px;margin-top:6px;background:var(--brand);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;}
+  .submit-btn:disabled{opacity:.5;}
+  .msg{margin:14px 0 0;padding:12px 14px;border-radius:10px;font-size:14px;white-space:pre-wrap;line-height:1.6;}
+  .msg.ok{background:#eafaf0;color:var(--ok);border:1px solid #b6e6c4;}
+  .msg.err{background:#fdecea;color:var(--danger);border:1px solid #f4c7c2;}
+  .hint{font-size:12px;color:var(--muted);margin-top:-8px;margin-bottom:14px;}
+  .loading{padding:40px 20px;text-align:center;color:var(--muted);}
+</style>
+</head>
+<body>
+<header>🍧 บันทึกข้อมูล — มีมี่ ลี่ถัง</header>
+<div class="tabs">
+  <button type="button" id="tabOrder" class="active">📦 บันทึกออเดอร์</button>
+  <button type="button" id="tabStockin">📥 รับสต๊อก</button>
+</div>
+<main>
+  <div id="loadingBox" class="loading">กำลังโหลด...</div>
+
+  <form id="orderForm" class="card" style="display:none;">
+    <div class="field"><label class="req">ชื่อลูกค้า</label><input type="text" id="o_customer" required></div>
+    <div class="field"><label class="req">เบอร์โทร</label><input type="tel" id="o_phone" required></div>
+    <div class="field"><label>ที่อยู่จัดส่ง</label><textarea id="o_address"></textarea></div>
+    <div class="field"><label class="req">สินค้า</label><select id="o_product" required></select></div>
+    <div class="row2">
+      <div class="field"><label>ถ้วยเล็ก</label><input type="number" min="0" id="o_jarSmall" value="0"></div>
+      <div class="field"><label>ถ้วยใหญ่</label><input type="number" min="0" id="o_jarLarge" value="0"></div>
+    </div>
+    <div class="hint">ต้องมีถ้วยเล็กหรือถ้วยใหญ่อย่างน้อย 1 อย่าง</div>
+    <div class="field"><label>ช่องทาง</label><select id="o_channel"><option value="">— ไม่ระบุ —</option></select></div>
+    <div class="field"><label>วันที่จัดส่ง</label><input type="date" id="o_deliveryDate"></div>
+    <div class="row2">
+      <div class="field"><label>สถานะจัดส่ง</label><select id="o_shippingStatus"></select></div>
+      <div class="field"><label>การชำระเงิน</label><select id="o_paymentStatus"></select></div>
+    </div>
+    <div class="field"><label>ประเภทการจ่ายเงิน</label><select id="o_paymentMethod"><option value="">— ไม่ระบุ —</option></select></div>
+    <div class="row2">
+      <div class="field"><label>ค่าจัดส่ง (บาท)</label><input type="number" min="0" id="o_shippingFee" value="0"></div>
+      <div class="field"><label>มัดจำ (บาท)</label><input type="number" min="0" id="o_deposit" value="0"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>ส่วนลด</label><input type="number" min="0" id="o_discountValue" value="0"></div>
+      <div class="field"><label>ประเภทส่วนลด</label><select id="o_discountType"><option value="บาท">บาท</option><option value="เปอร์เซ็นต์">เปอร์เซ็นต์</option></select></div>
+    </div>
+    <div class="field"><label>หมายเหตุ</label><textarea id="o_note"></textarea></div>
+    <button type="submit" class="submit-btn" id="orderSubmitBtn">💾 บันทึกออเดอร์</button>
+    <div id="orderMsg"></div>
+  </form>
+
+  <form id="stockinForm" class="card" style="display:none;">
+    <div class="field"><label class="req">วัตถุดิบ</label><select id="s_material" required></select></div>
+    <div class="row2">
+      <div class="field"><label class="req">จำนวน</label><input type="number" min="0" step="any" id="s_qty" required></div>
+      <div class="field"><label>ราคาต่อหน่วย (บาท)</label><input type="number" min="0" step="any" id="s_price" value="0"></div>
+    </div>
+    <div class="field"><label>ผู้ขาย</label><input type="text" id="s_supplier"></div>
+    <div class="field"><label>หมายเหตุ</label><textarea id="s_note"></textarea></div>
+    <button type="submit" class="submit-btn" id="stockinSubmitBtn">💾 บันทึกรับสต๊อก</button>
+    <div id="stockinMsg"></div>
+  </form>
+</main>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+const LIFF_ID = '2011483690-dOIJqY86';
+const API_BASE = 'https://asia-southeast1-mimilitang-app.cloudfunctions.net';
+
+let idToken = null;
+let options = null;
+
+function isoToThaiDate(iso){ const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function fillSelect(el, items, {placeholder} = {}){
+  el.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : '') +
+    items.map(v => `<option value="${v}">${v}</option>`).join('');
+}
+
+async function init(){
+  try{
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    idToken = liff.getIDToken();
+
+    const res = await fetch(`${API_BASE}/getFormOptions`);
+    options = await res.json();
+
+    fillSelect(document.getElementById('o_product'), options.products.map(p=>p.name));
+    fillSelect(document.getElementById('o_channel'), options.channels, {placeholder:'— ไม่ระบุ —'});
+    fillSelect(document.getElementById('o_paymentMethod'), options.paymentMethods, {placeholder:'— ไม่ระบุ —'});
+    fillSelect(document.getElementById('o_shippingStatus'), options.shippingStatuses);
+    fillSelect(document.getElementById('o_paymentStatus'), options.paymentStatuses);
+    fillSelect(document.getElementById('s_material'), options.materials.map(m=>m.name));
+
+    const tomorrow = new Date(Date.now() + 24*60*60*1000);
+    document.getElementById('o_deliveryDate').value = tomorrow.toISOString().slice(0,10);
+
+    document.getElementById('loadingBox').style.display = 'none';
+    document.getElementById('orderForm').style.display = 'block';
+  }catch(err){
+    document.getElementById('loadingBox').textContent = 'โหลดไม่สำเร็จ: ' + (err.message || err);
+  }
+}
+
+document.getElementById('tabOrder').addEventListener('click', ()=>{
+  document.getElementById('tabOrder').classList.add('active');
+  document.getElementById('tabStockin').classList.remove('active');
+  document.getElementById('orderForm').style.display = 'block';
+  document.getElementById('stockinForm').style.display = 'none';
+});
+document.getElementById('tabStockin').addEventListener('click', ()=>{
+  document.getElementById('tabStockin').classList.add('active');
+  document.getElementById('tabOrder').classList.remove('active');
+  document.getElementById('stockinForm').style.display = 'block';
+  document.getElementById('orderForm').style.display = 'none';
+});
+
+async function submitToServer(type, fields, btn, msgBox){
+  btn.disabled = true;
+  msgBox.innerHTML = '';
+  try{
+    const res = await fetch(`${API_BASE}/liffSubmit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken, type, fields })
+    });
+    const data = await res.json();
+    const box = document.createElement('div');
+    box.className = 'msg ' + (data.ok ? 'ok' : 'err');
+    box.textContent = data.ok ? `${data.message}\n\n${data.summary}` : data.message;
+    msgBox.appendChild(box);
+    if (data.ok) setTimeout(()=>liff.closeWindow(), 1800);
+  }catch(err){
+    const box = document.createElement('div');
+    box.className = 'msg err';
+    box.textContent = 'ส่งข้อมูลไม่สำเร็จ: ' + (err.message || err);
+    msgBox.appendChild(box);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('orderForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const jarSmall = Number(document.getElementById('o_jarSmall').value)||0;
+  const jarLarge = Number(document.getElementById('o_jarLarge').value)||0;
+  if (jarSmall<=0 && jarLarge<=0){ alert('กรุณาระบุจำนวนถ้วยเล็กหรือถ้วยใหญ่อย่างน้อย 1 อย่าง'); return; }
+  const deliveryIso = document.getElementById('o_deliveryDate').value;
+  const fields = {
+    'ลูกค้า': document.getElementById('o_customer').value.trim(),
+    'เบอร์': document.getElementById('o_phone').value.trim(),
+    'ที่อยู่': document.getElementById('o_address').value.trim(),
+    'สินค้า': document.getElementById('o_product').value,
+    'ถ้วยเล็ก': String(jarSmall),
+    'ถ้วยใหญ่': String(jarLarge),
+    'ช่องทาง': document.getElementById('o_channel').value,
+    'วันที่จัดส่ง': deliveryIso ? isoToThaiDate(deliveryIso) : '',
+    'สถานะจัดส่ง': document.getElementById('o_shippingStatus').value,
+    'การชำระเงิน': document.getElementById('o_paymentStatus').value,
+    'ประเภทการจ่ายเงิน': document.getElementById('o_paymentMethod').value,
+    'ค่าจัดส่ง': document.getElementById('o_shippingFee').value || '0',
+    'ส่วนลด': document.getElementById('o_discountValue').value || '0',
+    'ประเภทส่วนลด': document.getElementById('o_discountType').value,
+    'มัดจำ': document.getElementById('o_deposit').value || '0',
+    'หมายเหตุ': document.getElementById('o_note').value.trim()
+  };
+  Object.keys(fields).forEach(k=>{ if(fields[k]==='') delete fields[k]; });
+  submitToServer('order', fields, document.getElementById('orderSubmitBtn'), document.getElementById('orderMsg'));
+});
+
+document.getElementById('stockinForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const fields = {
+    'วัตถุดิบ': document.getElementById('s_material').value,
+    'จำนวน': document.getElementById('s_qty').value,
+    'ราคาต่อหน่วย': document.getElementById('s_price').value || '0',
+    'ผู้ขาย': document.getElementById('s_supplier').value.trim(),
+    'หมายเหตุ': document.getElementById('s_note').value.trim()
+  };
+  Object.keys(fields).forEach(k=>{ if(fields[k]==='') delete fields[k]; });
+  submitToServer('stockin', fields, document.getElementById('stockinSubmitBtn'), document.getElementById('stockinMsg'));
+});
+
+init();
+</script>
+</body>
+</html>
