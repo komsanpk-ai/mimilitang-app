@@ -61,10 +61,10 @@ function parseKeyValueLines(lines) {
 const SHIPPING_STATUSES = ['รอเตรียมส่ง', 'กำลังจัดส่ง', 'ส่งลูกค้าเรียบร้อย', 'ยกเลิก'];
 const PAYMENT_STATUSES = ['ยังไม่ได้รับเงิน', 'มัดจำ', 'ได้รับเงินแล้ว'];
 
-const HELP_TEXT = `พิมพ์คำสั่งตามแบบนี้ครับ
+const HELP_TEXT = `พิมพ์คำสั่งตามแบบนี้ค่ะ
 
 💡 พิมพ์คำว่า "ออเดอร์" เฉยๆ คำเดียว แล้วบอทจะบอกให้พิมพ์ข้อมูลทีละบรรทัดต่อเอง (ไม่ต้องจำชื่อฟิลด์)
-💡 พิมพ์คำว่า "แก้ออเดอร์" เพื่อเรียกออเดอร์ล่าสุดที่บันทึกไว้กลับมาแก้ไข
+💡 พิมพ์คำว่า "แก้ออเดอร์" แล้วบอกชื่อลูกค้า เพื่อเรียกออเดอร์ล่าสุดของลูกค้าคนนั้นกลับมาแก้ไข
 💡 หรือพิมพ์คำว่า "ฟอร์ม" เพื่อเปิดหน้ากรอกข้อมูลแบบมีปุ่มกดแทนได้เลย
 
 📦 บันทึกออเดอร์แบบพิมพ์รวดเดียว (จำเป็น: ลูกค้า, เบอร์, สินค้า, ถ้วยเล็ก/ถ้วยใหญ่ อย่างน้อย 1 อย่าง — ที่เหลือไม่ใส่ก็ได้ ระบบจะใช้ค่าเริ่มต้นให้):
@@ -103,33 +103,6 @@ const CONFIRM_WINDOW_MS = 10 * 60 * 1000; // pending order draft / awaiting-inpu
 // a Thai address's own commas can't shift every field after it out of alignment.
 const ORDER_FIELD_SEQUENCE = ['ลูกค้า', 'เบอร์', 'ที่อยู่', 'สินค้า', 'ถ้วยเล็ก', 'ถ้วยใหญ่', 'วันที่จัดส่ง', 'ช่องทาง', 'ค่าจัดส่ง', 'ส่วนลด', 'มัดจำ'];
 
-const ORDER_PASTE_PROMPT = `พิมพ์ข้อมูลเรียงทีละบรรทัดตามลำดับนี้ได้เลยครับ (ไม่ต้องใส่ชื่อหัวข้อนำหน้า) ถ้าอันไหนไม่มีข้อมูล เว้นบรรทัดว่างไว้แทนที่ เพื่อไม่ให้บรรทัดถัดไปเลื่อนตำแหน่งผิด:
-
-1. ชื่อลูกค้า
-2. เบอร์โทร
-3. ที่อยู่
-4. สินค้า
-5. ถ้วยเล็ก
-6. ถ้วยใหญ่
-7. วันที่จัดส่ง (วัน/เดือน/ปี เช่น 7/9/2026 — เว้นว่าง = พรุ่งนี้)
-8. ช่องทาง (เช่น Facebook — เว้นว่างได้)
-9. ค่าจัดส่ง
-10. ส่วนลด
-11. มัดจำ
-
-ตัวอย่าง:
-สมชาย ใจดี
-0812345678
-123 หมู่ 4 ต.บางบัวทอง
-ลี่ถัง 8 เซียน
-5
-5
-7/9/2026
-Facebook
-20
-39
-100`;
-
 function parsePositionalOrder(rawText) {
   const rows = rawText.split('\n').map(l => l.trim());
   const fields = {};
@@ -144,7 +117,7 @@ function isoToThaiDateDisplay(iso) {
   return `${Number(d)}/${Number(m)}/${y}`;
 }
 
-// Renders an existing order back into the same 11 lines/order as ORDER_PASTE_PROMPT, so
+// Renders an existing order back into the same 11-line order as ORDER_FIELD_SEQUENCE, so
 // "แก้ออเดอร์" can hand the user something they copy, tweak one line of, and send back.
 function orderToPositionalText(order) {
   return [
@@ -318,57 +291,65 @@ async function handleOrderCommand(fields, userId) {
   if (!result.ok) return result.message;
 
   await db.collection('linePendingOrders').doc(userId).set({ order: result.order, createdAt: Date.now() });
-  return `📝 ตรวจสอบข้อมูลก่อนบันทึกครับ\n\n${formatOrderSummary(result.order)}\n\nถ้าถูกต้อง พิมพ์ "ยืนยัน" เพื่อบันทึกจริง หรือ "ยกเลิก" เพื่อยกเลิกรายการนี้`;
+  return `📝 ตรวจสอบข้อมูลก่อนบันทึกค่ะ\n\n${formatOrderSummary(result.order)}\n\nถ้าถูกต้อง พิมพ์ "ยืนยัน" เพื่อบันทึกจริง หรือ "ยกเลิก" เพื่อยกเลิกรายการนี้นะคะ`;
 }
 
 async function handleConfirmCommand(userId) {
   const ref = db.collection('linePendingOrders').doc(userId);
   const doc = await ref.get();
-  if (!doc.exists) return 'ไม่มีรายการที่รอยืนยันครับ พิมพ์คำสั่ง "ออเดอร์" ใหม่ได้เลย';
+  if (!doc.exists) return 'ไม่มีรายการที่รอยืนยันค่ะ พิมพ์คำสั่ง "ออเดอร์" ใหม่ได้เลยนะคะ';
 
   const { order, createdAt } = doc.data();
   await ref.delete();
   if (Date.now() - createdAt > CONFIRM_WINDOW_MS) {
-    return 'รายการที่ค้างไว้หมดอายุแล้ว (เกิน 10 นาที) กรุณาพิมพ์คำสั่ง "ออเดอร์" ใหม่อีกครั้งครับ';
+    return 'รายการที่ค้างไว้หมดอายุแล้ว (เกิน 10 นาที) กรุณาพิมพ์คำสั่ง "ออเดอร์" ใหม่อีกครั้งนะคะ';
   }
 
   await db.collection('orders').doc(order.id).set(order);
-  // Remembered so "แก้ออเดอร์" (with no order specified) knows which order to reopen.
-  await db.collection('lineLastOrder').doc(userId).set({ orderId: order.id, at: Date.now() });
   return `✅ บันทึกออเดอร์แล้ว\n\n${formatOrderSummary(order)}`;
 }
 
 async function handleCancelCommand(userId) {
   const ref = db.collection('linePendingOrders').doc(userId);
   const doc = await ref.get();
-  if (!doc.exists) return 'ไม่มีรายการที่ค้างไว้ครับ';
+  if (!doc.exists) return 'ไม่มีรายการที่ค้างไว้ค่ะ';
   await ref.delete();
-  return 'ยกเลิกรายการที่ค้างไว้แล้วครับ';
+  return 'ยกเลิกรายการที่ค้างไว้แล้วนะคะ';
 }
 
-// "แก้ออเดอร์" reopens the last order THIS LINE user saved, pre-filled with its current
-// values in the same 11-line order as the paste flow — copy, fix the one wrong line, resend.
-async function handleEditOrderStart(userId) {
-  const lastDoc = await db.collection('lineLastOrder').doc(userId).get();
-  if (!lastDoc.exists) return 'ยังไม่มีออเดอร์ล่าสุดที่บันทึกไว้ในแชทนี้ครับ ต้องบันทึกออเดอร์ก่อนถึงจะแก้ไขได้';
-  const orderDoc = await db.collection('orders').doc(lastDoc.data().orderId).get();
-  if (!orderDoc.exists) return 'ไม่พบออเดอร์ล่าสุดในระบบแล้วครับ (อาจถูกลบไปแล้ว)';
-  const order = orderDoc.data();
-
-  await setAwaitingInput(userId, { type: 'edit-order', orderId: order.id });
-  return `นี่คือข้อมูลออเดอร์ล่าสุดของคุณครับ (${order.customerName})\nคัดลอกข้อความด้านล่าง แก้เฉพาะบรรทัดที่ผิด แล้วส่งกลับมาทั้งหมด:\n\n${orderToPositionalText(order)}`;
+// "แก้ออเดอร์" step 2: finds the most recent order whose customer name contains what was
+// typed. Good enough for a one-person/small-team shop; doesn't disambiguate multiple matches
+// since picking "the latest one" is what you want almost every time you're fixing a typo.
+async function findOrderByCustomerName(name) {
+  const wanted = name.trim().toLowerCase();
+  if (!wanted) return null;
+  const snap = await db.collection('orders').get();
+  const matches = snap.docs.map(d => d.data()).filter(o => (o.customerName || '').toLowerCase().includes(wanted));
+  if (!matches.length) return null;
+  matches.sort((a, b) => (b.orderDate || '').localeCompare(a.orderDate || ''));
+  return matches[0];
 }
 
-// Re-validates the edited lines exactly like a fresh order, then overwrites the SAME
+// Fills in any line the user left blank/omitted with that same line from the order's
+// current value, so "just retype the lines you're changing" works without needing a
+// copy-paste round trip.
+function mergeEditLines(original, editedText) {
+  const originalLines = orderToPositionalText(original).split('\n');
+  const editedLines = editedText.split('\n').map(l => l.trim());
+  return ORDER_FIELD_SEQUENCE.map((_, i) => editedLines[i] || originalLines[i] || '').join('\n');
+}
+
+// Re-validates the merged lines exactly like a fresh order, then overwrites the SAME
 // order id — preserving orderDate and the fields the positional format doesn't cover
 // (shippingStatus/paymentStatus/paymentMethod/discountType/note/paymentSlip) so editing
 // the address, say, can't silently reset a delivery status someone already set on the web.
 async function handleEditOrderCommand(rawText, userId, orderId) {
   const origDoc = await db.collection('orders').doc(orderId).get();
-  if (!origDoc.exists) return 'ไม่พบออเดอร์นี้ในระบบแล้วครับ (อาจถูกลบไปแล้ว) พิมพ์ "แก้ออเดอร์" ใหม่อีกครั้ง';
+  if (!origDoc.exists) return 'ไม่พบออเดอร์นี้ในระบบแล้วค่ะ (อาจถูกลบไปแล้ว) พิมพ์ "แก้ออเดอร์" ใหม่อีกครั้งนะคะ';
   const original = origDoc.data();
 
-  const result = await buildOrderDraft(parsePositionalOrder(rawText));
+  const mergedText = mergeEditLines(original, rawText);
+  const result = await buildOrderDraft(parsePositionalOrder(mergedText));
   if (!result.ok) return result.message;
 
   const merged = {
@@ -384,7 +365,7 @@ async function handleEditOrderCommand(rawText, userId, orderId) {
   };
 
   await db.collection('linePendingOrders').doc(userId).set({ order: merged, createdAt: Date.now() });
-  return `📝 ตรวจสอบข้อมูลที่แก้ไขก่อนบันทึกครับ\n\n${formatOrderSummary(merged)}\n\nถ้าถูกต้อง พิมพ์ "ยืนยัน" เพื่อบันทึกจริง หรือ "ยกเลิก" เพื่อยกเลิก`;
+  return `📝 ตรวจสอบข้อมูลที่แก้ไขก่อนบันทึกค่ะ\n\n${formatOrderSummary(merged)}\n\nถ้าถูกต้อง พิมพ์ "ยืนยัน" เพื่อบันทึกจริง หรือ "ยกเลิก" เพื่อยกเลิกนะคะ`;
 }
 
 // Shared by the text-command bot and the LIFF form submit endpoint — validates + builds
@@ -460,22 +441,32 @@ exports.lineWebhook = onRequest(
       let replyText;
       try {
         if (['ออเดอร์', 'ยืนยัน', 'ยกเลิก', 'แก้ออเดอร์'].includes(cmd) && !userId) {
-          replyText = '❌ ใช้คำสั่งนี้ได้เฉพาะแชทส่วนตัวกับร้านครับ';
+          replyText = '❌ ใช้คำสั่งนี้ได้เฉพาะแชทส่วนตัวกับร้านนะคะ';
         } else if (cmd === 'ออเดอร์' && lines.length === 1) {
           // "ออเดอร์" typed alone (no label:value lines attached) -> switch to the
           // positional paste flow instead of immediately complaining about missing fields.
           await setAwaitingInput(userId, { type: 'order' });
-          replyText = ORDER_PASTE_PROMPT;
+          replyText = 'มีมี่ยินดีรับใช้ค่ะ กรอกข้อมูลลูกค้าได้เลยค่ะ';
         } else if (cmd === 'ออเดอร์') replyText = await handleOrderCommand(fields, userId);
         else if (cmd === 'ยืนยัน') replyText = await handleConfirmCommand(userId);
         else if (cmd === 'ยกเลิก') replyText = await handleCancelCommand(userId);
         else if (cmd === 'รับสต๊อก') replyText = await handleStockinCommand(fields);
-        else if (cmd === 'แก้ออเดอร์') replyText = await handleEditOrderStart(userId);
-        else if (cmd === 'ฟอร์ม') replyText = `📝 เปิดฟอร์มบันทึกข้อมูลได้ที่นี่ครับ:\nhttps://liff.line.me/${LIFF_ID}`;
+        else if (cmd === 'แก้ออเดอร์') {
+          await setAwaitingInput(userId, { type: 'edit-lookup' });
+          replyText = 'มีมี่ยินดีรับใช้ค่ะ แจ้งชื่อลูกค้าเพื่อแก้ไขได้เลยค่ะ';
+        } else if (cmd === 'ฟอร์ม') replyText = `📝 เปิดฟอร์มบันทึกข้อมูลได้ที่นี่ค่ะ:\nhttps://liff.line.me/${LIFF_ID}`;
         else {
           const awaiting = userId ? await popAwaitingInput(userId) : null;
           if (awaiting && awaiting.type === 'order') {
             replyText = await handleOrderCommand(parsePositionalOrder(event.message.text), userId);
+          } else if (awaiting && awaiting.type === 'edit-lookup') {
+            const found = await findOrderByCustomerName(event.message.text);
+            if (!found) {
+              replyText = `ไม่พบออเดอร์ของ "${event.message.text.trim()}" ค่ะ พิมพ์ "แก้ออเดอร์" ใหม่อีกครั้งนะคะ`;
+            } else {
+              await setAwaitingInput(userId, { type: 'edit-order', orderId: found.id });
+              replyText = orderToPositionalText(found);
+            }
           } else if (awaiting && awaiting.type === 'edit-order') {
             replyText = await handleEditOrderCommand(event.message.text, userId, awaiting.orderId);
           } else {
