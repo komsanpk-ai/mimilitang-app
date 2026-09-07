@@ -146,40 +146,9 @@ function parseKeyValueLines(lines) {
 const SHIPPING_STATUSES = ['รอเตรียมส่ง', 'กำลังจัดส่ง', 'ส่งลูกค้าเรียบร้อย', 'ยกเลิก'];
 const PAYMENT_STATUSES = ['ยังไม่ได้รับเงิน', 'มัดจำ', 'ได้รับเงินแล้ว'];
 
-const HELP_TEXT = `พิมพ์คำสั่งตามแบบนี้ค่ะ
-
-💡 พิมพ์คำว่า "ออเดอร์" เฉยๆ คำเดียว แล้วบอทจะบอกให้พิมพ์ข้อมูลทีละบรรทัดต่อเอง (ไม่ต้องจำชื่อฟิลด์)
-💡 พิมพ์คำว่า "แก้ออเดอร์" แล้วบอกชื่อลูกค้า เพื่อเรียกออเดอร์ล่าสุดของลูกค้าคนนั้นกลับมาแก้ไข
-💡 หรือพิมพ์คำว่า "ฟอร์ม" เพื่อเปิดหน้ากรอกข้อมูลแบบมีปุ่มกดแทนได้เลย
-
-📦 บันทึกออเดอร์แบบพิมพ์รวดเดียว (จำเป็น: ลูกค้า, เบอร์, สินค้า, ถ้วยเล็ก/ถ้วยใหญ่ อย่างน้อย 1 อย่าง — ที่เหลือไม่ใส่ก็ได้ ระบบจะใช้ค่าเริ่มต้นให้):
-ออเดอร์
-ลูกค้า: ชื่อลูกค้า
-เบอร์: 08xxxxxxxx
-ที่อยู่: ที่อยู่จัดส่ง
-สินค้า: ชื่อสินค้า
-ถ้วยเล็ก: 2
-ถ้วยใหญ่: 1
-ช่องทาง: Facebook
-วันที่จัดส่ง: 25/12/2026 (ไม่ใส่ = พรุ่งนี้)
-สถานะจัดส่ง: ${SHIPPING_STATUSES.join('/')} (ไม่ใส่ = ${SHIPPING_STATUSES[0]})
-การชำระเงิน: ${PAYMENT_STATUSES.join('/')} (ไม่ใส่ = ${PAYMENT_STATUSES[0]})
-ประเภทการจ่ายเงิน: เงินสด/โอน (ตามที่ตั้งค่าไว้ในระบบ)
-ค่าจัดส่ง: 20
-ส่วนลด: 10
-ประเภทส่วนลด: บาท/เปอร์เซ็นต์ (ไม่ใส่ = บาท)
-มัดจำ: 100
-หมายเหตุ: ข้อความเพิ่มเติม
-
-ระบบจะสรุปให้ดูก่อน พิมพ์ "ยืนยัน" เพื่อบันทึกจริง หรือ "ยกเลิก" เพื่อยกเลิก
-
-📥 รับวัตถุดิบเข้าสต๊อก:
-รับสต๊อก
-วัตถุดิบ: ชื่อวัตถุดิบ
-จำนวน: 5
-ราคาต่อหน่วย: 120 (ไม่ใส่ก็ได้)
-ผู้ขาย: ชื่อร้าน (ไม่ใส่ก็ได้)
-หมายเหตุ: (ไม่ใส่ก็ได้)`;
+// Kept short deliberately — this fires on every unrecognized message, so it must never be
+// the long field-by-field reference that used to live here.
+const HELP_TEXT = 'พิมพ์ "ออเดอร์" เพื่อบันทึกออเดอร์, "รับสต๊อก" เพื่อบันทึกวัตถุดิบเข้า, หรือ "ฟอร์ม" เพื่อเปิดหน้ากรอกแบบมีปุ่มกดค่ะ';
 
 const CONFIRM_WINDOW_MS = 10 * 60 * 1000; // pending order draft / awaiting-input state expires after 10 minutes
 
@@ -347,7 +316,7 @@ async function buildOrderDraft(fields) {
   if (!fields['ลูกค้า']) missing.push('ลูกค้า');
   if (!fields['เบอร์']) missing.push('เบอร์');
   if (!fields['สินค้า']) missing.push('สินค้า');
-  if (missing.length) return { ok: false, message: `❌ ข้อมูลไม่ครบ: ขาด ${missing.join(', ')}\n\n${HELP_TEXT}` };
+  if (missing.length) return { ok: false, message: `❌ ข้อมูลไม่ครบ: ขาด ${missing.join(', ')}ค่ะ` };
 
   const phoneDigits = fields['เบอร์'].replace(/[^0-9]/g, '');
   if (phoneDigits.length < 9 || phoneDigits.length > 10) {
@@ -570,7 +539,7 @@ async function buildStockinDraft(fields) {
   const missing = [];
   if (!fields['วัตถุดิบ']) missing.push('วัตถุดิบ');
   if (!fields['จำนวน']) missing.push('จำนวน');
-  if (missing.length) return { ok: false, message: `❌ ข้อมูลไม่ครบ: ขาด ${missing.join(', ')}\n\n${HELP_TEXT}` };
+  if (missing.length) return { ok: false, message: `❌ ข้อมูลไม่ครบ: ขาด ${missing.join(', ')}ค่ะ` };
 
   const qty = Number(fields['จำนวน']) || 0;
   if (qty <= 0) return { ok: false, message: '❌ จำนวนต้องมากกว่า 0' };
