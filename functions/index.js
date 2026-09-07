@@ -672,9 +672,19 @@ exports.lineWebhook = onRequest(
           replyText = 'มีมี่ยินดีรับใช้ค่ะ แจ้งชื่อลูกค้าเพื่อแก้ไขได้เลยค่ะ';
         } else if (cmd === 'ฟอร์ม') replyText = `📝 เปิดฟอร์มบันทึกข้อมูลได้ที่นี่ค่ะ:\nhttps://liff.line.me/${LIFF_ID}`;
         else {
+          // Recognized by its own labels, independent of whether an "ออเดอร์"/"แก้ออเดอร์"
+          // trigger happened first (or its 10-minute window already lapsed) — pasting a
+          // filled-in template should always work, not just right after asking for one.
+          // Require 2+ matched labels, not just 1 — a casual one-liner like "สินค้าหมดยัง"
+          // would otherwise falsely match the "สินค้า" label on its own.
+          const templateFields = parseTemplateOrder(event.message.text);
+          const looksLikeOrderTemplate = Object.keys(templateFields).length >= 2;
           const awaiting = userId ? await popAwaitingInput(userId) : null;
-          if (awaiting && awaiting.type === 'order') {
-            replyText = await handleOrderCommand(parseTemplateOrder(event.message.text), userId);
+
+          if (looksLikeOrderTemplate && awaiting && awaiting.type === 'edit-order') {
+            replyText = await handleEditOrderCommand(event.message.text, userId, awaiting.orderId);
+          } else if (looksLikeOrderTemplate) {
+            replyText = await handleOrderCommand(templateFields, userId);
           } else if (awaiting && awaiting.type === 'edit-lookup') {
             const found = await findOrderByCustomerName(event.message.text);
             if (!found) {
