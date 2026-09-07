@@ -63,9 +63,10 @@ const PAYMENT_STATUSES = ['ยังไม่ได้รับเงิน', '�
 
 const HELP_TEXT = `พิมพ์คำสั่งตามแบบนี้ครับ
 
-💡 ไม่อยากพิมพ์เอง พิมพ์คำว่า "ฟอร์ม" เพื่อเปิดหน้ากรอกข้อมูลแบบมีปุ่มกดแทนได้เลย
+💡 พิมพ์คำว่า "ออเดอร์" เฉยๆ คำเดียว แล้วบอทจะบอกให้พิมพ์ข้อมูลทีละบรรทัดต่อเอง (ไม่ต้องจำชื่อฟิลด์)
+💡 หรือพิมพ์คำว่า "ฟอร์ม" เพื่อเปิดหน้ากรอกข้อมูลแบบมีปุ่มกดแทนได้เลย
 
-📦 บันทึกออเดอร์ใหม่ (จำเป็น: ลูกค้า, เบอร์, สินค้า, ถ้วยเล็ก/ถ้วยใหญ่ อย่างน้อย 1 อย่าง — ที่เหลือไม่ใส่ก็ได้ ระบบจะใช้ค่าเริ่มต้นให้):
+📦 บันทึกออเดอร์แบบพิมพ์รวดเดียว (จำเป็น: ลูกค้า, เบอร์, สินค้า, ถ้วยเล็ก/ถ้วยใหญ่ อย่างน้อย 1 อย่าง — ที่เหลือไม่ใส่ก็ได้ ระบบจะใช้ค่าเริ่มต้นให้):
 ออเดอร์
 ลูกค้า: ชื่อลูกค้า
 เบอร์: 08xxxxxxxx
@@ -94,7 +95,58 @@ const HELP_TEXT = `พิมพ์คำสั่งตามแบบนี้�
 ผู้ขาย: ชื่อร้าน (ไม่ใส่ก็ได้)
 หมายเหตุ: (ไม่ใส่ก็ได้)`;
 
-const CONFIRM_WINDOW_MS = 10 * 60 * 1000; // pending order draft expires after 10 minutes
+const CONFIRM_WINDOW_MS = 10 * 60 * 1000; // pending order draft / awaiting-input state expires after 10 minutes
+
+// Positional paste flow: type "ออเดอร์" alone -> bot asks for these values, one per line,
+// no labels -> next message is parsed by position. Lines split on '\n' only (never ',') so
+// a Thai address's own commas can't shift every field after it out of alignment.
+const ORDER_FIELD_SEQUENCE = ['ลูกค้า', 'เบอร์', 'ที่อยู่', 'สินค้า', 'ถ้วยเล็ก', 'ถ้วยใหญ่', 'วันที่จัดส่ง', 'ช่องทาง', 'ค่าจัดส่ง', 'ส่วนลด', 'มัดจำ'];
+
+const ORDER_PASTE_PROMPT = `พิมพ์ข้อมูลเรียงทีละบรรทัดตามลำดับนี้ได้เลยครับ (ไม่ต้องใส่ชื่อหัวข้อนำหน้า) ถ้าอันไหนไม่มีข้อมูล เว้นบรรทัดว่างไว้แทนที่ เพื่อไม่ให้บรรทัดถัดไปเลื่อนตำแหน่งผิด:
+
+1. ชื่อลูกค้า
+2. เบอร์โทร
+3. ที่อยู่
+4. สินค้า
+5. ถ้วยเล็ก
+6. ถ้วยใหญ่
+7. วันที่จัดส่ง (วัน/เดือน/ปี เช่น 7/9/2026 — เว้นว่าง = พรุ่งนี้)
+8. ช่องทาง (เช่น Facebook — เว้นว่างได้)
+9. ค่าจัดส่ง
+10. ส่วนลด
+11. มัดจำ
+
+ตัวอย่าง:
+สมชาย ใจดี
+0812345678
+123 หมู่ 4 ต.บางบัวทอง
+ลี่ถัง 8 เซียน
+5
+5
+7/9/2026
+Facebook
+20
+39
+100`;
+
+function parsePositionalOrder(rawText) {
+  const rows = rawText.split('\n').map(l => l.trim());
+  const fields = {};
+  ORDER_FIELD_SEQUENCE.forEach((key, i) => { if (rows[i]) fields[key] = rows[i]; });
+  return fields;
+}
+
+async function setAwaitingInput(userId, type) {
+  await db.collection('lineAwaitingInput').doc(userId).set({ type, createdAt: Date.now() });
+}
+async function popAwaitingInput(userId) {
+  const ref = db.collection('lineAwaitingInput').doc(userId);
+  const doc = await ref.get();
+  if (!doc.exists) return null;
+  await ref.delete();
+  const { type, createdAt } = doc.data();
+  return (Date.now() - createdAt <= CONFIRM_WINDOW_MS) ? type : null;
+}
 
 // DD/MM/YYYY (Gregorian) -> YYYY-MM-DD, or null if not a real calendar date.
 function parseThaiDate(s) {
@@ -345,12 +397,24 @@ exports.lineWebhook = onRequest(
       try {
         if (['ออเดอร์', 'ยืนยัน', 'ยกเลิก'].includes(cmd) && !userId) {
           replyText = '❌ ใช้คำสั่งนี้ได้เฉพาะแชทส่วนตัวกับร้านครับ';
+        } else if (cmd === 'ออเดอร์' && lines.length === 1) {
+          // "ออเดอร์" typed alone (no label:value lines attached) -> switch to the
+          // positional paste flow instead of immediately complaining about missing fields.
+          await setAwaitingInput(userId, 'order');
+          replyText = ORDER_PASTE_PROMPT;
         } else if (cmd === 'ออเดอร์') replyText = await handleOrderCommand(fields, userId);
         else if (cmd === 'ยืนยัน') replyText = await handleConfirmCommand(userId);
         else if (cmd === 'ยกเลิก') replyText = await handleCancelCommand(userId);
         else if (cmd === 'รับสต๊อก') replyText = await handleStockinCommand(fields);
         else if (cmd === 'ฟอร์ม') replyText = `📝 เปิดฟอร์มบันทึกข้อมูลได้ที่นี่ครับ:\nhttps://liff.line.me/${LIFF_ID}`;
-        else replyText = HELP_TEXT;
+        else {
+          const awaiting = userId ? await popAwaitingInput(userId) : null;
+          if (awaiting === 'order') {
+            replyText = await handleOrderCommand(parsePositionalOrder(event.message.text), userId);
+          } else {
+            replyText = HELP_TEXT;
+          }
+        }
       } catch (err) {
         console.error(err);
         replyText = '❌ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
