@@ -342,7 +342,30 @@ async function buildPaymentReport(fromISO, toISO) {
   return lines.join('\n');
 }
 
-const REPORT_TOP_MENU = 'มีมี่ มีรายงานที่คุณต้องการดังนี้ กดเลือกหมายเลขได้เลยค่ะ\n1. รายงานยอดขาย\n2. รายงานลูกค้า\n3. รายงานสินค้าใกล้หมดต้องซื้อ\n4. รายงานการจ่ายเงิน';
+// รายงาน > 5 — filtered by deliveryDate (not orderDate, unlike every other report here):
+// this is a picking/delivery list for what has to physically go out today, not what was sold.
+async function buildTodayDeliveryReport() {
+  const today = todayISOBangkok();
+  const snap = await db.collection('orders').where('deliveryDate', '==', today).get();
+  const orders = snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก');
+  const dateLabel = isoToThaiDateDisplay(today);
+
+  if (!orders.length) return `วันที่ ${dateLabel}\nยังไม่มีออเดอร์ที่ต้องส่งวันนี้ค่ะ`;
+
+  const productNames = [...new Set(orders.map(o => o.product))];
+  const productSuffix = productNames.length === 1 ? ` ${productNames[0]}` : '';
+
+  let totalCups = 0;
+  const entries = orders.map((o, i) => {
+    const small = Number(o.jarSmall) || 0, large = Number(o.jarLarge) || 0;
+    totalCups += small + large;
+    return `${i + 1}.${o.customerName}\nที่อยู่ ${o.address || '-'}\nถ้วยเล็ก ${fmt(small)} ถ้วย / ใหญ่ ${fmt(large)} ถ้วย`;
+  });
+
+  return `วันที่ ${dateLabel}\nรวม ${orders.length} ออเดอร์${productSuffix}\n\n${entries.join('\n\n')}\nรวมทั้งหมด ${fmt(totalCups)} ถ้วย`;
+}
+
+const REPORT_TOP_MENU = 'มีมี่ มีรายงานที่คุณต้องการดังนี้ กดเลือกหมายเลขได้เลยค่ะ\n1. รายงานยอดขาย\n2. รายงานลูกค้า\n3. รายงานสินค้าใกล้หมดต้องซื้อ\n4. รายงานการจ่ายเงิน\n5. สรุปรายชื่อและออเดอร์ส่งวันนี้';
 const REPORT_SALES_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 ยอดขายรายวัน\n2 ยอดขายรายสัปดาห์\n3 ยอดขายรายเดือน';
 const REPORT_CUSTOMER_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 จำนวนลูกค้า\n2 จำนวนครั้งที่ลูกค้าซื้อซ้ำ';
 const REPORT_CUSTOMER_COUNT_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 จำนวนลูกค้ารายวัน\n2 รายสัปดาห์\n3 รายเดือน';
@@ -921,6 +944,7 @@ exports.lineWebhook = onRequest(
             else if (choice === '2') { await setAwaitingInput(userId, { type: 'report-customer-menu' }); replyText = REPORT_CUSTOMER_SUBMENU; }
             else if (choice === '3') replyText = await buildLowStockReport();
             else if (choice === '4') { await setAwaitingInput(userId, { type: 'report-payment-period' }); replyText = REPORT_PAYMENT_SUBMENU; }
+            else if (choice === '5') replyText = await buildTodayDeliveryReport();
             else { await setAwaitingInput(userId, { type: 'report-menu' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_TOP_MENU}`; }
           } else if (awaiting && awaiting.type === 'report-sales-period') {
             const period = periodFromChoice(event.message.text.trim());
