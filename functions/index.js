@@ -151,69 +151,18 @@ function computeRecipeCostServer(recipe, materialsById) {
   return { cost, hasMissingPrice };
 }
 
-// "รายงานยอดขาย" — today's sales, cost, shipping and profit, mirroring computeAmounts()'s
-// subtotal/discount math from index.html. Cancelled orders (ยกเลิก) are excluded, matching
-// the convention already established for the app's own sales reports.
-async function buildSalesReport(fromISO, toISO, periodLabel) {
-  const [ordersSnap, productsDoc, recipesDoc, materialsSnap] = await Promise.all([
-    db.collection('orders').where('orderDate', '>=', fromISO).where('orderDate', '<=', toISO).get(),
-    db.collection('settings').doc('products').get(),
-    db.collection('settings').doc('recipes').get(),
-    db.collection('materials').get()
-  ]);
-  const periodOrders = ordersSnap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก');
-  const products = (productsDoc.exists && productsDoc.data().value) || [];
-  const recipes = (recipesDoc.exists && recipesDoc.data().value) || [];
-  const materialsById = new Map(materialsSnap.docs.map(d => [d.id, d.data()]));
-
-  const byProduct = {};
-  let totalRevenue = 0, totalCost = 0, totalShipping = 0, hasMissingPrice = false, hasMissingRecipe = false;
-
-  for (const o of periodOrders) {
-    const prod = products.find(p => p.name === o.product) || { priceSmall: 0, priceLarge: 0 };
-    const small = Number(o.jarSmall) || 0, large = Number(o.jarLarge) || 0;
-
-    const entry = byProduct[o.product] || (byProduct[o.product] = { small: 0, large: 0 });
-    entry.small += small;
-    entry.large += large;
-
-    const subtotal = small * prod.priceSmall + large * prod.priceLarge;
-    const discountVal = Number(o.discountValue) || 0;
-    const discountAmount = o.discountType === 'percent' ? subtotal * discountVal / 100 : discountVal;
-    totalRevenue += Math.max(subtotal - discountAmount, 0);
-    totalShipping += Number(o.shippingFee) || 0;
-
-    for (const [field, size] of [['jarSmall', 'small'], ['jarLarge', 'large']]) {
-      const qty = Number(o[field]) || 0;
-      if (qty <= 0) continue;
-      const recipe = recipes.find(r => r.product === o.product && r.size === size);
-      if (!recipe) { hasMissingRecipe = true; continue; }
-      const r = computeRecipeCostServer(recipe, materialsById);
-      totalCost += r.cost * qty;
-      if (r.hasMissingPrice) hasMissingPrice = true;
-    }
-  }
-
-  const profit = totalRevenue - totalCost;
-  const profitPct = totalCost > 0 ? (profit / totalCost * 100) : 0;
-
-  const productLines = Object.entries(byProduct).map(([name, q]) =>
-    `สินค้า "${name}"\nถ้วยเล็ก จำนวน ${fmt(q.small)} ถ้วย\nถ้วยใหญ่ จำนวน ${fmt(q.large)} ถ้วย`
-  ).join('\n\n');
-
-  const lines = [
-    productLines || `ยังไม่มีออเดอร์${periodLabel}ค่ะ`,
-    '',
-    `ยอดขาย${periodLabel} = ${fmt(totalRevenue)} บาท`,
-    `ต้นทุน และค่าใช้จ่ายรวม = ${fmt(totalCost)} บาท`,
-    `ค่าจัดส่งรวม = ${fmt(totalShipping)} บาท`,
-    `กำไร ไม่รวมค่าจัดส่ง = ${fmt(profit)} บาท`,
-    `คิดเป็นกำไร ${fmt(profitPct)}% ของต้นทุนและค่าใช้จ่าย`
-  ];
-  if (hasMissingPrice || hasMissingRecipe) {
-    lines.push('', '⚠️ บางรายการยังไม่มีสูตร/ราคาวัตถุดิบครบ ต้นทุนจริงอาจสูงกว่านี้');
-  }
-  return lines.join('\n');
+// Mirrors computeAmounts() in index.html exactly.
+function computeAmountsServer(o, products) {
+  const prod = products.find(p => p.name === o.product) || { priceSmall: 0, priceLarge: 0 };
+  const small = Number(o.jarSmall) || 0, large = Number(o.jarLarge) || 0;
+  const subtotal = small * prod.priceSmall + large * prod.priceLarge;
+  const shipping = Number(o.shippingFee) || 0;
+  const discountVal = Number(o.discountValue) || 0;
+  const discountAmount = o.discountType === 'percent' ? subtotal * discountVal / 100 : discountVal;
+  const grandTotal = Math.max(subtotal + shipping - discountAmount, 0);
+  const deposit = Number(o.deposit) || 0;
+  const amountReceived = o.paymentStatus === 'ได้รับเงินแล้ว' ? grandTotal : deposit;
+  return { subtotal, shipping, discountAmount, grandTotal, deposit, amountReceived };
 }
 
 // Monday..Sunday of the week containing todayISOBangkok(), and the 1st..last day of the
@@ -232,19 +181,173 @@ function monthRangeISO(iso) {
   const to = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
   return [from, to];
 }
-async function buildDailySalesReport() {
+// "1"/"2"/"3" -> {from, to} for today / this week / this month, or null if not one of those.
+function periodFromChoice(choice) {
   const today = todayISOBangkok();
-  return buildSalesReport(today, today, 'วันนี้');
+  if (choice === '1') return { from: today, to: today };
+  if (choice === '2') { const from = startOfWeekISO(today); return { from, to: addDaysISO(from, 6) }; }
+  if (choice === '3') { const [from, to] = monthRangeISO(today); return { from, to }; }
+  return null;
 }
-async function buildWeeklySalesReport() {
-  const today = todayISOBangkok();
-  const from = startOfWeekISO(today);
-  return buildSalesReport(from, addDaysISO(from, 6), 'สัปดาห์นี้');
+
+// รายงาน > 1 ยอดขาย > (period) — cup counts + revenue/cost/profit/shipping/discount, with a
+// revenue-relative ratio (cost% + profit% = 100%, matching standard margin-of-revenue bookkeeping).
+async function buildSalesSummaryReport(fromISO, toISO) {
+  const [ordersSnap, productsDoc, recipesDoc, materialsSnap] = await Promise.all([
+    db.collection('orders').where('orderDate', '>=', fromISO).where('orderDate', '<=', toISO).get(),
+    db.collection('settings').doc('products').get(),
+    db.collection('settings').doc('recipes').get(),
+    db.collection('materials').get()
+  ]);
+  const periodOrders = ordersSnap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก');
+  const products = (productsDoc.exists && productsDoc.data().value) || [];
+  const recipes = (recipesDoc.exists && recipesDoc.data().value) || [];
+  const materialsById = new Map(materialsSnap.docs.map(d => [d.id, d.data()]));
+
+  let totalSmall = 0, totalLarge = 0, totalRevenue = 0, totalCost = 0, totalShipping = 0, totalDiscount = 0;
+  let hasMissingPrice = false, hasMissingRecipe = false;
+
+  for (const o of periodOrders) {
+    const small = Number(o.jarSmall) || 0, large = Number(o.jarLarge) || 0;
+    totalSmall += small; totalLarge += large;
+
+    const amt = computeAmountsServer(o, products);
+    totalRevenue += Math.max(amt.subtotal - amt.discountAmount, 0);
+    totalShipping += amt.shipping;
+    totalDiscount += amt.discountAmount;
+
+    for (const [field, size] of [['jarSmall', 'small'], ['jarLarge', 'large']]) {
+      const qty = Number(o[field]) || 0;
+      if (qty <= 0) continue;
+      const recipe = recipes.find(r => r.product === o.product && r.size === size);
+      if (!recipe) { hasMissingRecipe = true; continue; }
+      const r = computeRecipeCostServer(recipe, materialsById);
+      totalCost += r.cost * qty;
+      if (r.hasMissingPrice) hasMissingPrice = true;
+    }
+  }
+
+  const totalCups = totalSmall + totalLarge;
+  const profit = totalRevenue - totalCost;
+  const pct = (part, whole) => whole > 0 ? part / whole * 100 : 0;
+
+  const lines = [
+    `ถ้วยเล็ก ${fmt(totalSmall)} ถ้วย ${fmt(pct(totalSmall, totalCups))}%`,
+    `ถ้วยใหญ่ ${fmt(totalLarge)} ถ้วย ${fmt(pct(totalLarge, totalCups))}%`,
+    `รวม ${fmt(totalCups)} ถ้วย`,
+    `ยอดขายรวม = ${fmt(totalRevenue)} บาท`,
+    `ต้นทุนและค่าใช้จ่าย = ${fmt(totalCost)} บาท`,
+    `กำไรรวม = ${fmt(profit)} บาท`,
+    `ค่าจัดส่งรวม = ${fmt(totalShipping)} บาท`,
+    `ส่วนลดรวม = ${fmt(totalDiscount)} บาท`,
+    `สัดส่วน รายได้ 100% ต้นทุน ${fmt(pct(totalCost, totalRevenue))}% กำไร ${fmt(pct(profit, totalRevenue))}%`
+  ];
+  if (hasMissingPrice || hasMissingRecipe) {
+    lines.push('', '⚠️ บางรายการยังไม่มีสูตร/ราคาวัตถุดิบครบ ต้นทุนจริงอาจสูงกว่านี้');
+  }
+  return lines.join('\n');
 }
-async function buildMonthlySalesReport() {
-  const [from, to] = monthRangeISO(todayISOBangkok());
-  return buildSalesReport(from, to, 'เดือนนี้');
+
+// รายงาน > 2 > 1 จำนวนลูกค้า > (period) — "new" means this phone's earliest-ever order (across
+// all history, not just this window) falls inside the window; everyone else who ordered in
+// the window is "repeat" — same first-order-date rule the app's own reports use elsewhere.
+async function buildCustomerCountReport(fromISO, toISO) {
+  const snap = await db.collection('orders').get();
+  const allOrders = snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && o.phone);
+
+  const firstOrderByPhone = new Map();
+  allOrders.forEach(o => {
+    const cur = firstOrderByPhone.get(o.phone);
+    if (!cur || o.orderDate < cur) firstOrderByPhone.set(o.phone, o.orderDate);
+  });
+
+  const customersInPeriod = new Set(
+    allOrders.filter(o => o.orderDate >= fromISO && o.orderDate <= toISO).map(o => o.phone)
+  );
+
+  let newCount = 0, oldCount = 0;
+  customersInPeriod.forEach(phone => {
+    const first = firstOrderByPhone.get(phone);
+    if (first >= fromISO && first <= toISO) newCount++; else oldCount++;
+  });
+  const total = newCount + oldCount;
+  const pct = (part) => total > 0 ? part / total * 100 : 0;
+
+  return [
+    `ลูกค้าใหม่ ${fmt(newCount)} คน ${fmt(pct(newCount))}%`,
+    `ลูกค้าเก่า ${fmt(oldCount)} คน ${fmt(pct(oldCount))}%`,
+    `รวม ${fmt(total)} คน`
+  ].join('\n');
 }
+
+// รายงาน > 2 > 2 จำนวนครั้งที่ลูกค้าซื้อซ้ำ — all-time (not period-bound): how many distinct
+// customers have placed exactly 2, 3, 4, or 5-or-more orders ever. 5+ (not "exactly 5") so a
+// 10-order VIP still shows up somewhere instead of vanishing from every line.
+async function buildRepeatCustomerReport() {
+  const snap = await db.collection('orders').get();
+  const orders = snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && o.phone);
+  const countByPhone = {};
+  orders.forEach(o => { countByPhone[o.phone] = (countByPhone[o.phone] || 0) + 1; });
+  const counts = Object.values(countByPhone);
+
+  const c2 = counts.filter(c => c === 2).length;
+  const c3 = counts.filter(c => c === 3).length;
+  const c4 = counts.filter(c => c === 4).length;
+  const c5plus = counts.filter(c => c >= 5).length;
+
+  return [
+    `จำนวนลูกค้าที่ซื้อซ้ำ 2 ครั้ง ${fmt(c2)} คน`,
+    `จำนวนลูกค้าที่ซื้อซ้ำ 3 ครั้ง ${fmt(c3)} คน`,
+    `จำนวนลูกค้าที่ซื้อซ้ำ 4 ครั้ง ${fmt(c4)} คน`,
+    `จำนวนลูกค้าที่ซื้อซ้ำ 5 ครั้งขึ้นไป ${fmt(c5plus)} คน`
+  ].join('\n');
+}
+
+// รายงาน > 3 — same red/"ต้องสั่งซื้อเพิ่ม" threshold as materialStatus() on the web stock page
+// (currentStock <= reorderPoint, only when a reorder point is actually set).
+async function buildLowStockReport() {
+  const snap = await db.collection('materials').get();
+  const danger = snap.docs.map(d => d.data()).filter(m => {
+    const stock = Number(m.currentStock) || 0, rp = Number(m.reorderPoint) || 0;
+    return rp > 0 && stock <= rp;
+  });
+  if (!danger.length) return '✅ ไม่มีวัตถุดิบที่ต้องสั่งซื้อเพิ่มตอนนี้ค่ะ';
+  return '🔴 วัตถุดิบที่ต้องสั่งซื้อเพิ่ม:\n' + danger.map(m => `${m.name} เหลือ ${fmt(m.currentStock)} ${m.unit}`).join('\n');
+}
+
+// รายงาน > 4 > (period) — cash actually collected (amountReceived, same convention as the
+// web app's payment breakdown) grouped by whatever payment methods are really configured.
+async function buildPaymentReport(fromISO, toISO) {
+  const [ordersSnap, pmDoc, productsDoc] = await Promise.all([
+    db.collection('orders').where('orderDate', '>=', fromISO).where('orderDate', '<=', toISO).get(),
+    db.collection('settings').doc('paymentMethods').get(),
+    db.collection('settings').doc('products').get()
+  ]);
+  const orders = ordersSnap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก');
+  const methods = (pmDoc.exists && pmDoc.data().value) || [];
+  const products = (productsDoc.exists && productsDoc.data().value) || [];
+
+  const byMethod = {};
+  let total = 0;
+  orders.forEach(o => {
+    const amt = computeAmountsServer(o, products);
+    if (amt.amountReceived <= 0) return;
+    const key = o.paymentMethod || '(ไม่ระบุ)';
+    byMethod[key] = (byMethod[key] || 0) + amt.amountReceived;
+    total += amt.amountReceived;
+  });
+
+  const lines = methods.map(m => `${m} = ${fmt(byMethod[m] || 0)} บาท ${fmt(total > 0 ? (byMethod[m] || 0) / total * 100 : 0)}%`);
+  lines.push(`รวมเป็นยอดเงินรับทั้งหมด = ${fmt(total)} บาท`);
+  return lines.join('\n');
+}
+
+const REPORT_TOP_MENU = 'มีมี่ มีรายงานที่คุณต้องการดังนี้ กดเลือกหมายเลขได้เลยค่ะ\n1. รายงานยอดขาย\n2. รายงานลูกค้า\n3. รายงานสินค้าใกล้หมดต้องซื้อ\n4. รายงานการจ่ายเงิน';
+const REPORT_SALES_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 ยอดขายรายวัน\n2 ยอดขายรายสัปดาห์\n3 ยอดขายรายเดือน';
+const REPORT_CUSTOMER_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 จำนวนลูกค้า\n2 จำนวนครั้งที่ลูกค้าซื้อซ้ำ';
+const REPORT_CUSTOMER_COUNT_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 จำนวนลูกค้ารายวัน\n2 รายสัปดาห์\n3 รายเดือน';
+const REPORT_PAYMENT_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 รายวัน\n2 สัปดาห์\n3 เดือน';
+const REPORT_INVALID_CHOICE = 'กรุณาเลือกหมายเลขที่แสดงไว้ค่ะ';
 
 function todayISOBangkok() {
   return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -277,7 +380,7 @@ const DEFAULT_CHANNEL = 'Facebook';
 
 // Kept short deliberately — this fires on every unrecognized message, so it must never be
 // the long field-by-field reference that used to live here.
-const HELP_TEXT = 'พิมพ์ "ออเดอร์" เพื่อบันทึกออเดอร์, "รับสต๊อก" เพื่อบันทึกวัตถุดิบเข้า, หรือ "ฟอร์ม" เพื่อเปิดหน้ากรอกแบบมีปุ่มกดค่ะ';
+const HELP_TEXT = 'พิมพ์ "ออเดอร์" เพื่อบันทึกออเดอร์, "รับสต๊อก" เพื่อบันทึกวัตถุดิบเข้า, "รายงาน" เพื่อดูรายงาน, หรือ "ฟอร์ม" เพื่อเปิดหน้ากรอกแบบมีปุ่มกดค่ะ';
 
 const CONFIRM_WINDOW_MS = 10 * 60 * 1000; // pending order draft / awaiting-input state expires after 10 minutes
 
@@ -770,7 +873,7 @@ exports.lineWebhook = onRequest(
 
       let replyText;
       try {
-        if (['ออเดอร์', 'ยืนยัน', 'ยกเลิก', 'แก้ออเดอร์'].includes(cmd) && !userId) {
+        if (['ออเดอร์', 'ยืนยัน', 'ยกเลิก', 'แก้ออเดอร์', 'รายงาน'].includes(cmd) && !userId) {
           replyText = '❌ ใช้คำสั่งนี้ได้เฉพาะแชทส่วนตัวกับร้านนะคะ';
         } else if (cmd === 'ออเดอร์' && lines.length === 1) {
           // "ออเดอร์" typed alone (no label:value lines attached) -> send the copyable
@@ -785,10 +888,10 @@ exports.lineWebhook = onRequest(
           await setAwaitingInput(userId, { type: 'edit-lookup' });
           replyText = 'มีมี่ยินดีรับใช้ค่ะ แจ้งชื่อลูกค้าเพื่อแก้ไขได้เลยค่ะ';
         } else if (cmd === 'ฟอร์ม') replyText = `📝 เปิดฟอร์มบันทึกข้อมูลได้ที่นี่ค่ะ:\nhttps://liff.line.me/${LIFF_ID}`;
-        else if (cmd === 'รายงานยอดขาย') replyText = ['มีมี่ จะสรุปยอดขายวันนี้ให้นะคะ', await buildDailySalesReport()];
-        else if (cmd === 'รายงานยอดขายต่อสัปดาห์') replyText = ['มีมี่ จะสรุปยอดขายสัปดาห์นี้ให้นะคะ', await buildWeeklySalesReport()];
-        else if (cmd === 'รายงานยอดขายต่อเดือน') replyText = ['มีมี่ จะสรุปยอดขายเดือนนี้ให้นะคะ', await buildMonthlySalesReport()];
-        else {
+        else if (cmd === 'รายงาน') {
+          await setAwaitingInput(userId, { type: 'report-menu' });
+          replyText = REPORT_TOP_MENU;
+        } else {
           // Recognized by its own labels, independent of whether an "ออเดอร์"/"แก้ออเดอร์"
           // trigger happened first (or its 10-minute window already lapsed) — pasting a
           // filled-in template should always work, not just right after asking for one.
@@ -812,6 +915,30 @@ exports.lineWebhook = onRequest(
             }
           } else if (awaiting && awaiting.type === 'edit-order') {
             replyText = await handleEditOrderCommand(event.message.text, userId, awaiting.orderId);
+          } else if (awaiting && awaiting.type === 'report-menu') {
+            const choice = event.message.text.trim();
+            if (choice === '1') { await setAwaitingInput(userId, { type: 'report-sales-period' }); replyText = REPORT_SALES_SUBMENU; }
+            else if (choice === '2') { await setAwaitingInput(userId, { type: 'report-customer-menu' }); replyText = REPORT_CUSTOMER_SUBMENU; }
+            else if (choice === '3') replyText = await buildLowStockReport();
+            else if (choice === '4') { await setAwaitingInput(userId, { type: 'report-payment-period' }); replyText = REPORT_PAYMENT_SUBMENU; }
+            else { await setAwaitingInput(userId, { type: 'report-menu' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_TOP_MENU}`; }
+          } else if (awaiting && awaiting.type === 'report-sales-period') {
+            const period = periodFromChoice(event.message.text.trim());
+            if (!period) { await setAwaitingInput(userId, { type: 'report-sales-period' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_SALES_SUBMENU}`; }
+            else replyText = await buildSalesSummaryReport(period.from, period.to);
+          } else if (awaiting && awaiting.type === 'report-customer-menu') {
+            const choice = event.message.text.trim();
+            if (choice === '1') { await setAwaitingInput(userId, { type: 'report-customer-count-period' }); replyText = REPORT_CUSTOMER_COUNT_SUBMENU; }
+            else if (choice === '2') replyText = await buildRepeatCustomerReport();
+            else { await setAwaitingInput(userId, { type: 'report-customer-menu' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_CUSTOMER_SUBMENU}`; }
+          } else if (awaiting && awaiting.type === 'report-customer-count-period') {
+            const period = periodFromChoice(event.message.text.trim());
+            if (!period) { await setAwaitingInput(userId, { type: 'report-customer-count-period' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_CUSTOMER_COUNT_SUBMENU}`; }
+            else replyText = await buildCustomerCountReport(period.from, period.to);
+          } else if (awaiting && awaiting.type === 'report-payment-period') {
+            const period = periodFromChoice(event.message.text.trim());
+            if (!period) { await setAwaitingInput(userId, { type: 'report-payment-period' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_PAYMENT_SUBMENU}`; }
+            else replyText = await buildPaymentReport(period.from, period.to);
           } else {
             replyText = HELP_TEXT;
           }
