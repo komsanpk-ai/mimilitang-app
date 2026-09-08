@@ -446,9 +446,9 @@ async function buildPrepChecklistReport(dateISO) {
     PREP_SEPARATOR,
     '',
     '🥬 วัตถุดิบอาหารที่ต้องเตรียม',
-    ...(foodMaterials.length
-      ? foodMaterials.map(x => `${padPrepLabel(x.material.name)}${fmt(x.qty)} ${x.material.unit} , ${pieceEstimate(x)}`)
-      : ['ไม่มีวัตถุดิบอาหารที่ต้องเตรียม']),
+    foodMaterials.length
+      ? foodMaterials.map(x => `${x.material.name}\n${fmt(x.qty)} ${x.material.unit} , ${pieceEstimate(x)}`).join('\n\n')
+      : 'ไม่มีวัตถุดิบอาหารที่ต้องเตรียม',
     PREP_SEPARATOR,
     '',
     '📦 อุปกรณ์/บรรจุภัณฑ์ที่ต้องเตรียม',
