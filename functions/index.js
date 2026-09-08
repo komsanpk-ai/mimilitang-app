@@ -344,17 +344,16 @@ async function buildPaymentReport(fromISO, toISO) {
 
 // รายงาน > 5 — filtered by deliveryDate (not orderDate, unlike every other report here):
 // this is a picking/delivery list for what has to physically go out today, not what was sold.
-async function buildTodayDeliveryReport() {
-  const today = todayISOBangkok();
+async function buildDeliveryReport(dateISO) {
   const [snap, productsDoc] = await Promise.all([
-    db.collection('orders').where('deliveryDate', '==', today).get(),
+    db.collection('orders').where('deliveryDate', '==', dateISO).get(),
     db.collection('settings').doc('products').get()
   ]);
   const orders = snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก');
   const products = (productsDoc.exists && productsDoc.data().value) || [];
-  const dateLabel = isoToThaiDateDisplay(today);
+  const dateLabel = isoToThaiDateDisplay(dateISO);
 
-  if (!orders.length) return `วันที่ ${dateLabel}\nยังไม่มีออเดอร์ที่ต้องส่งวันนี้ค่ะ`;
+  if (!orders.length) return `วันที่ ${dateLabel}\nยังไม่มีออเดอร์ที่ต้องเตรียมส่งค่ะ`;
 
   const productNames = [...new Set(orders.map(o => o.product))];
   const productSuffix = productNames.length === 1 ? ` ${productNames[0]}` : '';
@@ -392,7 +391,8 @@ async function buildTodayDeliveryReport() {
   ].join('\n');
 }
 
-const REPORT_TOP_MENU = 'มีมี่ มีรายงานที่คุณต้องการดังนี้ กดเลือกหมายเลขได้เลยค่ะ\n1. รายงานยอดขาย\n2. รายงานลูกค้า\n3. รายงานสินค้าใกล้หมดต้องซื้อ\n4. รายงานการจ่ายเงิน\n5. สรุปรายชื่อและออเดอร์ส่งวันนี้';
+const REPORT_TOP_MENU = 'มีมี่ มีรายงานที่คุณต้องการดังนี้ กดเลือกหมายเลขได้เลยค่ะ\n1. รายงานยอดขาย\n2. รายงานลูกค้า\n3. รายงานสินค้าใกล้หมดต้องซื้อ\n4. รายงานการจ่ายเงิน\n5. สรุปรายชื่อและออเดอร์เตรียมส่ง';
+const REPORT_DELIVERY_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 สรุปเตรียมส่งวันนี้\n2 สรุปเตรียมส่งพรุ่งนี้';
 const REPORT_SALES_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 ยอดขายรายวัน\n2 ยอดขายรายสัปดาห์\n3 ยอดขายรายเดือน';
 const REPORT_CUSTOMER_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 จำนวนลูกค้า\n2 จำนวนครั้งที่ลูกค้าซื้อซ้ำ';
 const REPORT_CUSTOMER_COUNT_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 จำนวนลูกค้ารายวัน\n2 รายสัปดาห์\n3 รายเดือน';
@@ -971,8 +971,14 @@ exports.lineWebhook = onRequest(
             else if (choice === '2') { await setAwaitingInput(userId, { type: 'report-customer-menu' }); replyText = REPORT_CUSTOMER_SUBMENU; }
             else if (choice === '3') replyText = await buildLowStockReport();
             else if (choice === '4') { await setAwaitingInput(userId, { type: 'report-payment-period' }); replyText = REPORT_PAYMENT_SUBMENU; }
-            else if (choice === '5') replyText = await buildTodayDeliveryReport();
+            else if (choice === '5') { await setAwaitingInput(userId, { type: 'report-delivery-period' }); replyText = REPORT_DELIVERY_SUBMENU; }
             else { await setAwaitingInput(userId, { type: 'report-menu' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_TOP_MENU}`; }
+          } else if (awaiting && awaiting.type === 'report-delivery-period') {
+            const choice = event.message.text.trim();
+            const today = todayISOBangkok();
+            if (choice === '1') replyText = await buildDeliveryReport(today);
+            else if (choice === '2') replyText = await buildDeliveryReport(addDaysISO(today, 1));
+            else { await setAwaitingInput(userId, { type: 'report-delivery-period' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_DELIVERY_SUBMENU}`; }
           } else if (awaiting && awaiting.type === 'report-sales-period') {
             const period = periodFromChoice(event.message.text.trim());
             if (!period) { await setAwaitingInput(userId, { type: 'report-sales-period' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_SALES_SUBMENU}`; }
