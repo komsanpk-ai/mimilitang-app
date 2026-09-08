@@ -391,7 +391,79 @@ async function buildDeliveryReport(dateISO) {
   ].join('\n');
 }
 
-const REPORT_TOP_MENU = 'มีมี่ มีรายงานที่คุณต้องการดังนี้ กดเลือกหมายเลขได้เลยค่ะ\n1. รายงานยอดขาย\n2. รายงานลูกค้า\n3. รายงานสินค้าใกล้หมดต้องซื้อ\n4. รายงานการจ่ายเงิน\n5. สรุปรายชื่อและออเดอร์เตรียมส่ง';
+// Mirrors computePrepData()/renderPrepMaterialRows() in index.html exactly — same source
+// data (orders by deliveryDate), same computeConsumptionForOrder aggregation, same
+// pieceWeight/subUnit "estimated piece count" column logic, same food/supply split.
+const PREP_SEPARATOR = '........................................................................';
+function padPrepLabel(name, width = 22) {
+  return name.length >= width ? name + ' ' : name.padEnd(width, ' ');
+}
+async function buildPrepChecklistReport(dateISO) {
+  const [ordersSnap, recipesDoc, materialsSnap] = await Promise.all([
+    db.collection('orders').where('deliveryDate', '==', dateISO).get(),
+    db.collection('settings').doc('recipes').get(),
+    db.collection('materials').get()
+  ]);
+  const list = ordersSnap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก');
+  const recipes = (recipesDoc.exists && recipesDoc.data().value) || [];
+  const materialsById = new Map(materialsSnap.docs.map(d => [d.id, d.data()]));
+  const dateLabel = isoToThaiDateDisplay(dateISO);
+
+  if (!list.length) return `วันที่เตรียม (สำหรับส่ง) ${dateLabel}\nไม่มีออเดอร์ที่ต้องจัดส่งวันนี้ค่ะ`;
+
+  let totalSmall = 0, totalLarge = 0, uncoveredCount = 0;
+  const usage = {};
+  list.forEach(o => {
+    totalSmall += Number(o.jarSmall) || 0;
+    totalLarge += Number(o.jarLarge) || 0;
+    computeConsumptionForOrder(o, recipes, materialsById).forEach(item => {
+      usage[item.materialId] = (usage[item.materialId] || 0) + item.qty;
+    });
+    [['jarSmall', 'small'], ['jarLarge', 'large']].forEach(([field, size]) => {
+      if ((Number(o[field]) || 0) <= 0) return;
+      if (!recipes.find(r => r.product === o.product && r.size === size)) uncoveredCount++;
+    });
+  });
+
+  const materialsNeeded = Object.keys(usage)
+    .map(id => ({ material: materialsById.get(id), qty: usage[id] }))
+    .filter(x => x.material);
+  const foodMaterials = materialsNeeded.filter(x => (x.material.category || 'food') === 'food');
+  const supplyMaterials = materialsNeeded.filter(x => x.material.category === 'supply');
+
+  const pieceEstimate = (x) => {
+    const mat = x.material;
+    if (Number(mat.pieceWeight) > 0) return `${fmt(x.qty / mat.pieceWeight)} ชิ้น`;
+    if (mat.subUnitName && Number(mat.subUnitCount) > 0) return `${fmt(x.qty * mat.subUnitCount)} ${mat.subUnitName}`;
+    return '-';
+  };
+
+  const lines = [
+    '🥣 สินค้าที่ต้องเตรียม/ผลิต',
+    `${padPrepLabel('ถ้วยเล็ก')}${fmt(totalSmall)} ถ้วย`,
+    `${padPrepLabel('ถ้วยใหญ่')}${fmt(totalLarge)} ถ้วย`,
+    `${padPrepLabel('รวมทั้งหมด (เล็ก+ใหญ่ทุกสินค้า)', 30)}${fmt(totalSmall + totalLarge)} ถ้วย`,
+    PREP_SEPARATOR,
+    '',
+    '🥬 วัตถุดิบอาหารที่ต้องเตรียม',
+    ...(foodMaterials.length
+      ? foodMaterials.map(x => `${padPrepLabel(x.material.name)}${fmt(x.qty)} ${x.material.unit} , ${pieceEstimate(x)}`)
+      : ['ไม่มีวัตถุดิบอาหารที่ต้องเตรียม']),
+    PREP_SEPARATOR,
+    '',
+    '📦 อุปกรณ์/บรรจุภัณฑ์ที่ต้องเตรียม',
+    ...(supplyMaterials.length
+      ? supplyMaterials.map(x => `${padPrepLabel(x.material.name)}${fmt(x.qty)} ${x.material.unit}`)
+      : ['ไม่มีอุปกรณ์/บรรจุภัณฑ์ที่ต้องเตรียม']),
+    PREP_SEPARATOR
+  ];
+  if (uncoveredCount > 0) {
+    lines.push('', `⚠️ มี ${uncoveredCount} รายการสินค้า/ขนาดที่ยังไม่ได้ตั้งสูตร รายการวัตถุดิบด้านบนอาจไม่ครบ`);
+  }
+  return lines.join('\n');
+}
+
+const REPORT_TOP_MENU = 'มีมี่ มีรายงานที่คุณต้องการดังนี้ กดเลือกหมายเลขได้เลยค่ะ\n1. สรุปรายชื่อและออเดอร์เตรียมส่ง\n2. เช็คลิสต์เตรียมของ\n3. รายงานยอดขาย\n4. รายงานลูกค้า\n5. รายงานสินค้าใกล้หมดต้องซื้อ\n6. รายงานการจ่ายเงิน';
 const REPORT_DELIVERY_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 สรุปเตรียมส่งวันนี้\n2 สรุปเตรียมส่งพรุ่งนี้';
 const REPORT_SALES_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 ยอดขายรายวัน\n2 ยอดขายรายสัปดาห์\n3 ยอดขายรายเดือน';
 const REPORT_CUSTOMER_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 จำนวนลูกค้า\n2 จำนวนครั้งที่ลูกค้าซื้อซ้ำ';
@@ -967,11 +1039,12 @@ exports.lineWebhook = onRequest(
             replyText = await handleEditOrderCommand(event.message.text, userId, awaiting.orderId);
           } else if (awaiting && awaiting.type === 'report-menu') {
             const choice = event.message.text.trim();
-            if (choice === '1') { await setAwaitingInput(userId, { type: 'report-sales-period' }); replyText = REPORT_SALES_SUBMENU; }
-            else if (choice === '2') { await setAwaitingInput(userId, { type: 'report-customer-menu' }); replyText = REPORT_CUSTOMER_SUBMENU; }
-            else if (choice === '3') replyText = await buildLowStockReport();
-            else if (choice === '4') { await setAwaitingInput(userId, { type: 'report-payment-period' }); replyText = REPORT_PAYMENT_SUBMENU; }
-            else if (choice === '5') { await setAwaitingInput(userId, { type: 'report-delivery-period' }); replyText = REPORT_DELIVERY_SUBMENU; }
+            if (choice === '1') { await setAwaitingInput(userId, { type: 'report-delivery-period' }); replyText = REPORT_DELIVERY_SUBMENU; }
+            else if (choice === '2') replyText = await buildPrepChecklistReport(addDaysISO(todayISOBangkok(), 1));
+            else if (choice === '3') { await setAwaitingInput(userId, { type: 'report-sales-period' }); replyText = REPORT_SALES_SUBMENU; }
+            else if (choice === '4') { await setAwaitingInput(userId, { type: 'report-customer-menu' }); replyText = REPORT_CUSTOMER_SUBMENU; }
+            else if (choice === '5') replyText = await buildLowStockReport();
+            else if (choice === '6') { await setAwaitingInput(userId, { type: 'report-payment-period' }); replyText = REPORT_PAYMENT_SUBMENU; }
             else { await setAwaitingInput(userId, { type: 'report-menu' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_TOP_MENU}`; }
           } else if (awaiting && awaiting.type === 'report-delivery-period') {
             const choice = event.message.text.trim();
