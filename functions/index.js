@@ -346,8 +346,12 @@ async function buildPaymentReport(fromISO, toISO) {
 // this is a picking/delivery list for what has to physically go out today, not what was sold.
 async function buildTodayDeliveryReport() {
   const today = todayISOBangkok();
-  const snap = await db.collection('orders').where('deliveryDate', '==', today).get();
+  const [snap, productsDoc] = await Promise.all([
+    db.collection('orders').where('deliveryDate', '==', today).get(),
+    db.collection('settings').doc('products').get()
+  ]);
   const orders = snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก');
+  const products = (productsDoc.exists && productsDoc.data().value) || [];
   const dateLabel = isoToThaiDateDisplay(today);
 
   if (!orders.length) return `วันที่ ${dateLabel}\nยังไม่มีออเดอร์ที่ต้องส่งวันนี้ค่ะ`;
@@ -359,10 +363,33 @@ async function buildTodayDeliveryReport() {
   const entries = orders.map((o, i) => {
     const small = Number(o.jarSmall) || 0, large = Number(o.jarLarge) || 0;
     totalCups += small + large;
-    return `${i + 1}.${o.customerName}\nที่อยู่ ${o.address || '-'}\nถ้วยเล็ก ${fmt(small)} ถ้วย / ใหญ่ ${fmt(large)} ถ้วย`;
+    const amt = computeAmountsServer(o, products);
+
+    // Only listed when actually present on this order — a shipping/deposit/discount line
+    // that's always "0 บาท" would just be noise on every single entry.
+    const extras = [];
+    if (amt.shipping > 0) extras.push(`ค่าจัดส่ง ${fmt(amt.shipping)} บาท`);
+    if (amt.deposit > 0) extras.push(`มัดจำ ${fmt(amt.deposit)} บาท`);
+    if (amt.discountAmount > 0) extras.push(`ส่วนลด ${fmt(amt.discountAmount)} บาท`);
+
+    const rows = [
+      `${i + 1}.${o.customerName}`,
+      `ที่อยู่ ${o.address || '-'}`,
+      `ถ้วยเล็ก ${fmt(small)} ถ้วย / ใหญ่ ${fmt(large)} ถ้วย`,
+      `ยอดรวม ${fmt(amt.grandTotal)} บาท`
+    ];
+    if (extras.length) rows.push(`(${extras.join(' / ')})`);
+    return rows.join('\n');
   });
 
-  return `วันที่ ${dateLabel}\nรวม ${orders.length} ออเดอร์${productSuffix}\n\n${entries.join('\n\n')}\nรวมทั้งหมด ${fmt(totalCups)} ถ้วย`;
+  return [
+    `วันที่ ${dateLabel}`,
+    `รวม ${orders.length} ออเดอร์${productSuffix}`,
+    '',
+    entries.join('\n\n'),
+    '',
+    `รวมทั้งหมด ${fmt(totalCups)} ถ้วย`
+  ].join('\n');
 }
 
 const REPORT_TOP_MENU = 'มีมี่ มีรายงานที่คุณต้องการดังนี้ กดเลือกหมายเลขได้เลยค่ะ\n1. รายงานยอดขาย\n2. รายงานลูกค้า\n3. รายงานสินค้าใกล้หมดต้องซื้อ\n4. รายงานการจ่ายเงิน\n5. สรุปรายชื่อและออเดอร์ส่งวันนี้';
