@@ -243,9 +243,9 @@ async function buildSalesSummaryReport(fromISO, toISO) {
     `สัดส่วน รายได้ 100% ต้นทุน ${fmt(pct(totalCost, totalRevenue))}% กำไร ${fmt(pct(profit, totalRevenue))}%`
   ];
   if (hasMissingPrice || hasMissingRecipe) {
-    lines.push('', '⚠️ บางรายการยังไม่มีสูตร/ราคาวัตถุดิบครบ ต้นทุนจริงอาจสูงกว่านี้');
+    lines.push('⚠️ บางรายการยังไม่มีสูตร/ราคาวัตถุดิบครบ ต้นทุนจริงอาจสูงกว่านี้');
   }
-  return lines.join('\n');
+  return lines.join('\n\n');
 }
 
 // รายงาน > 2 > 1 จำนวนลูกค้า > (period) — "new" means this phone's earliest-ever order (across
@@ -277,7 +277,7 @@ async function buildCustomerCountReport(fromISO, toISO) {
     `ลูกค้าใหม่ ${fmt(newCount)} คน ${fmt(pct(newCount))}%`,
     `ลูกค้าเก่า ${fmt(oldCount)} คน ${fmt(pct(oldCount))}%`,
     `รวม ${fmt(total)} คน`
-  ].join('\n');
+  ].join('\n\n');
 }
 
 // รายงาน > 2 > 2 จำนวนครั้งที่ลูกค้าซื้อซ้ำ — all-time (not period-bound): how many distinct
@@ -300,7 +300,7 @@ async function buildRepeatCustomerReport() {
     `จำนวนลูกค้าที่ซื้อซ้ำ 3 ครั้ง ${fmt(c3)} คน`,
     `จำนวนลูกค้าที่ซื้อซ้ำ 4 ครั้ง ${fmt(c4)} คน`,
     `จำนวนลูกค้าที่ซื้อซ้ำ 5 ครั้งขึ้นไป ${fmt(c5plus)} คน`
-  ].join('\n');
+  ].join('\n\n');
 }
 
 // รายงาน > 3 — same red/"ต้องสั่งซื้อเพิ่ม" threshold as materialStatus() on the web stock page
@@ -312,7 +312,7 @@ async function buildLowStockReport() {
     return rp > 0 && stock <= rp;
   });
   if (!danger.length) return '✅ ไม่มีวัตถุดิบที่ต้องสั่งซื้อเพิ่มตอนนี้ค่ะ';
-  return '🔴 วัตถุดิบที่ต้องสั่งซื้อเพิ่ม:\n' + danger.map(m => `${m.name} เหลือ ${fmt(m.currentStock)} ${m.unit}`).join('\n');
+  return '🔴 วัตถุดิบที่ต้องสั่งซื้อเพิ่ม:\n\n' + danger.map(m => `${m.name} เหลือ ${fmt(m.currentStock)} ${m.unit}`).join('\n\n');
 }
 
 // รายงาน > 4 > (period) — cash actually collected (amountReceived, same convention as the
@@ -339,7 +339,7 @@ async function buildPaymentReport(fromISO, toISO) {
 
   const lines = methods.map(m => `${m} = ${fmt(byMethod[m] || 0)} บาท ${fmt(total > 0 ? (byMethod[m] || 0) / total * 100 : 0)}%`);
   lines.push(`รวมเป็นยอดเงินรับทั้งหมด = ${fmt(total)} บาท`);
-  return lines.join('\n');
+  return lines.join('\n\n');
 }
 
 // รายงาน > 5 — filtered by deliveryDate (not orderDate, unlike every other report here):
@@ -384,12 +384,10 @@ async function buildDeliveryReport(dateISO) {
   return [
     `วันที่ ${dateLabel}`,
     `รวม ${orders.length} ออเดอร์${productSuffix}`,
-    '',
     entries.join('\n\n'),
-    '',
     `แบ่งเป็น เล็ก ${fmt(totalSmall)} ถ้วย / ใหญ่ ${fmt(totalLarge)} ถ้วย`,
     `รวมทั้งหมด ${fmt(totalSmall + totalLarge)} ถ้วย`
-  ].join('\n');
+  ].join('\n\n');
 }
 
 // Mirrors computePrepData()/renderPrepMaterialRows() in index.html exactly — same source
@@ -439,29 +437,30 @@ async function buildPrepChecklistReport(dateISO) {
     return '-';
   };
 
-  const lines = [
-    '🥣 สินค้าที่ต้องเตรียม/ผลิต',
+  const cupsBlock = [
     `${padPrepLabel('ถ้วยเล็ก')}${fmt(totalSmall)} ถ้วย`,
     `${padPrepLabel('ถ้วยใหญ่')}${fmt(totalLarge)} ถ้วย`,
-    `${padPrepLabel('รวมทั้งหมด (เล็ก+ใหญ่ทุกสินค้า)', 30)}${fmt(totalSmall + totalLarge)} ถ้วย`,
+    `${padPrepLabel('รวมทั้งหมด (เล็ก+ใหญ่ทุกสินค้า)', 30)}${fmt(totalSmall + totalLarge)} ถ้วย`
+  ].join('\n\n');
+  const foodBlock = foodMaterials.length
+    ? foodMaterials.map(x => `${x.material.name}\n${fmt(x.qty)} ${x.material.unit} , ${pieceEstimate(x)}`).join('\n\n')
+    : 'ไม่มีวัตถุดิบอาหารที่ต้องเตรียม';
+  const supplyBlock = supplyMaterials.length
+    ? supplyMaterials.map(x => `${padPrepLabel(x.material.name)}${fmt(x.qty)} ${x.material.unit}`).join('\n\n')
+    : 'ไม่มีอุปกรณ์/บรรจุภัณฑ์ที่ต้องเตรียม';
+
+  const lines = [
+    `🥣 สินค้าที่ต้องเตรียม/ผลิต\n\n${cupsBlock}`,
     PREP_SEPARATOR,
-    '',
-    '🥬 วัตถุดิบอาหารที่ต้องเตรียม',
-    foodMaterials.length
-      ? foodMaterials.map(x => `${x.material.name}\n${fmt(x.qty)} ${x.material.unit} , ${pieceEstimate(x)}`).join('\n\n')
-      : 'ไม่มีวัตถุดิบอาหารที่ต้องเตรียม',
+    `🥬 วัตถุดิบอาหารที่ต้องเตรียม\n\n${foodBlock}`,
     PREP_SEPARATOR,
-    '',
-    '📦 อุปกรณ์/บรรจุภัณฑ์ที่ต้องเตรียม',
-    ...(supplyMaterials.length
-      ? supplyMaterials.map(x => `${padPrepLabel(x.material.name)}${fmt(x.qty)} ${x.material.unit}`)
-      : ['ไม่มีอุปกรณ์/บรรจุภัณฑ์ที่ต้องเตรียม']),
+    `📦 อุปกรณ์/บรรจุภัณฑ์ที่ต้องเตรียม\n\n${supplyBlock}`,
     PREP_SEPARATOR
   ];
   if (uncoveredCount > 0) {
-    lines.push('', `⚠️ มี ${uncoveredCount} รายการสินค้า/ขนาดที่ยังไม่ได้ตั้งสูตร รายการวัตถุดิบด้านบนอาจไม่ครบ`);
+    lines.push(`⚠️ มี ${uncoveredCount} รายการสินค้า/ขนาดที่ยังไม่ได้ตั้งสูตร รายการวัตถุดิบด้านบนอาจไม่ครบ`);
   }
-  return lines.join('\n');
+  return lines.join('\n\n');
 }
 
 const REPORT_TOP_MENU = 'มีมี่ มีรายงานที่คุณต้องการดังนี้ กดเลือกหมายเลขได้เลยค่ะ\n1. สรุปรายชื่อและออเดอร์เตรียมส่ง\n2. เช็คลิสต์เตรียมของ\n3. รายงานยอดขาย\n4. รายงานลูกค้า\n5. รายงานสินค้าใกล้หมดต้องซื้อ\n6. รายงานการจ่ายเงิน';
