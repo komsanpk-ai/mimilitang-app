@@ -358,10 +358,10 @@ async function buildDeliveryReport(dateISO) {
   const productNames = [...new Set(orders.map(o => o.product))];
   const productSuffix = productNames.length === 1 ? ` ${productNames[0]}` : '';
 
-  let totalCups = 0;
+  let totalSmall = 0, totalLarge = 0;
   const entries = orders.map((o, i) => {
     const small = Number(o.jarSmall) || 0, large = Number(o.jarLarge) || 0;
-    totalCups += small + large;
+    totalSmall += small; totalLarge += large;
     const amt = computeAmountsServer(o, products);
 
     // Only listed when actually present on this order — a shipping/deposit/discount line
@@ -387,7 +387,8 @@ async function buildDeliveryReport(dateISO) {
     '',
     entries.join('\n\n'),
     '',
-    `รวมทั้งหมด ${fmt(totalCups)} ถ้วย`
+    `แบ่งเป็น เล็ก ${fmt(totalSmall)} ถ้วย / ใหญ่ ${fmt(totalLarge)} ถ้วย`,
+    `รวมทั้งหมด ${fmt(totalSmall + totalLarge)} ถ้วย`
   ].join('\n');
 }
 
