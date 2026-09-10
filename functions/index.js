@@ -192,9 +192,11 @@ function periodFromChoice(choice) {
 
 // รายงาน > 1 ยอดขาย > (period) — cup counts + revenue/cost/profit/shipping/discount, with a
 // revenue-relative ratio (cost% + profit% = 100%, matching standard margin-of-revenue bookkeeping).
+// Bucketed by deliveryDate (accrual basis) — matches index.html's renderReport/computePnL, so
+// this never disagrees with what the web app shows for the same period.
 async function buildSalesSummaryReport(fromISO, toISO) {
   const [ordersSnap, productsDoc, recipesDoc, materialsSnap] = await Promise.all([
-    db.collection('orders').where('orderDate', '>=', fromISO).where('orderDate', '<=', toISO).get(),
+    db.collection('orders').where('deliveryDate', '>=', fromISO).where('deliveryDate', '<=', toISO).get(),
     db.collection('settings').doc('products').get(),
     db.collection('settings').doc('recipes').get(),
     db.collection('materials').get()
@@ -248,26 +250,27 @@ async function buildSalesSummaryReport(fromISO, toISO) {
   return lines.join('\n\n');
 }
 
-// รายงาน > 2 > 1 จำนวนลูกค้า > (period) — "new" means this phone's earliest-ever order (across
-// all history, not just this window) falls inside the window; everyone else who ordered in
-// the window is "repeat" — same first-order-date rule the app's own reports use elsewhere.
+// รายงาน > 2 > 1 จำนวนลูกค้า > (period) — "new" means this phone's earliest-ever delivery
+// (across all history, not just this window) falls inside the window; everyone else who had
+// a delivery in the window is "repeat" — same rule as index.html's reportCustomerSeries,
+// keyed by deliveryDate for the same accrual-basis reason as buildSalesSummaryReport above.
 async function buildCustomerCountReport(fromISO, toISO) {
   const snap = await db.collection('orders').get();
   const allOrders = snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && o.phone);
 
-  const firstOrderByPhone = new Map();
+  const firstDeliveryByPhone = new Map();
   allOrders.forEach(o => {
-    const cur = firstOrderByPhone.get(o.phone);
-    if (!cur || o.orderDate < cur) firstOrderByPhone.set(o.phone, o.orderDate);
+    const cur = firstDeliveryByPhone.get(o.phone);
+    if (!cur || o.deliveryDate < cur) firstDeliveryByPhone.set(o.phone, o.deliveryDate);
   });
 
   const customersInPeriod = new Set(
-    allOrders.filter(o => o.orderDate >= fromISO && o.orderDate <= toISO).map(o => o.phone)
+    allOrders.filter(o => o.deliveryDate >= fromISO && o.deliveryDate <= toISO).map(o => o.phone)
   );
 
   let newCount = 0, oldCount = 0;
   customersInPeriod.forEach(phone => {
-    const first = firstOrderByPhone.get(phone);
+    const first = firstDeliveryByPhone.get(phone);
     if (first >= fromISO && first <= toISO) newCount++; else oldCount++;
   });
   const total = newCount + oldCount;
@@ -317,9 +320,10 @@ async function buildLowStockReport() {
 
 // รายงาน > 4 > (period) — cash actually collected (amountReceived, same convention as the
 // web app's payment breakdown) grouped by whatever payment methods are really configured.
+// Bucketed by deliveryDate, same accrual-basis reason as the other period reports above.
 async function buildPaymentReport(fromISO, toISO) {
   const [ordersSnap, pmDoc, productsDoc] = await Promise.all([
-    db.collection('orders').where('orderDate', '>=', fromISO).where('orderDate', '<=', toISO).get(),
+    db.collection('orders').where('deliveryDate', '>=', fromISO).where('deliveryDate', '<=', toISO).get(),
     db.collection('settings').doc('paymentMethods').get(),
     db.collection('settings').doc('products').get()
   ]);
@@ -342,8 +346,8 @@ async function buildPaymentReport(fromISO, toISO) {
   return lines.join('\n\n');
 }
 
-// รายงาน > 5 — filtered by deliveryDate (not orderDate, unlike every other report here):
-// this is a picking/delivery list for what has to physically go out today, not what was sold.
+// รายงาน > 5 — filtered by a single exact deliveryDate: this is a picking/delivery list for
+// what has to physically go out on one specific day, not a revenue period like the reports above.
 async function buildDeliveryReport(dateISO) {
   const [snap, productsDoc] = await Promise.all([
     db.collection('orders').where('deliveryDate', '==', dateISO).get(),

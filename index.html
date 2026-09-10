@@ -753,6 +753,7 @@ p.hint.collapsible-hint.show{display:block;}
   <!-- ===== REPORTS: OVERVIEW ===== -->
   <section class="card" id="reportSection">
     <div class="card-head"><h2><span class="emoji">📊</span>ภาพรวมยอดขาย</h2></div>
+    <p class="hint">นับยอดขาย/ต้นทุน/กำไรตาม "วันที่จัดส่ง" ของออเดอร์ (ไม่ใช่วันที่ลูกค้าสั่ง) เพื่อให้ตรงกับหน้าจัดส่งและ P&amp;L เสมอ</p>
     <div class="tabs">
       <button type="button" data-tab="daily" class="active">รายงานประจำวัน</button>
       <button type="button" data-tab="weekly">รายงานประจำสัปดาห์</button>
@@ -2354,7 +2355,7 @@ document.getElementById('orderForm').addEventListener('submit', e=>{
     toast('บันทึกข้อมูลแล้ว');
   }
   persistOrders();
-  syncReportRangeToDate(data.orderDate);
+  syncReportRangeToDate(data.deliveryDate);
   resetForm();
   renderTable();
   renderAllReports();
@@ -3007,7 +3008,7 @@ function statCard(label, value, sub){
 
 function renderReport(){
   const {from, to} = getRangeForTab();
-  const list = orders.filter(o=>o.orderDate>=from && o.orderDate<=to).map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
+  const list = orders.filter(o=>o.deliveryDate>=from && o.deliveryDate<=to).map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
 
   const totalSales = list.reduce((s,o)=>s+o._amt.grandTotal,0);
   const totalProductSales = list.reduce((s,o)=>s+o._amt.subtotal,0);
@@ -3020,11 +3021,17 @@ function renderReport(){
   const orderCount = list.length;
   const avgPerOrder = orderCount ? totalSales/orderCount : 0;
 
+  // Shown as a waterfall (gross -> less discount -> net product sales -> + shipping -> grand
+  // total) instead of flat side-by-side cards — a big discount used to make "ยอดขายสินค้า"
+  // (gross, pre-discount) read as bigger than "ยอดขายรวม" (net), which looked like a
+  // contradiction even though both numbers were individually correct.
+  const netProductSales = totalProductSales - totalDiscountGiven;
   const breakdownStats = [
-    statCard('ยอดขายรวม (รวมค่าจัดส่ง หักส่วนลดแล้ว)', fmt(totalSales)+' บ.', orderCount+' ออเดอร์'),
-    statCard('ยอดขายสินค้า (ไม่รวมค่าจัดส่ง)', fmt(totalProductSales)+' บ.'),
+    statCard('ยอดขายสินค้า (ก่อนหักส่วนลด)', fmt(totalProductSales)+' บ.', orderCount+' ออเดอร์'),
+    statCard('หักส่วนลด', '-'+fmt(totalDiscountGiven)+' บ.'),
+    statCard('ยอดขายสินค้าสุทธิ', fmt(netProductSales)+' บ.'),
     statCard('ค่าจัดส่งที่เก็บจากลูกค้า', fmt(totalShippingCollected)+' บ.', 'ดูค่าใช้จ่ายจริง (เช่นค่าน้ำมัน) ที่ "ค่าใช้จ่ายดำเนินงาน"'),
-    statCard('ส่วนลดที่ให้ลูกค้า', fmt(totalDiscountGiven)+' บ.')
+    statCard('ยอดขายรวม (ที่ต้องได้รับ)', fmt(totalSales)+' บ.', 'สุทธิ + ค่าจัดส่ง')
   ].join('');
 
   let statsHtml = '';
@@ -3452,7 +3459,7 @@ function reportSalesSeries(buckets){
   const small = buckets.map(()=>0), large = buckets.map(()=>0);
   orders.forEach(o=>{
     if(o.shippingStatus==='ยกเลิก') return;
-    const idx = buckets.findIndex(b=>o.orderDate>=b.from && o.orderDate<=b.to);
+    const idx = buckets.findIndex(b=>o.deliveryDate>=b.from && o.deliveryDate<=b.to);
     if(idx===-1) return;
     small[idx] += Number(o.jarSmall)||0;
     large[idx] += Number(o.jarLarge)||0;
@@ -3471,7 +3478,7 @@ function reportRevenueSeries(buckets){
   let uncovered=0;
   orders.forEach(o=>{
     if(o.shippingStatus==='ยกเลิก') return;
-    const idx = buckets.findIndex(b=>o.orderDate>=b.from && o.orderDate<=b.to);
+    const idx = buckets.findIndex(b=>o.deliveryDate>=b.from && o.deliveryDate<=b.to);
     if(idx===-1) return;
     const amt = computeAmounts(o);
     revenue[idx] += amt.grandTotal;
@@ -3505,17 +3512,17 @@ document.getElementById('rr-mode').addEventListener('change', ()=>{ rrMode = doc
 
 /* ---- Report 3: new vs repeat customers per bucket ---- */
 function reportCustomerSeries(buckets){
-  const firstOrderDate = {};
+  const firstDeliveryDate = {};
   orders.forEach(o=>{
     if(!o.phone) return;
-    if(!firstOrderDate[o.phone] || o.orderDate < firstOrderDate[o.phone]) firstOrderDate[o.phone] = o.orderDate;
+    if(!firstDeliveryDate[o.phone] || o.deliveryDate < firstDeliveryDate[o.phone]) firstDeliveryDate[o.phone] = o.deliveryDate;
   });
   const newCust = buckets.map(()=>0), repeatCust = buckets.map(()=>0);
   orders.forEach(o=>{
     if(o.shippingStatus==='ยกเลิก' || !o.phone) return;
-    const idx = buckets.findIndex(b=>o.orderDate>=b.from && o.orderDate<=b.to);
+    const idx = buckets.findIndex(b=>o.deliveryDate>=b.from && o.deliveryDate<=b.to);
     if(idx===-1) return;
-    if(o.orderDate===firstOrderDate[o.phone]) newCust[idx]++; else repeatCust[idx]++;
+    if(o.deliveryDate===firstDeliveryDate[o.phone]) newCust[idx]++; else repeatCust[idx]++;
   });
   return {series:[
     {name:'ลูกค้าใหม่', color:PALETTE[4], values:newCust},
@@ -3548,7 +3555,7 @@ function reportPaymentSeries(buckets){
     if(o.shippingStatus==='ยกเลิก') return;
     const amt = computeAmounts(o);
     if(amt.amountReceived<=0) return;
-    const idx = buckets.findIndex(b=>o.orderDate>=b.from && o.orderDate<=b.to);
+    const idx = buckets.findIndex(b=>o.deliveryDate>=b.from && o.deliveryDate<=b.to);
     if(idx===-1) return;
     const key = o.paymentMethod || paymentMethods[0] || 'ไม่ระบุ';
     if(!seriesMap[key]) seriesMap[key] = {name:key, color:PALETTE[Object.keys(seriesMap).length%PALETTE.length], values:buckets.map(()=>0)};
@@ -4562,7 +4569,7 @@ function computeMonthlyBreakEven(){
   let uncoveredOrders = 0;
   orders.forEach(o=>{
     const amt = computeAmounts(o);
-    const month = (o.orderDate||todayISO()).slice(0,7);
+    const month = (o.deliveryDate||todayISO()).slice(0,7);
     if(!monthly[month]) monthly[month] = {revenue:0, variableCost:0};
     monthly[month].revenue += amt.grandTotal;
     let vc = 0, covered = true;
@@ -4674,7 +4681,7 @@ function computeCashFlowBreakEven(){
     monthly[month].opexSpend += (x.amount||0);
   });
   orders.forEach(o=>{
-    const month = (o.orderDate||todayISO()).slice(0,7);
+    const month = (o.deliveryDate||todayISO()).slice(0,7);
     if(!monthly[month]) monthly[month] = {revenue:0, materialSpend:0, opexSpend:0};
     monthly[month].revenue += computeAmounts(o).grandTotal;
   });
@@ -4753,7 +4760,7 @@ document.getElementById('pnl_next').addEventListener('click', ()=>{
 document.getElementById('pnl_printBtn').addEventListener('click', ()=>window.print());
 
 function computePnL(from, to){
-  const list = orders.filter(o=>o.orderDate>=from && o.orderDate<=to).map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
+  const list = orders.filter(o=>o.deliveryDate>=from && o.deliveryDate<=to).map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
   const salesRevenue = list.reduce((s,o)=>s+o._amt.subtotal,0);
   const shippingRevenue = list.reduce((s,o)=>s+o._amt.shipping,0);
   const discountTotal = list.reduce((s,o)=>s+o._amt.discountAmount,0);
