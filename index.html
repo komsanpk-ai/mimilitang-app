@@ -912,7 +912,7 @@ p.hint.collapsible-hint.show{display:block;}
 <main id="page-report-revenue" class="page-view">
   <section class="card">
     <div class="card-head"><h2><span class="emoji">💰</span>รายงานรายได้</h2></div>
-    <p class="hint">เปรียบเทียบรายได้ / ต้นทุนตามสูตร / กำไร ไล่ระดับจากรายเดือน → รายสัปดาห์ → รายวัน ไม่นับออเดอร์ที่ยกเลิก</p>
+    <p class="hint">เปรียบเทียบรายได้ / ต้นทุนตามสูตร / กำไร ไล่ระดับจากรายเดือน → รายสัปดาห์ → รายวัน ไม่นับออเดอร์ที่ยกเลิก — "รายได้" ที่นี่คือยอดขายสินค้าล้วนๆ (หักส่วนลดแล้ว) ไม่รวมค่าจัดส่งที่เก็บจากลูกค้า ดูค่าจัดส่งแยกได้ที่หน้าภาพรวมยอดขายหรือ P&L</p>
     <div class="field" style="max-width:320px;margin-bottom:12px;">
       <label>แสดงกราฟตาม</label>
       <select id="rr-mode">
@@ -1382,15 +1382,15 @@ p.hint.collapsible-hint.show{display:block;}
   <!-- ===== OPERATING EXPENSES ===== -->
   <section class="card" id="opexSection">
     <div class="card-head"><h2><span class="emoji">💸</span>ค่าใช้จ่ายดำเนินงาน</h2></div>
-    <p class="hint">หมวด: ค่าใช้จ่ายที่เกิดขึ้นซ้ำๆ ระหว่างดำเนินกิจการ (ไม่ใช่ต้นทุนเริ่มต้นที่จ่ายครั้งเดียว และไม่ใช่ต้นทุนต่อถ้วยในสูตร) เช่น ค่าน้ำมันส่งของ ค่าเช่า ค่าจ้าง ค่าไฟ ค่าน้ำ ค่าอินเทอร์เน็ต — ใช้เทียบกับ "ค่าจัดส่งที่เก็บจากลูกค้า" ในหน้ารายงาน เพื่อดูว่าค่าส่งที่เก็บมาคุ้มกับค่าน้ำมันที่จ่ายจริงหรือไม่ และรวมอยู่ในจุดคุ้มทุนแบบเงินสดด้านล่างด้วย</p>
+    <p class="hint">หมวด: ค่าใช้จ่ายที่เกิดขึ้นซ้ำๆ ระหว่างดำเนินกิจการ (ไม่ใช่ต้นทุนเริ่มต้นที่จ่ายครั้งเดียว และไม่ใช่ต้นทุนต่อถ้วยในสูตร) เช่น ค่าน้ำมันส่งของ ค่าเช่า ค่าจ้าง ค่าไฟ ค่าน้ำ ค่าอินเทอร์เน็ต — <b>ค่าใช้จ่ายในการส่งของ (ค่าน้ำมัน/ค่าคอมมิชชั่นไรเดอร์) ให้ตั้งหมวดเป็น "ค่าจัดส่ง" เป๊ะๆ</b> เพื่อให้หน้า P&L ดึงไปเทียบกับ "ค่าจัดส่งที่เก็บจากลูกค้า" ให้อัตโนมัติว่าค่าส่งที่เก็บมาคุ้มกับที่จ่ายจริงหรือไม่ (ยังรวมอยู่ในจุดคุ้มทุนแบบเงินสดด้านล่างเหมือนเดิมไม่ว่าจะตั้งหมวดว่าอะไร)</p>
     <form class="form-grid" id="opexForm">
       <div class="row cols-3">
         <div class="field"><label>วันที่</label><input type="date" id="opex_date"></div>
-        <div class="field"><label>หมวดค่าใช้จ่าย</label><input type="text" id="opex_category" list="opexCategoryList" placeholder="เช่น ค่าน้ำมัน"></div>
+        <div class="field"><label>หมวดค่าใช้จ่าย</label><input type="text" id="opex_category" list="opexCategoryList" placeholder="เช่น ค่าจัดส่ง"></div>
         <div class="field"><label>จำนวนเงิน (บาท)</label><input type="number" min="0" step="any" id="opex_amount" value="" placeholder="0"></div>
       </div>
       <datalist id="opexCategoryList">
-        <option value="ค่าน้ำมัน"><option value="ค่าเช่า"><option value="ค่าจ้าง/เงินเดือน"><option value="ค่าไฟ"><option value="ค่าน้ำ"><option value="ค่าอินเทอร์เน็ต/โทรศัพท์">
+        <option value="ค่าจัดส่ง"><option value="ค่าน้ำมัน"><option value="ค่าเช่า"><option value="ค่าจ้าง/เงินเดือน"><option value="ค่าไฟ"><option value="ค่าน้ำ"><option value="ค่าอินเทอร์เน็ต/โทรศัพท์">
       </datalist>
       <div class="field"><label>หมายเหตุ</label><input type="text" id="opex_note" placeholder="หมายเหตุ (ถ้ามี)"></div>
       <div class="form-actions">
@@ -1418,7 +1418,7 @@ p.hint.collapsible-hint.show{display:block;}
   <!-- ===== BREAK EVEN POINT (RECIPE-BASED) ===== -->
   <section class="card" id="breakEvenSection">
     <div class="card-head"><h2><span class="emoji">📈</span>จุดคุ้มทุน — ตามสูตรต้นทุน (Break Even Point)</h2></div>
-    <p class="hint">คำนวณจากกำไรขั้นต้นสะสมของทุกออเดอร์ (ยอดขาย − ต้นทุนผันแปรตามสูตรที่ตั้งไว้) เทียบกับต้นทุนเริ่มต้นรวมด้านบน — ความแม่นยำขึ้นอยู่กับว่าตั้ง "สูตร & ต้นทุนสินค้า" ครบทุกสินค้าหรือยัง ออเดอร์ของสินค้า/ขนาดที่ยังไม่ได้ตั้งสูตรต้นทุนจะไม่ถูกนับต้นทุนผันแปร (อาจทำให้กำไรที่แสดงสูงกว่าความจริง) — ถ้าต้องการมุมมองที่ไม่ต้องพึ่งสูตร ดูหัวข้อ "จุดคุ้มทุน — ตามเงินสดจริง" ด้านล่าง</p>
+    <p class="hint">คำนวณจากกำไรขั้นต้นสะสมของทุกออเดอร์ (ยอดขาย − ต้นทุนผันแปรตามสูตรที่ตั้งไว้) เทียบกับต้นทุนเริ่มต้นรวมด้านบน — "ยอดขาย" ที่นี่คือสินค้าล้วนๆ ไม่รวมค่าจัดส่งที่เก็บจากลูกค้า (ไม่มีต้นทุนค่าส่งจริงมาหักเทียบในนี้) — ความแม่นยำขึ้นอยู่กับว่าตั้ง "สูตร & ต้นทุนสินค้า" ครบทุกสินค้าหรือยัง ออเดอร์ของสินค้า/ขนาดที่ยังไม่ได้ตั้งสูตรต้นทุนจะไม่ถูกนับต้นทุนผันแปร (อาจทำให้กำไรที่แสดงสูงกว่าความจริง) — ถ้าต้องการมุมมองที่ไม่ต้องพึ่งสูตร ดูหัวข้อ "จุดคุ้มทุน — ตามเงินสดจริง" ด้านล่าง (มุมมองนั้นรวมค่าจัดส่งจริงด้วย เพราะเป็นเงินสดที่เข้า-ออกจริง)</p>
     <div class="stat-grid" id="breakEvenStats"></div>
     <div class="chart-box" id="breakEvenChartBox" style="max-width:100%;"></div>
     <div class="table-scroll" style="margin-top:14px;">
@@ -1448,7 +1448,7 @@ p.hint.collapsible-hint.show{display:block;}
   <!-- ===== PROFIT & LOSS STATEMENT ===== -->
   <section class="card" id="pnlSection">
     <div class="card-head no-print"><h2><span class="emoji">📑</span>งบกำไรขาดทุน (Profit &amp; Loss Statement)</h2></div>
-    <p class="hint no-print">สรุปรายได้ ต้นทุน และค่าใช้จ่าย ในรูปแบบงบกำไรขาดทุนมาตรฐาน สำหรับดูภาพรวมหรือส่งให้นักบัญชี — ต้นทุนขายคำนวณแบบสูตรต้นทุน (accrual) ตามหลักบัญชี จึงต้องตั้ง "สูตร &amp; ต้นทุนสินค้า" ให้ครบทุกสินค้าเพื่อความแม่นยำ ส่วนต้นทุนเริ่มต้น (สินทรัพย์ถาวร) ไม่รวมในงบนี้เพราะไม่ใช่ค่าใช้จ่ายประจำงวด (ดูได้ที่หัวข้อจุดคุ้มทุน)</p>
+    <p class="hint no-print">สรุปรายได้ ต้นทุน และค่าใช้จ่าย ในรูปแบบงบกำไรขาดทุนมาตรฐาน สำหรับดูภาพรวมหรือส่งให้นักบัญชี — ต้นทุนขายคำนวณแบบสูตรต้นทุน (accrual) ตามหลักบัญชี จึงต้องตั้ง "สูตร &amp; ต้นทุนสินค้า" ให้ครบทุกสินค้าเพื่อความแม่นยำ ส่วนต้นทุนเริ่มต้น (สินทรัพย์ถาวร) ไม่รวมในงบนี้เพราะไม่ใช่ค่าใช้จ่ายประจำงวด (ดูได้ที่หัวข้อจุดคุ้มทุน) — "กำไรขั้นต้น" คิดจากยอดขายสินค้าล้วนๆ เท่านั้น ค่าจัดส่งแยกไปเป็นหมวดของตัวเองด้านล่าง (เทียบรายรับค่าส่งกับค่าใช้จ่ายที่บันทึกในหมวด "ค่าจัดส่ง") เพื่อไม่ให้ปนกับกำไรจากตัวสินค้า</p>
 
     <div class="report-controls no-print">
       <button type="button" class="btn btn-outline btn-small" id="pnl_prev">◀ เดือนก่อน</button>
@@ -2858,9 +2858,10 @@ function renderDeliveryReport(){
     statCard('จำนวนออเดอร์ที่ต้องส่ง', units.length+' ออเดอร์'),
     statCard('ถ้วยเล็กรวม', totalSmall+' ถ้วย'),
     statCard('ถ้วยใหญ่รวม', totalLarge+' ถ้วย'),
-    statCard('ยอดรวมของออเดอร์ที่จะส่ง', fmt(totalValue)+' บ.', 'ยอดเต็มทุกออเดอร์วันนี้'),
+    statCard('ยอดรวมของออเดอร์ที่จะส่ง', fmt(totalValue)+' บ.', 'ยอดเต็มทุกออเดอร์วันนี้ (รวมค่าจัดส่ง)'),
+    statCard('ค่าจัดส่งที่เก็บจากลูกค้า', fmt(dayProfit.shippingRevenue)+' บ.', 'แยกจากยอดขายสินค้าด้านล่าง'),
     statCard('ในนั้นยังไม่ได้รับเงิน', fmt(totalOutstanding)+' บ.', 'เผื่อต้องเก็บเงินปลายทาง'),
-    statCard('กำไรที่คาดว่าจะได้รับ (รวมค่าจัดส่ง)', fmt(dayProfit.profit)+' บ.', 'ยอดขาย - ต้นทุนตามสูตร ทุกออเดอร์วันนี้')
+    statCard('กำไรจากการขายสินค้า', fmt(dayProfit.profit)+' บ.', 'ยอดขายสินค้า (ไม่รวมค่าจัดส่ง) - ต้นทุนตามสูตร')
   ].join('');
 
   const byProduct = {};
@@ -3186,7 +3187,13 @@ document.getElementById('dlCompleteModal').addEventListener('click', e=>{ if(e.t
 /* ============ Celebration popup: all deliveries for the day confirmed ============ */
 function computeDeliveryDayProfit(date){
   const list = orders.filter(o=>o.deliveryDate===date && o.shippingStatus!=='ยกเลิก' && !o.isReserve).map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
-  const revenue = list.reduce((s,o)=>s+o._amt.grandTotal,0);
+  // "ยอดขาย"/"กำไร" here mean product sales only — ค่าจัดส่ง is a pass-through collected on behalf
+  // of the courier, not product revenue, and no matching courier cost is tracked per order, so
+  // blending it in would overstate both the sales figure and the margin. Shown as its own number
+  // (shippingRevenue) instead — compare it against the "ค่าจัดส่ง" category in ค่าใช้จ่ายดำเนินงาน to
+  // see whether it's actually covering the real courier cost.
+  const revenue = list.reduce((s,o)=>s+(o._amt.subtotal - o._amt.discountAmount),0);
+  const shippingRevenue = list.reduce((s,o)=>s+o._amt.shipping,0);
   let cogs = 0;
   list.forEach(o=>{
     [['jarSmall','small'],['jarLarge','large']].forEach(([field,size])=>{
@@ -3196,7 +3203,7 @@ function computeDeliveryDayProfit(date){
       cogs += computeRecipeCost(recipe).totalCost * qty;
     });
   });
-  return {revenue, cogs, profit: revenue-cogs, orderCount:list.length};
+  return {revenue, shippingRevenue, cogs, profit: revenue-cogs, orderCount:list.length};
 }
 function showCelebrateModal(date){
   const stats = computeDeliveryDayProfit(date);
@@ -3760,7 +3767,10 @@ function reportRevenueSeries(buckets){
     const idx = buckets.findIndex(b=>o.deliveryDate>=b.from && o.deliveryDate<=b.to);
     if(idx===-1) return;
     const amt = computeAmounts(o);
-    revenue[idx] += amt.grandTotal;
+    // Product sales only (net of discount) — ค่าจัดส่ง is a pass-through with no matching courier
+    // cost tracked per order, so including it here would overstate both "รายได้" and "กำไร". See
+    // ค่าจัดส่งที่เก็บจากลูกค้า on the หน้าภาพรวมยอดขาย/P&L pages for that figure separately.
+    revenue[idx] += amt.subtotal - amt.discountAmount;
     qty[idx] += (Number(o.jarSmall)||0) + (Number(o.jarLarge)||0);
     let covered = true;
     [['jarSmall','small'],['jarLarge','large']].forEach(([field,size])=>{
@@ -4854,7 +4864,10 @@ function computeMonthlyBreakEven(){
     const amt = computeAmounts(o);
     const month = (o.deliveryDate||todayISO()).slice(0,7);
     if(!monthly[month]) monthly[month] = {revenue:0, variableCost:0};
-    monthly[month].revenue += amt.grandTotal;
+    // Product sales only, excluding ค่าจัดส่ง — this is an accrual product-margin trajectory
+    // toward break-even, so a shipping pass-through with no matching courier cost tracked here
+    // shouldn't make it look like break-even is closer than it really is from product sales alone.
+    monthly[month].revenue += amt.subtotal - amt.discountAmount;
     let vc = 0, covered = true;
     [['jarSmall','small'],['jarLarge','large']].forEach(([field,size])=>{
       const qty = Number(o[field])||0; if(qty<=0) return;
@@ -5043,13 +5056,17 @@ document.getElementById('pnl_next').addEventListener('click', ()=>{
 });
 document.getElementById('pnl_printBtn').addEventListener('click', ()=>window.print());
 
+/* ค่าจัดส่งที่เก็บจากลูกค้าเป็นเงินผ่านทาง (pass-through) ไม่ใช่กำไรจากตัวสินค้า และค่าใช้จ่ายค่าจัดส่ง
+   จริง (ค่าคอมมิชชั่นไรเดอร์/ค่าน้ำมัน) ก็ถูกจัดเป็นค่าใช้จ่ายดำเนินงาน ไม่ใช่ต้นทุนขาย (COGS) — เพื่อให้
+   สองฝั่งนี้จัดหมวดตรงกัน "กำไรขั้นต้น" จึงคำนวณจากยอดขายสินค้าล้วนๆ เท่านั้น ส่วนค่าจัดส่งทั้งสองด้าน
+   ถูกดึงมาเทียบกันเป็น "กำไร/ขาดทุนจากค่าจัดส่ง" แยกต่างหาก (ดูหมวด "ค่าจัดส่ง" ในค่าใช้จ่ายดำเนินงาน) —
+   กำไรสุทธิรวมท้ายสุดยังเท่าเดิมไม่ว่าจะแยกแบบไหน มีแค่การจัดหมวดระหว่างทางที่เปลี่ยนไป. */
 function computePnL(from, to){
   const list = orders.filter(o=>!o.isReserve && o.deliveryDate>=from && o.deliveryDate<=to).map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
   const salesRevenue = list.reduce((s,o)=>s+o._amt.subtotal,0);
   const shippingRevenue = list.reduce((s,o)=>s+o._amt.shipping,0);
   const discountTotal = list.reduce((s,o)=>s+o._amt.discountAmount,0);
-  const grossRevenue = salesRevenue + shippingRevenue;
-  const netRevenue = Math.max(grossRevenue - discountTotal, 0);
+  const netRevenue = Math.max(salesRevenue - discountTotal, 0);
 
   let cogs = 0, uncoveredCount = 0;
   list.forEach(o=>{
@@ -5071,13 +5088,21 @@ function computePnL(from, to){
   const opexList = operatingExpenses.filter(x=>x.date>=from && x.date<=to);
   const opexByCategory = {};
   opexList.forEach(x=>{ opexByCategory[x.category] = (opexByCategory[x.category]||0) + (x.amount||0); });
+  const shippingExpense = opexByCategory['ค่าจัดส่ง'] || 0;
+  const shippingNet = shippingRevenue - shippingExpense;
+  const otherOpexByCategory = Object.assign({}, opexByCategory);
+  delete otherOpexByCategory['ค่าจัดส่ง'];
   const totalOpex = opexList.reduce((s,x)=>s+(x.amount||0),0);
+  const otherOpexTotal = totalOpex - shippingExpense;
 
-  const netProfit = grossProfit - totalOpex;
-  const netMarginPct = netRevenue>0 ? netProfit/netRevenue*100 : 0;
+  // Algebraically identical to the old (netRevenue_incl_shipping - cogs) - totalOpex — only how it's
+  // broken into subtotals changed, not the bottom line itself.
+  const netProfit = grossProfit + shippingNet - otherOpexTotal;
+  const totalRevenueForMargin = netRevenue + shippingRevenue;
+  const netMarginPct = totalRevenueForMargin>0 ? netProfit/totalRevenueForMargin*100 : 0;
 
   // "จำนวนออเดอร์" means customers/visits, not raw product lines — see buildOrderUnits.
-  return {orderCount:buildOrderUnits(list).length, salesRevenue, shippingRevenue, discountTotal, grossRevenue, netRevenue, cogs, uncoveredCount, grossProfit, grossMarginPct, opexByCategory, totalOpex, netProfit, netMarginPct};
+  return {orderCount:buildOrderUnits(list).length, salesRevenue, shippingRevenue, discountTotal, netRevenue, cogs, uncoveredCount, grossProfit, grossMarginPct, shippingExpense, shippingNet, opexByCategory:otherOpexByCategory, totalOpex:otherOpexTotal, netProfit, netMarginPct};
 }
 function pnlAmt(n, negative){
   const cls = negative ? ' class="pnl-amt pnl-neg"' : ' class="pnl-amt"';
@@ -5102,16 +5127,20 @@ function renderPnL(){
     .map(cat=>`<tr class="pnl-item"><td>${esc(cat)}</td>${pnlAmt(pnl.opexByCategory[cat], true)}</tr>`).join('');
 
   document.getElementById('pnlTable').innerHTML = `
-    <tr class="pnl-section"><td colspan="2">รายได้จากการขาย</td></tr>
+    <tr class="pnl-section"><td colspan="2">รายได้จากการขายสินค้า</td></tr>
     <tr class="pnl-item"><td>ยอดขายสินค้า</td>${pnlAmt(pnl.salesRevenue)}</tr>
-    <tr class="pnl-item"><td>ค่าจัดส่งที่เรียกเก็บจากลูกค้า</td>${pnlAmt(pnl.shippingRevenue)}</tr>
     <tr class="pnl-item"><td>หัก ส่วนลด</td>${pnlAmt(pnl.discountTotal, true)}</tr>
-    <tr class="pnl-subtotal"><td>รายได้สุทธิ</td>${pnlAmt(pnl.netRevenue)}</tr>
+    <tr class="pnl-subtotal"><td>รายได้สุทธิจากการขายสินค้า</td>${pnlAmt(pnl.netRevenue)}</tr>
 
     <tr class="pnl-section"><td colspan="2">ต้นทุนขาย</td></tr>
     <tr class="pnl-item"><td>ต้นทุนวัตถุดิบ (ตามสูตรต้นทุน)</td>${pnlAmt(pnl.cogs, true)}</tr>
     <tr class="pnl-subtotal"><td>กำไรขั้นต้น (Gross Profit)</td>${pnlAmt(pnl.grossProfit)}</tr>
-    <tr class="pnl-note"><td colspan="2">อัตรากำไรขั้นต้น ${pnl.grossMarginPct.toFixed(1)}%</td></tr>
+    <tr class="pnl-note"><td colspan="2">อัตรากำไรขั้นต้น ${pnl.grossMarginPct.toFixed(1)}% — คำนวณจากยอดขายสินค้าล้วนๆ ไม่รวมค่าจัดส่ง</td></tr>
+
+    <tr class="pnl-section"><td colspan="2">ค่าจัดส่ง (แยกจากยอดขายสินค้า)</td></tr>
+    <tr class="pnl-item"><td>ค่าจัดส่งที่เรียกเก็บจากลูกค้า</td>${pnlAmt(pnl.shippingRevenue)}</tr>
+    <tr class="pnl-item"><td>หัก ค่าใช้จ่ายค่าจัดส่งจริง (หมวด "ค่าจัดส่ง")</td>${pnlAmt(pnl.shippingExpense, true)}</tr>
+    <tr class="pnl-subtotal"><td>กำไร(ขาดทุน)จากค่าจัดส่ง</td>${pnlAmt(pnl.shippingNet, pnl.shippingNet<0)}</tr>
 
     <tr class="pnl-section"><td colspan="2">ค่าใช้จ่ายในการดำเนินงาน</td></tr>
     ${opexRows || '<tr class="pnl-item"><td colspan="2">— ไม่มีรายการ —</td></tr>'}
@@ -5121,10 +5150,17 @@ function renderPnL(){
     <tr class="pnl-note"><td colspan="2">อัตรากำไรสุทธิ ${pnl.netMarginPct.toFixed(1)}% &nbsp;|&nbsp; จำนวนออเดอร์ในงวดนี้ ${pnl.orderCount} รายการ</td></tr>
   `;
 
-  const caveatEl = document.getElementById('pnlCaveat');
+  const caveats = [];
   if(pnl.uncoveredCount>0){
+    caveats.push(`⚠️ มี ${pnl.uncoveredCount} ออเดอร์ในงวดนี้ที่สินค้า/ขนาดยังไม่ได้ตั้ง "สูตร & ต้นทุนสินค้า" ต้นทุนขายที่แสดงจึงอาจต่ำกว่าความเป็นจริง — ไปตั้งสูตรให้ครบเพื่อความแม่นยำ`);
+  }
+  if(pnl.shippingRevenue>0 && pnl.shippingExpense===0){
+    caveats.push(`⚠️ ยังไม่มีค่าใช้จ่ายที่บันทึกในหมวด "ค่าจัดส่ง" ในงวดนี้ — "กำไรจากค่าจัดส่ง" ด้านบนจึงเป็นแค่รายรับค่าส่งเฉยๆ ยังไม่ได้หักค่าน้ำมัน/ค่าคอมมิชชั่นไรเดอร์จริง ถ้ามีค่าใช้จ่ายส่วนนี้ ให้ไปบันทึกที่หมวดค่าใช้จ่ายดำเนินงานโดยตั้งหมวดเป็น "ค่าจัดส่ง"`);
+  }
+  const caveatEl = document.getElementById('pnlCaveat');
+  if(caveats.length){
     caveatEl.style.display = 'block';
-    caveatEl.textContent = `⚠️ มี ${pnl.uncoveredCount} ออเดอร์ในงวดนี้ที่สินค้า/ขนาดยังไม่ได้ตั้ง "สูตร & ต้นทุนสินค้า" ต้นทุนขายที่แสดงจึงอาจต่ำกว่าความเป็นจริง — ไปตั้งสูตรให้ครบเพื่อความแม่นยำ`;
+    caveatEl.innerHTML = caveats.join('<br>');
   } else {
     caveatEl.style.display = 'none';
     caveatEl.textContent = '';
