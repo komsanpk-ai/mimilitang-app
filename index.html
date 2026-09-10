@@ -110,6 +110,12 @@ main{max-width:1180px;margin:0 auto;padding:18px 16px 0;display:flex;flex-direct
 }
 .field textarea{resize:vertical;min-height:44px;}
 .field.invalid input,.field.invalid select,.field.invalid textarea{border-color:var(--red);}
+.reserve-check{
+  display:flex;align-items:center;gap:8px;box-sizing:border-box;
+  border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;
+  background:#fffefb;font-size:13.5px;font-weight:normal;color:var(--ink);cursor:pointer;
+}
+.reserve-check input{width:18px;height:18px;flex:none;accent-color:var(--maroon-dark);cursor:pointer;}
 
 .total-box{
   background:linear-gradient(135deg,#fff1d6,#ffe3b3);border:1.5px solid var(--gold-light);
@@ -619,10 +625,6 @@ p.hint.collapsible-hint.show{display:block;}
       <button type="button" id="cancelEditBtn">ยกเลิกการแก้ไข</button>
     </div>
     <form class="form-grid" id="orderForm">
-      <div class="field checkbox-field">
-        <label><input type="checkbox" id="f_isReserve"> 📦 ผลิตสำรอง/ยังไม่ใช่ยอดขายจริง (ยังไม่มีลูกค้า)</label>
-        <p class="hint">ติ๊กช่องนี้ถ้ายังไม่มีลูกค้าจริง (เผื่อผลิตไว้ก่อน) — ระบบจะตัดสต๊อกวัตถุดิบและนับเป็นรายการที่ต้องเตรียมของตามปกติ แต่จะไม่นับเป็นยอดขาย/กำไรในรายงานใดๆ จนกว่าจะแก้ไขกลับมาใส่ชื่อลูกค้าและปลดติ๊กออกตอนขายได้จริง</p>
-      </div>
       <div class="field"><label>👤 ชื่อลูกค้า <span class="req" id="f_customerNameReq">*</span></label>
         <input type="text" id="f_customerName" placeholder="ชื่อลูกค้า (เว้นว่างได้ถ้าเป็นของสำรอง)"></div>
       <div class="field"><label>📞 เบอร์โทร <span class="req" id="f_phoneReq">*</span></label>
@@ -640,9 +642,13 @@ p.hint.collapsible-hint.show{display:block;}
         <div class="field"><label>🛒 ช่องทาง</label><select id="f_channel"></select></div>
       </div>
 
-      <div class="row">
+      <div class="row cols-3">
         <div class="field"><label>🔹 ถ้วยเล็ก (จำนวน)</label><input type="number" min="0" id="f_jarSmall" value="" placeholder="0"></div>
         <div class="field"><label>🔷 ถ้วยใหญ่ (จำนวน)</label><input type="number" min="0" id="f_jarLarge" value="" placeholder="0"></div>
+        <div class="field">
+          <label>📦 ผลิตสำรอง</label>
+          <label class="reserve-check"><input type="checkbox" id="f_isReserve"> ยังไม่มีลูกค้า</label>
+        </div>
       </div>
 
       <div class="row cols-3">
