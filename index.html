@@ -161,9 +161,17 @@ tbody td.wrap{white-space:normal;max-width:180px;}
    editing/deleting once it's scrolled off-screen. Customer name was picked over the row number
    (tried first) since it's easier to recognize at a glance. */
 #ordersTable thead th[data-key="customerName"]{position:sticky;left:0;z-index:3;box-shadow:2px 0 4px rgba(0,0,0,.08);}
-#ordersTable tbody td:nth-child(2){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
-#ordersTable tbody tr:nth-child(even) td:nth-child(2){background:#f6fbf5;}
-#ordersTable tbody tr:hover td:nth-child(2){background:#fdf3df;}
+/* :not(.grouped-order-cont) matters here: a multi-item order's continuation rows (see
+   computeRowGroups/rowHtml) omit the ชื่อลูกค้า cell entirely — it's covered by the rowspan on the
+   group's first row instead — so their *actual* 2nd <td> is "สถานะการจัดส่ง", not the name column.
+   Without this exclusion these rules would wrongly pin/tint that unrelated cell. */
+#ordersTable tbody tr:not(.grouped-order-cont) td:nth-child(2){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#ordersTable tbody tr:nth-child(even):not(.grouped-order-cont) td:nth-child(2){background:#f6fbf5;}
+#ordersTable tbody tr:hover:not(.grouped-order-cont) td:nth-child(2){background:#fdf3df;}
+/* A subtle left accent ties a multi-item order's rows together visually without repeating the
+   customer's identity 3 times — the rowspan-ed name cell already does that job. */
+#ordersTable tbody tr.grouped-order-start td:nth-child(2),
+#ordersTable tbody tr.grouped-order-cont td:first-child{border-left:3px solid var(--gold);}
 /* Same pin, applied to the "สรุปสินค้าเตรียมส่ง" (delivery) table — its ชื่อลูกค้า column is
    the 4th cell (after the drag-handle, No., and ยืนยันการส่ง button columns). Given an explicit
    width (not just the .wrap class's max-width) to match how compact this column renders on the
@@ -2590,7 +2598,8 @@ function renderTable(){
       const items = byDate[date];
       const daySum = items.reduce((s,o)=>s+o._amt.displayTotal,0);
       rowsHtml += `<tr class="day-group-row"><td colspan="${COLUMNS.length}">📅 ${fmtDate(date)} — ${items.length} รายการ — รวม ${fmt(daySum)} บาท</td></tr>`;
-      items.forEach(o=>{ rowsHtml += rowHtml(o, no++); });
+      const dayMeta = computeRowGroups(items);
+      items.forEach((o,i)=>{ rowsHtml += rowHtml(o, no++, dayMeta[i]); });
       shownCount += items.length; totalSum += daySum;
     });
     document.getElementById('pagination').innerHTML='';
@@ -2600,7 +2609,8 @@ function renderTable(){
     if(currentPage>totalPages) currentPage = totalPages;
     const start = (currentPage-1)*pageSize;
     const pageItems = list.slice(start, start+pageSize);
-    pageItems.forEach((o,i)=>{ rowsHtml += rowHtml(o, start+i+1); });
+    const pageMeta = computeRowGroups(pageItems);
+    pageItems.forEach((o,i)=>{ rowsHtml += rowHtml(o, start+i+1, pageMeta[i]); });
     shownCount = pageItems.length;
     totalSum = list.reduce((s,o)=>s+o._amt.displayTotal,0);
     document.getElementById('pagination').innerHTML = `
@@ -2650,15 +2660,46 @@ function renderTable(){
   });
 }
 
-function rowHtml(o, no){
+/* When several products were entered together as one multi-item order (see extraLineItems),
+   they show up here as consecutive rows sharing a groupId. Left as-is, each row repeats the same
+   customer name/phone/dates/address, which reads exactly like 3 separate visits — the very thing
+   grouping was meant to avoid. This merges those identical columns into one rowspan-ed cell across
+   the run, as long as the rows are (a) still adjacent after whatever sort/filter is active and (b)
+   still actually identical (an order edited independently afterward may have diverged, in which
+   case it's shown ungrouped rather than hiding a real difference behind a merged cell). Sorting by
+   a column other than the default breaks adjacency on purpose — the table just falls back to
+   showing every row in full, which is correct, not a bug. */
+function computeRowGroups(items){
+  const SHARED_KEYS = ['customerName','phone','orderDate','deliveryDate','address'];
+  const meta = new Array(items.length);
+  let i = 0;
+  while(i < items.length){
+    const o = items[i];
+    let j = i+1;
+    if(o.groupId){
+      while(j < items.length && items[j].groupId===o.groupId && SHARED_KEYS.every(k=>items[j][k]===o[k])) j++;
+    }
+    const runLen = j - i;
+    meta[i] = {rowspan: runLen, skip:false};
+    for(let k=i+1;k<j;k++) meta[k] = {rowspan:0, skip:true};
+    i = j;
+  }
+  return meta;
+}
+function rowHtml(o, no, meta){
+  meta = meta || {rowspan:1, skip:false};
+  const grouped = meta.rowspan>1;
+  const span = grouped ? ` rowspan="${meta.rowspan}"` : '';
   const a = o._amt;
-  return `<tr>
+  const identityCells = meta.skip ? '' : `
+    <td class="wrap"${span}>${o.isReserve?'<span class="badge gray" title="ผลิตสำรอง ยังไม่ใช่ยอดขายจริง">📦 สำรอง</span> ':''}${repeatStarHTML(o.phone)}${esc(o.customerName)}${grouped?` <span class="badge gray" title="ออเดอร์เดียวกัน ซื้อ ${meta.rowspan} สินค้าพร้อมกัน">🧾 ${meta.rowspan} สินค้า</span>`:''}</td>
+    <td${span}>${esc(o.phone)}</td>
+    <td${span}>${fmtDate(o.orderDate)}</td>
+    <td${span}>${fmtDate(o.deliveryDate)}</td>
+    <td class="wrap"${span}>${esc(o.address)}</td>`;
+  return `<tr class="${grouped?'grouped-order-start':''}${meta.skip?'grouped-order-cont':''}">
     <td>${no}</td>
-    <td class="wrap">${o.isReserve?'<span class="badge gray" title="ผลิตสำรอง ยังไม่ใช่ยอดขายจริง">📦 สำรอง</span> ':''}${repeatStarHTML(o.phone)}${esc(o.customerName)}</td>
-    <td>${esc(o.phone)}</td>
-    <td>${fmtDate(o.orderDate)}</td>
-    <td>${fmtDate(o.deliveryDate)}</td>
-    <td class="wrap">${esc(o.address)}</td>
+    ${identityCells}
     <td>${badgeSelectHTML(o.id, o.shippingStatus, ['รอเตรียมส่ง','กำลังจัดส่ง','ส่งลูกค้าเรียบร้อย','ยกเลิก'], 'shippingStatus')}</td>
     <td>${badgeSelectHTML(o.id, o.product, products.map(p=>p.name), 'product')}</td>
     <td>${o.jarSmall}</td>
