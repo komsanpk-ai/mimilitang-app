@@ -161,17 +161,9 @@ tbody td.wrap{white-space:normal;max-width:180px;}
    editing/deleting once it's scrolled off-screen. Customer name was picked over the row number
    (tried first) since it's easier to recognize at a glance. */
 #ordersTable thead th[data-key="customerName"]{position:sticky;left:0;z-index:3;box-shadow:2px 0 4px rgba(0,0,0,.08);}
-/* :not(.grouped-order-cont) matters here: a multi-item order's continuation rows (see
-   computeRowGroups/rowHtml) omit the ชื่อลูกค้า cell entirely — it's covered by the rowspan on the
-   group's first row instead — so their *actual* 2nd <td> is "สถานะการจัดส่ง", not the name column.
-   Without this exclusion these rules would wrongly pin/tint that unrelated cell. */
-#ordersTable tbody tr:not(.grouped-order-cont) td:nth-child(2){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
-#ordersTable tbody tr:nth-child(even):not(.grouped-order-cont) td:nth-child(2){background:#f6fbf5;}
-#ordersTable tbody tr:hover:not(.grouped-order-cont) td:nth-child(2){background:#fdf3df;}
-/* A subtle left accent ties a multi-item order's rows together visually without repeating the
-   customer's identity 3 times — the rowspan-ed name cell already does that job. */
-#ordersTable tbody tr.grouped-order-start td:nth-child(2),
-#ordersTable tbody tr.grouped-order-cont td:first-child{border-left:3px solid var(--gold);}
+#ordersTable tbody td:nth-child(2){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#ordersTable tbody tr:nth-child(even) td:nth-child(2){background:#f6fbf5;}
+#ordersTable tbody tr:hover td:nth-child(2){background:#fdf3df;}
 /* Same pin, applied to the "สรุปสินค้าเตรียมส่ง" (delivery) table — its ชื่อลูกค้า column is
    the 4th cell (after the drag-handle, No., and ยืนยันการส่ง button columns). Given an explicit
    width (not just the .wrap class's max-width) to match how compact this column renders on the
@@ -205,6 +197,11 @@ tbody td.wrap{white-space:normal;max-width:180px;}
 .badge.gray{background:var(--gray-bg);color:var(--gray);}
 select.badge-select{appearance:none;-webkit-appearance:none;text-align:center;}
 .amount-cell{font-weight:700;color:var(--maroon-dark);}
+/* A multi-item order's product/ถ้วยเล็ก/ถ้วยใหญ่ cells list one line per product (see unitRowHtml
+   and renderDeliveryReport) — .badge is inline-block by default, so without this each product's
+   line would just sit side by side instead of stacking. */
+#ordersTable .stacked-line,#deliveryTable .stacked-line{display:block;margin-bottom:4px;}
+#ordersTable .stacked-line:last-child,#deliveryTable .stacked-line:last-child{margin-bottom:0;}
 .tel-link{color:var(--maroon);font-weight:600;text-decoration:none;white-space:nowrap;}
 .tel-link:hover, .tel-link:active{text-decoration:underline;}
 .dl-complete-btn{white-space:nowrap;}
@@ -2331,7 +2328,10 @@ function updateReserveFieldsUI(){
 f('f_isReserve').addEventListener('change', updateReserveFieldsUI);
 updateReserveFieldsUI();
 
-let editingId = null;
+// null when adding a new order; otherwise the ids of every order document currently loaded into
+// the form for editing (a single id for a plain order, several for a multi-item group — see
+// fillFormFromGroup and the submit handler's edit branch below).
+let editingGroupIds = null;
 
 function readForm(){
   return {
@@ -2391,14 +2391,15 @@ function updateTotalPreview(){
   .forEach(id=>{ const el=f(id); el.addEventListener('input', updateTotalPreview); el.addEventListener('change', updateTotalPreview); });
 updateTotalPreview();
 
-function fillFormFromOrder(o){
+/* Loads a set of order documents into the form for editing — a plain order is just a
+   members-array of length 1; a multi-item group (see extraLineItems) passes every member so the
+   form reconstructs exactly the same multi-line entry state the order was created with. Shared
+   fields come from the first member; every other member becomes an extraLineItems row, so the
+   "+ เพิ่มสินค้าอีกรายการ" UI is also how you add/remove products from an existing order. */
+function fillFormFromGroup(members){
+  const o = members[0];
   f('f_isReserve').checked = !!o.isReserve;
   updateReserveFieldsUI();
-  // Editing always targets exactly one existing order document — adding more product lines here
-  // would be ambiguous (which line is "the" edited order?), so multi-item entry is add-only.
-  extraLineItems = [];
-  renderLineItemRows();
-  document.getElementById('addLineItemBtn').style.display = 'none';
   f('f_customerName').value=o.customerName; f('f_phone').value=o.phone;
   f('f_orderDate').value=o.orderDate; f('f_deliveryDate').value=o.deliveryDate;
   f('f_address').value=o.address; f('f_product').value=o.product; f('f_channel').value=o.channel;
@@ -2412,6 +2413,8 @@ function fillFormFromOrder(o){
   f('f_discountValue').value=o.discountValue||''; f('f_discountType').value=o.discountType;
   f('f_deposit').value=o.deposit||'';
   formSlipData = o.paymentSlip || null; f('f_paymentSlip').value=''; updateSlipPreview();
+  extraLineItems = members.slice(1).map(m=>({product:m.product, jarSmall:Number(m.jarSmall)||0, jarLarge:Number(m.jarLarge)||0}));
+  renderLineItemRows();
   updateTotalPreview();
 }
 function resetForm(){
@@ -2423,9 +2426,8 @@ function resetForm(){
   updateReserveFieldsUI();
   extraLineItems = [];
   renderLineItemRows();
-  document.getElementById('addLineItemBtn').style.display = '';
   populateSelects();
-  editingId = null;
+  editingGroupIds = null;
   document.getElementById('editingBanner').classList.remove('show');
   document.getElementById('submitBtn').textContent='💾 บันทึกข้อมูล';
   updateTotalPreview();
@@ -2445,26 +2447,16 @@ document.getElementById('orderForm').addEventListener('submit', e=>{
     if(!valid){ toast('กรุณากรอกชื่อลูกค้าและเบอร์โทร'); return; }
   }
   const data = readForm();
-  if(editingId){
-    const idx = orders.findIndex(o=>o.id===editingId);
-    if(idx>-1){
-      if(orders[idx]._stockConsumed) applyConsumption(orders[idx]._stockConsumed, 1);
-      const newConsumption = computeConsumptionForOrder(data);
-      applyConsumption(newConsumption, -1);
-      orders[idx] = Object.assign({}, orders[idx], data, {_stockConsumed:newConsumption});
-    }
-    toast('บันทึกการแก้ไขแล้ว');
-  } else {
-    // Extra product lines become their own order documents (so every per-product report stays
-    // accurate) sharing one groupId (so "how many times has this customer bought" counts this as
-    // one visit — see distinctVisits). Shipping fee/discount/deposit describe the whole visit, so
-    // only the first line item keeps them; the rest get 0 to avoid counting them once per product.
-    const validExtraItems = extraLineItems.filter(it=>it.product && ((Number(it.jarSmall)||0)>0 || (Number(it.jarLarge)||0)>0));
-    const groupId = validExtraItems.length ? uid() : null;
-    const lineItems = [
-      {product:data.product, jarSmall:data.jarSmall, jarLarge:data.jarLarge},
-      ...validExtraItems.map(it=>({product:it.product, jarSmall:Number(it.jarSmall)||0, jarLarge:Number(it.jarLarge)||0}))
-    ];
+  // Extra product lines become their own order documents (so every per-product report stays
+  // accurate) sharing one groupId (so "how many times has this customer bought" counts this as
+  // one visit — see distinctVisits). Shipping fee/discount/deposit describe the whole visit, so
+  // only the first line item keeps them; the rest get 0 to avoid counting them once per product.
+  const validExtraItems = extraLineItems.filter(it=>it.product && ((Number(it.jarSmall)||0)>0 || (Number(it.jarLarge)||0)>0));
+  const lineItems = [
+    {product:data.product, jarSmall:data.jarSmall, jarLarge:data.jarLarge},
+    ...validExtraItems.map(it=>({product:it.product, jarSmall:Number(it.jarSmall)||0, jarLarge:Number(it.jarLarge)||0}))
+  ];
+  function pushLineItems(groupId){
     lineItems.forEach((item, i)=>{
       const orderData = Object.assign({}, data, item);
       if(groupId) orderData.groupId = groupId;
@@ -2473,6 +2465,19 @@ document.getElementById('orderForm').addEventListener('submit', e=>{
       applyConsumption(newConsumption, -1);
       orders.push(Object.assign({id:uid()}, orderData, {_stockConsumed:newConsumption}));
     });
+  }
+  if(editingGroupIds){
+    // Editing (whether the original was one order or a multi-item group) replaces every original
+    // document with a fresh set matching the form's current lines, reusing the original groupId
+    // if it still has 2+ lines — simpler and safer than diffing which line changed/was added/removed.
+    const originalMembers = editingGroupIds.map(id=>orders.find(o=>o.id===id)).filter(Boolean);
+    const keepGroupId = (originalMembers.find(o=>o.groupId)||{}).groupId || null;
+    originalMembers.forEach(o=>{ if(o._stockConsumed) applyConsumption(o._stockConsumed, 1); });
+    orders = orders.filter(o=>!editingGroupIds.includes(o.id));
+    pushLineItems(lineItems.length>1 ? (keepGroupId||uid()) : null);
+    toast('บันทึกการแก้ไขแล้ว');
+  } else {
+    pushLineItems(lineItems.length>1 ? uid() : null);
     toast(lineItems.length>1 ? `บันทึกข้อมูล ${lineItems.length} สินค้าแล้ว` : 'บันทึกข้อมูลแล้ว');
   }
   persistOrders();
@@ -2564,16 +2569,55 @@ function getFilteredSorted(){
   return list;
 }
 
-function badgeSelectHTML(id, value, options, extraClass){
+/* A multi-item order (see extraLineItems) saves as several order documents sharing a groupId —
+   one per product — so every per-product report stays accurate. But the *table* should still show
+   that as ONE customer row (one No., one set of shared columns, one edit/delete), with the
+   per-product columns (product/cups) listed as multiple lines inside that single row — exactly how
+   it looked while being entered. This collapses a flat order list into "units" (a unit is a group's
+   full member list, or a lone order's own single-item list) — unconditionally, not just when the
+   members happen to be adjacent, so grouping never depends on the current sort order. */
+function buildOrderUnits(flatList){
+  const byGroup = new Map();
+  const units = [];
+  flatList.forEach(o=>{
+    if(o.groupId && byGroup.has(o.groupId)){ byGroup.get(o.groupId).members.push(o); return; }
+    const u = {members:[o]};
+    units.push(u);
+    if(o.groupId) byGroup.set(o.groupId, u);
+  });
+  return units;
+}
+function unitSortValue(u, key){
+  if(key==='_total') return u.members.reduce((s,o)=>s+o._amt.displayTotal,0);
+  if(key==='jarSmall'||key==='jarLarge') return u.members.reduce((s,o)=>s+(Number(o[key])||0),0);
+  return u.members[0][key];
+}
+/* Table display only — CSV export and other consumers that need one row per actual order document
+   keep using getFilteredSorted() directly. This re-sorts the already-filtered flat list into units
+   so a group's position reflects its own combined values (e.g. combined ยอดรวม), not wherever its
+   first member happened to land in a plain per-line sort. */
+function getFilteredSortedUnits(){
+  const units = buildOrderUnits(getFilteredSorted());
+  units.sort((a,b)=>{
+    let va = unitSortValue(a, sortKey), vb = unitSortValue(b, sortKey);
+    if(typeof va==='string') return va.localeCompare(vb)*sortDir;
+    return ((va||0)-(vb||0))*sortDir;
+  });
+  return units;
+}
+
+/* ids: a single order id, or several comma-joined (a multi-item unit's shared field — changing it
+   applies to every product in that order, see the change listener in renderTable). */
+function badgeSelectHTML(ids, value, options, extraClass){
   const color = STATUS_COLOR[value]||'gray';
-  return `<select class="badge-select badge ${color}" data-id="${id}" data-field="${extraClass}">
+  return `<select class="badge-select badge ${color}" data-id="${ids}" data-field="${extraClass}">
     ${options.map(o=>`<option value="${esc(o)}" ${o===value?'selected':''}>${esc(o)}</option>`).join('')}
   </select>`;
 }
 
 function renderTable(){
   const tbody = document.getElementById('tableBody');
-  const list = getFilteredSorted();
+  const list = getFilteredSortedUnits();
   const pageSizeSel = document.getElementById('pageSize').value;
   document.getElementById('pageSizeLabel').textContent = groupMode==='byDay' ? 'แสดงกี่วันล่าสุด' : 'แสดงกี่แถวต่อหน้า';
 
@@ -2583,23 +2627,23 @@ function renderTable(){
     document.getElementById('tableSummary').innerHTML='';
     return;
   }
+  const unitTotal = u=>u.members.reduce((s,o)=>s+o._amt.displayTotal,0);
 
   let rowsHtml = '';
   let shownCount = 0, totalSum = 0;
 
   if(groupMode==='byDay'){
     const byDate = {};
-    list.forEach(o=>{ (byDate[o.orderDate] = byDate[o.orderDate]||[]).push(o); });
+    list.forEach(u=>{ const d=u.members[0].orderDate; (byDate[d] = byDate[d]||[]).push(u); });
     let dates = Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
     const limit = pageSizeSel==='all' ? dates.length : Number(pageSizeSel);
     dates = dates.slice(0, limit);
     let no=1;
     dates.forEach(date=>{
       const items = byDate[date];
-      const daySum = items.reduce((s,o)=>s+o._amt.displayTotal,0);
+      const daySum = items.reduce((s,u)=>s+unitTotal(u),0);
       rowsHtml += `<tr class="day-group-row"><td colspan="${COLUMNS.length}">📅 ${fmtDate(date)} — ${items.length} รายการ — รวม ${fmt(daySum)} บาท</td></tr>`;
-      const dayMeta = computeRowGroups(items);
-      items.forEach((o,i)=>{ rowsHtml += rowHtml(o, no++, dayMeta[i]); });
+      items.forEach(u=>{ rowsHtml += unitRowHtml(u, no++); });
       shownCount += items.length; totalSum += daySum;
     });
     document.getElementById('pagination').innerHTML='';
@@ -2609,10 +2653,9 @@ function renderTable(){
     if(currentPage>totalPages) currentPage = totalPages;
     const start = (currentPage-1)*pageSize;
     const pageItems = list.slice(start, start+pageSize);
-    const pageMeta = computeRowGroups(pageItems);
-    pageItems.forEach((o,i)=>{ rowsHtml += rowHtml(o, start+i+1, pageMeta[i]); });
+    pageItems.forEach((u,i)=>{ rowsHtml += unitRowHtml(u, start+i+1); });
     shownCount = pageItems.length;
-    totalSum = list.reduce((s,o)=>s+o._amt.displayTotal,0);
+    totalSum = list.reduce((s,u)=>s+unitTotal(u),0);
     document.getElementById('pagination').innerHTML = `
       <button id="prevPageBtn" ${currentPage<=1?'disabled':''}>‹</button>
       <span>หน้า ${currentPage}/${totalPages}</span>
@@ -2622,23 +2665,28 @@ function renderTable(){
   }
 
   tbody.innerHTML = rowsHtml;
-  const grandSum = list.reduce((s,o)=>s+o._amt.displayTotal,0);
+  const grandSum = list.reduce((s,u)=>s+unitTotal(u),0);
   document.getElementById('tableSummary').innerHTML =
     `แสดง <b>${shownCount}</b> รายการ (ทั้งหมด ${list.length} รายการตรงเงื่อนไข) &nbsp;·&nbsp; ยอดรวมที่แสดง <b>${fmt(totalSum)}</b> บาท &nbsp;·&nbsp; ยอดรวมทั้งหมดตามเงื่อนไข <b>${fmt(grandSum)}</b> บาท`;
 
+  // A shared badge-select's data-id may hold several comma-joined ids (every product in a
+  // multi-item order) — split unconditionally works the same for a lone id too.
   tbody.querySelectorAll('.badge-select').forEach(sel=>{
     sel.addEventListener('change', e=>{
-      const id = sel.dataset.id, field = sel.dataset.field;
-      const o = orders.find(o=>o.id===id); if(!o) return;
-      o[field] = sel.value; persistOrders(); renderTable(); renderAllReports(); renderDeliveryReport(); renderPrepPage();
+      const ids = sel.dataset.id.split(','), field = sel.dataset.field;
+      ids.forEach(id=>{ const o = orders.find(o=>o.id===id); if(o) o[field] = sel.value; });
+      persistOrders(); renderTable(); renderAllReports(); renderDeliveryReport(); renderPrepPage();
     });
   });
   tbody.querySelectorAll('.edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const o = orders.find(o=>o.id===btn.dataset.id); if(!o) return;
-      editingId = o.id; fillFormFromOrder(o);
+      const ids = btn.dataset.ids.split(',');
+      const members = ids.map(id=>orders.find(o=>o.id===id)).filter(Boolean);
+      if(!members.length) return;
+      editingGroupIds = members.map(o=>o.id);
+      fillFormFromGroup(members);
       document.getElementById('editingBanner').classList.add('show');
-      document.getElementById('editingText').textContent = `กำลังแก้ไขรายการของ: ${o.customerName}`;
+      document.getElementById('editingText').textContent = `กำลังแก้ไขรายการของ: ${members[0].customerName}`;
       document.getElementById('submitBtn').textContent='💾 บันทึกการแก้ไข';
       document.getElementById('formSection').scrollIntoView({behavior:'smooth'});
     });
@@ -2651,72 +2699,54 @@ function renderTable(){
   });
   tbody.querySelectorAll('.del-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      if(!confirm('ยืนยันลบรายการนี้หรือไม่?')) return;
-      const o = orders.find(o=>o.id===btn.dataset.id);
-      if(o && o._stockConsumed) applyConsumption(o._stockConsumed, 1);
-      orders = orders.filter(o=>o.id!==btn.dataset.id);
+      const ids = btn.dataset.ids.split(',');
+      if(!confirm(ids.length>1 ? `ยืนยันลบออเดอร์นี้ทั้ง ${ids.length} สินค้าหรือไม่?` : 'ยืนยันลบรายการนี้หรือไม่?')) return;
+      ids.forEach(id=>{
+        const o = orders.find(o=>o.id===id);
+        if(o && o._stockConsumed) applyConsumption(o._stockConsumed, 1);
+      });
+      orders = orders.filter(o=>!ids.includes(o.id));
       persistOrders(); renderTable(); renderAllReports(); renderDeliveryReport(); renderPrepPage(); renderStockPage(); toast('ลบรายการแล้ว');
     });
   });
 }
 
-/* When several products were entered together as one multi-item order (see extraLineItems),
-   they show up here as consecutive rows sharing a groupId. Left as-is, each row repeats the same
-   customer name/phone/dates/address, which reads exactly like 3 separate visits — the very thing
-   grouping was meant to avoid. This merges those identical columns into one rowspan-ed cell across
-   the run, as long as the rows are (a) still adjacent after whatever sort/filter is active and (b)
-   still actually identical (an order edited independently afterward may have diverged, in which
-   case it's shown ungrouped rather than hiding a real difference behind a merged cell). Sorting by
-   a column other than the default breaks adjacency on purpose — the table just falls back to
-   showing every row in full, which is correct, not a bug. */
-function computeRowGroups(items){
-  const SHARED_KEYS = ['customerName','phone','orderDate','deliveryDate','address'];
-  const meta = new Array(items.length);
-  let i = 0;
-  while(i < items.length){
-    const o = items[i];
-    let j = i+1;
-    if(o.groupId){
-      while(j < items.length && items[j].groupId===o.groupId && SHARED_KEYS.every(k=>items[j][k]===o[k])) j++;
-    }
-    const runLen = j - i;
-    meta[i] = {rowspan: runLen, skip:false};
-    for(let k=i+1;k<j;k++) meta[k] = {rowspan:0, skip:true};
-    i = j;
-  }
-  return meta;
-}
-function rowHtml(o, no, meta){
-  meta = meta || {rowspan:1, skip:false};
-  const grouped = meta.rowspan>1;
-  const span = grouped ? ` rowspan="${meta.rowspan}"` : '';
-  const a = o._amt;
-  const identityCells = meta.skip ? '' : `
-    <td class="wrap"${span}>${o.isReserve?'<span class="badge gray" title="ผลิตสำรอง ยังไม่ใช่ยอดขายจริง">📦 สำรอง</span> ':''}${repeatStarHTML(o.phone)}${esc(o.customerName)}${grouped?` <span class="badge gray" title="ออเดอร์เดียวกัน ซื้อ ${meta.rowspan} สินค้าพร้อมกัน">🧾 ${meta.rowspan} สินค้า</span>`:''}</td>
-    <td${span}>${esc(o.phone)}</td>
-    <td${span}>${fmtDate(o.orderDate)}</td>
-    <td${span}>${fmtDate(o.deliveryDate)}</td>
-    <td class="wrap"${span}>${esc(o.address)}</td>`;
-  return `<tr class="${grouped?'grouped-order-start':''}${meta.skip?'grouped-order-cont':''}">
+/* One row per "unit" — a lone order, or every member of a multi-item order (see extraLineItems)
+   together — so a customer who bought several products in one visit reads as exactly one row with
+   one No., matching how it looked while being entered, not as several rows that look like separate
+   visits. Shared columns (customer/dates/address/status/payment/etc.) show the first member's value
+   and, for the editable ones, changing them updates every member at once. Product-specific columns
+   (สินค้า/ถ้วยเล็ก/ถ้วยใหญ่) list each member on its own line inside the same cell. */
+function unitRowHtml(u, no){
+  const members = u.members;
+  const p = members[0];
+  const isGroup = members.length>1;
+  const ids = members.map(o=>o.id).join(',');
+  const total = members.reduce((s,o)=>s+o._amt.displayTotal,0);
+  return `<tr>
     <td>${no}</td>
-    ${identityCells}
-    <td>${badgeSelectHTML(o.id, o.shippingStatus, ['รอเตรียมส่ง','กำลังจัดส่ง','ส่งลูกค้าเรียบร้อย','ยกเลิก'], 'shippingStatus')}</td>
-    <td>${badgeSelectHTML(o.id, o.product, products.map(p=>p.name), 'product')}</td>
-    <td>${o.jarSmall}</td>
-    <td>${o.jarLarge}</td>
-    <td>${o.shippingFee?fmt(o.shippingFee)+' บ.':'0 บ.'}</td>
-    <td>${o.discountValue?fmt(o.discountValue):'0'}${o.discountType==='percent'?'%':''}</td>
-    <td><span class="badge gray">${o.discountType==='percent'?'เปอร์เซ็นต์':'บาท'}</span></td>
-    <td>${o.deposit?fmt(o.deposit)+' บ.':'0 บ.'}</td>
-    <td class="amount-cell">${fmt(a.displayTotal)} บ.</td>
-    <td>${badgeSelectHTML(o.id, o.paymentStatus, ['ยังไม่ได้รับเงิน','มัดจำ','ได้รับเงินแล้ว'], 'paymentStatus')}</td>
-    <td>${badgeSelectHTML(o.id, o.paymentMethod||paymentMethods[0]||'', paymentMethods, 'paymentMethod')}</td>
-    <td>${o.paymentSlip ? `<button type="button" class="btn btn-outline btn-small slip-view-btn" data-id="${o.id}">🖼️ ดูสลิป</button>` : `<span class="subtle-note">-</span>`}</td>
-    <td>${badgeSelectHTML(o.id, o.channel, channels, 'channel')}</td>
-    <td class="wrap">${esc(o.note)}</td>
+    <td class="wrap">${p.isReserve?'<span class="badge gray" title="ผลิตสำรอง ยังไม่ใช่ยอดขายจริง">📦 สำรอง</span> ':''}${repeatStarHTML(p.phone)}${esc(p.customerName)}${isGroup?` <span class="badge gray" title="ออเดอร์เดียวกัน ซื้อ ${members.length} สินค้าพร้อมกัน">🧾 ${members.length} สินค้า</span>`:''}</td>
+    <td>${esc(p.phone)}</td>
+    <td>${fmtDate(p.orderDate)}</td>
+    <td>${fmtDate(p.deliveryDate)}</td>
+    <td class="wrap">${esc(p.address)}</td>
+    <td>${badgeSelectHTML(ids, p.shippingStatus, ['รอเตรียมส่ง','กำลังจัดส่ง','ส่งลูกค้าเรียบร้อย','ยกเลิก'], 'shippingStatus')}</td>
+    <td>${members.map(o=>`<div class="stacked-line">${badgeSelectHTML(o.id, o.product, products.map(pp=>pp.name), 'product')}</div>`).join('')}</td>
+    <td>${members.map(o=>`<div class="stacked-line">${o.jarSmall}</div>`).join('')}</td>
+    <td>${members.map(o=>`<div class="stacked-line">${o.jarLarge}</div>`).join('')}</td>
+    <td>${p.shippingFee?fmt(p.shippingFee)+' บ.':'0 บ.'}</td>
+    <td>${p.discountValue?fmt(p.discountValue):'0'}${p.discountType==='percent'?'%':''}</td>
+    <td><span class="badge gray">${p.discountType==='percent'?'เปอร์เซ็นต์':'บาท'}</span></td>
+    <td>${p.deposit?fmt(p.deposit)+' บ.':'0 บ.'}</td>
+    <td class="amount-cell">${fmt(total)} บ.</td>
+    <td>${badgeSelectHTML(ids, p.paymentStatus, ['ยังไม่ได้รับเงิน','มัดจำ','ได้รับเงินแล้ว'], 'paymentStatus')}</td>
+    <td>${badgeSelectHTML(ids, p.paymentMethod||paymentMethods[0]||'', paymentMethods, 'paymentMethod')}</td>
+    <td>${p.paymentSlip ? `<button type="button" class="btn btn-outline btn-small slip-view-btn" data-id="${p.id}">🖼️ ดูสลิป</button>` : `<span class="subtle-note">-</span>`}</td>
+    <td>${badgeSelectHTML(ids, p.channel, channels, 'channel')}</td>
+    <td class="wrap">${esc(p.note)}</td>
     <td><div class="row-actions">
-      <button class="icon-mini edit-btn" data-id="${o.id}" title="แก้ไข">✏️</button>
-      <button class="icon-mini danger del-btn" data-id="${o.id}" title="ลบ">🗑️</button>
+      <button class="icon-mini edit-btn" data-ids="${ids}" title="แก้ไข">✏️</button>
+      <button class="icon-mini danger del-btn" data-ids="${ids}" title="ลบ">🗑️</button>
     </div></td>
   </tr>`;
 }
@@ -2771,11 +2801,6 @@ document.getElementById('dl_date').addEventListener('input', renderDeliveryRepor
 function renderDeliveryReport(){
   const date = f('dl_date').value || addDaysISO(todayISO(),1);
   const list = orders.filter(o=>o.deliveryDate===date && o.shippingStatus!=='ยกเลิก').map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
-  const savedRoute = deliveryRouteOrder[date] || [];
-  if(savedRoute.length){
-    const routeIndex = id => { const idx = savedRoute.indexOf(id); return idx===-1 ? Infinity : idx; };
-    list.sort((a,b)=> routeIndex(a.id) - routeIndex(b.id));
-  }
   const totalSmall = list.reduce((s,o)=>s+(Number(o.jarSmall)||0),0);
   const totalLarge = list.reduce((s,o)=>s+(Number(o.jarLarge)||0),0);
   // Cup counts above include "ผลิตสำรอง" entries (still real production for today), but the
@@ -2808,28 +2833,43 @@ function renderDeliveryReport(){
 
   const tbody = document.getElementById('deliveryBody');
   if(!list.length){ tbody.innerHTML = `<tr><td colspan="15" class="empty-state">ไม่มีออเดอร์ที่ต้องส่งวันที่ ${fmtDate(date)}</td></tr>`; renderDeliveryMapPhoto(date); return; }
-  tbody.innerHTML = list.map((o,idx)=>{
-    const badgeClass = STATUS_COLOR[o.shippingStatus]||'gray';
-    const paymentBadgeClass = STATUS_COLOR[o.paymentStatus]||'gray';
-    const isDone = o.shippingStatus==='ส่งลูกค้าเรียบร้อย' && o.paymentStatus==='ได้รับเงินแล้ว';
+  // A multi-item order (see extraLineItems) is one delivery stop, not several — group into units
+  // (same helper as the orders table) so it's one draggable row with one "ยืนยันการส่ง" that marks
+  // every product done together, instead of splitting one customer across separate drag positions.
+  const units = buildOrderUnits(list);
+  const savedRoute = deliveryRouteOrder[date] || [];
+  if(savedRoute.length){
+    const routeIndex = id => { const idx = savedRoute.indexOf(id); return idx===-1 ? Infinity : idx; };
+    units.sort((a,b)=> routeIndex(a.members[0].id) - routeIndex(b.members[0].id));
+  }
+  tbody.innerHTML = units.map((u,idx)=>{
+    const p = u.members[0];
+    const isGroup = u.members.length>1;
+    const ids = u.members.map(o=>o.id).join(',');
+    const total = u.members.reduce((s,o)=>s+o._amt.displayTotal,0);
+    const badgeClass = STATUS_COLOR[p.shippingStatus]||'gray';
+    const paymentBadgeClass = STATUS_COLOR[p.paymentStatus]||'gray';
+    const isDone = p.shippingStatus==='ส่งลูกค้าเรียบร้อย' && p.paymentStatus==='ได้รับเงินแล้ว';
     const btnClass = isDone ? 'btn-outline btn-small dl-complete-btn dl-done' : 'btn-outline btn-small dl-complete-btn';
     const btnLabel = isDone ? '✅ ส่งสำเร็จ' : 'ยืนยันการส่ง';
-    return `<tr data-id="${o.id}">
+    return `<tr data-id="${p.id}">
     <td><span class="drag-handle" title="ลากเพื่อจัดลำดับเส้นทาง">⠿</span></td>
     <td>${idx+1}</td>
-    <td><button type="button" class="btn ${btnClass}" data-id="${o.id}" title="ยืนยันส่งสำเร็จ + รับเงินแล้ว">${btnLabel}</button></td>
-    <td class="wrap">${repeatStarHTML(o.phone)}${esc(o.customerName)}</td><td>${telLink(o.phone)}</td><td class="wrap">${esc(o.address)}</td>
-    <td>${esc(o.product)}</td><td>${o.jarSmall}</td><td>${o.jarLarge}</td>
-    <td><span class="badge ${badgeClass}">${esc(o.shippingStatus)}</span></td>
-    <td>${o.shippingFee?fmt(o.shippingFee)+' บ.':'0 บ.'}</td>
-    <td>${o.deposit?fmt(o.deposit)+' บ.':'0 บ.'}</td>
-    <td><span class="badge ${paymentBadgeClass}">${esc(o.paymentStatus)}</span></td>
-    <td class="amount-cell">${fmt(o._amt.displayTotal)} บ.</td>
-    <td class="wrap">${esc(o.note)}</td>
+    <td><button type="button" class="btn ${btnClass}" data-ids="${ids}" title="ยืนยันส่งสำเร็จ + รับเงินแล้ว">${btnLabel}</button></td>
+    <td class="wrap">${repeatStarHTML(p.phone)}${esc(p.customerName)}${isGroup?` <span class="badge gray" title="ออเดอร์เดียวกัน ซื้อ ${u.members.length} สินค้าพร้อมกัน">🧾 ${u.members.length} สินค้า</span>`:''}</td><td>${telLink(p.phone)}</td><td class="wrap">${esc(p.address)}</td>
+    <td>${u.members.map(o=>`<div class="stacked-line">${esc(o.product)}</div>`).join('')}</td>
+    <td>${u.members.map(o=>`<div class="stacked-line">${o.jarSmall}</div>`).join('')}</td>
+    <td>${u.members.map(o=>`<div class="stacked-line">${o.jarLarge}</div>`).join('')}</td>
+    <td><span class="badge ${badgeClass}">${esc(p.shippingStatus)}</span></td>
+    <td>${p.shippingFee?fmt(p.shippingFee)+' บ.':'0 บ.'}</td>
+    <td>${p.deposit?fmt(p.deposit)+' บ.':'0 บ.'}</td>
+    <td><span class="badge ${paymentBadgeClass}">${esc(p.paymentStatus)}</span></td>
+    <td class="amount-cell">${fmt(total)} บ.</td>
+    <td class="wrap">${esc(p.note)}</td>
   </tr>`;
   }).join('');
   tbody.querySelectorAll('.dl-complete-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>openDlCompleteModal(btn.dataset.id));
+    btn.addEventListener('click', ()=>openDlCompleteModal(btn.dataset.ids.split(',')));
   });
   initDragReorder(tbody, 'tr', ()=>{
     const d = f('dl_date').value || addDaysISO(todayISO(),1);
@@ -3006,7 +3046,7 @@ document.getElementById('prep_resetBtn').addEventListener('click', ()=>{
 });
 
 /* ============ Delivery-complete quick action ============ */
-let dlCompleteTargetId = null;
+let dlCompleteTargetIds = null;
 let dlCompleteSlipData = null;
 function updateDlSlipPreview(){
   const el = document.getElementById('dlSlipPreview');
@@ -3021,10 +3061,11 @@ document.getElementById('dlSlipInput').addEventListener('change', e=>{
   compressImageFile(file).then(dataUrl=>{ dlCompleteSlipData = dataUrl; updateDlSlipPreview(); })
     .catch(()=>toast('อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
-function openDlCompleteModal(orderId){
-  const o = orders.find(x=>x.id===orderId);
-  if(!o) return;
-  dlCompleteTargetId = orderId;
+function openDlCompleteModal(orderIds){
+  const members = orderIds.map(id=>orders.find(x=>x.id===id)).filter(Boolean);
+  if(!members.length) return;
+  const o = members[0];
+  dlCompleteTargetIds = orderIds;
   dlCompleteSlipData = o.paymentSlip || null;
   document.getElementById('dlSlipInput').value = '';
   updateDlSlipPreview();
@@ -3039,27 +3080,29 @@ function openDlCompleteModal(orderId){
   document.getElementById('dlCompleteModal').classList.add('show');
 }
 function closeDlCompleteModal(){
-  dlCompleteTargetId = null;
+  dlCompleteTargetIds = null;
   dlCompleteSlipData = null;
   document.getElementById('dlCompleteModal').classList.remove('show');
 }
 function completeDelivery(method){
-  const o = orders.find(x=>x.id===dlCompleteTargetId);
-  if(!o){ closeDlCompleteModal(); return; }
-  o.shippingStatus = 'ส่งลูกค้าเรียบร้อย';
-  o.paymentStatus = 'ได้รับเงินแล้ว';
-  o.paymentMethod = method;
-  o.paymentSlip = dlCompleteSlipData;
+  const members = (dlCompleteTargetIds||[]).map(id=>orders.find(x=>x.id===id)).filter(Boolean);
+  if(!members.length){ closeDlCompleteModal(); return; }
+  members.forEach(o=>{
+    o.shippingStatus = 'ส่งลูกค้าเรียบร้อย';
+    o.paymentStatus = 'ได้รับเงินแล้ว';
+    o.paymentMethod = method;
+    o.paymentSlip = dlCompleteSlipData;
+  });
   persistOrders();
   renderTable();
   renderAllReports();
   renderDeliveryReport();
   closeDlCompleteModal();
-  toast(`บันทึก "${o.customerName}" ส่งสำเร็จ + ${method} แล้ว`);
+  toast(`บันทึก "${members[0].customerName}" ส่งสำเร็จ + ${method} แล้ว`);
 
-  const dayOrders = orders.filter(x=>x.deliveryDate===o.deliveryDate && x.shippingStatus!=='ยกเลิก');
+  const dayOrders = orders.filter(x=>x.deliveryDate===members[0].deliveryDate && x.shippingStatus!=='ยกเลิก');
   const allDone = dayOrders.length>0 && dayOrders.every(x=>x.shippingStatus==='ส่งลูกค้าเรียบร้อย' && x.paymentStatus==='ได้รับเงินแล้ว');
-  if(allDone) showCelebrateModal(o.deliveryDate);
+  if(allDone) showCelebrateModal(members[0].deliveryDate);
 }
 document.getElementById('closeDlCompleteBtn').addEventListener('click', closeDlCompleteModal);
 document.getElementById('dlCompleteModal').addEventListener('click', e=>{ if(e.target.id==='dlCompleteModal') closeDlCompleteModal(); });
