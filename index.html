@@ -587,6 +587,7 @@ p.hint.collapsible-hint.show{display:block;}
     </div>
     <div class="drawer-divider"></div>
     <div class="drawer-group">
+      <button type="button" class="drawer-link" id="clearCacheDrawerBtn">🧹 ล้างแคช/อัปเดตแอป</button>
       <button type="button" class="drawer-link" id="logoutDrawerBtn">🚪 Log Out</button>
     </div>
   </nav>
@@ -1769,6 +1770,24 @@ function touchSessionThrottled(){
 
 document.getElementById('logoutDrawerBtn').addEventListener('click', ()=>{
   if(confirm('ออกจากระบบ?')){ localStorage.removeItem(SESSION_KEY); auth.signOut(); }
+});
+// Lets a phone that added this app to its home screen (or any browser tab that already has the
+// old version cached by the service worker below) force-fetch the latest code instead of having
+// to manually clear browsing data — sw.js is network-first already, but this also unregisters the
+// worker and drops its Cache Storage entries so a stale install can't keep serving old assets.
+document.getElementById('clearCacheDrawerBtn').addEventListener('click', async ()=>{
+  if(!confirm('ล้างแคชแอปและโหลดเวอร์ชันล่าสุดหรือไม่?')) return;
+  try{
+    if('serviceWorker' in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+    if('caches' in window){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+  }catch(e){ /* fall through to reload regardless */ }
+  location.reload();
 });
 auth.onAuthStateChanged(user=>{
   fsDebugLog(user ? ('auth: signed in as '+user.email+' (uid '+user.uid+')') : 'auth: signed out');
@@ -4028,7 +4047,10 @@ document.getElementById('hamburgerBtn').addEventListener('click', openDrawer);
 document.getElementById('closeDrawerBtn').addEventListener('click', closeDrawer);
 drawerOverlay.addEventListener('click', e=>{ if(e.target===drawerOverlay) closeDrawer(); });
 document.querySelectorAll('.drawer-link').forEach(btn=>{
-  btn.addEventListener('click', ()=>{ switchPage(btn.dataset.page); closeDrawer(); });
+  // Utility buttons in this same list (Log Out, ล้างแคช) have no data-page — they handle their own
+  // click elsewhere, so this generic handler should only navigate for actual page links, not call
+  // switchPage(undefined) (which throws inside applyPage's pageName.indexOf check) for them too.
+  btn.addEventListener('click', ()=>{ if(btn.dataset.page) switchPage(btn.dataset.page); closeDrawer(); });
 });
 document.querySelectorAll('.drawer-sublink:not(#settingsDrawerBtn)').forEach(btn=>{
   btn.addEventListener('click', ()=>{
