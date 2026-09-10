@@ -2989,7 +2989,9 @@ function computePrepData(date){
     });
   });
 
-  return {orderCount:list.length, productsNeeded, materialsNeeded, uncoveredCount};
+  // "จำนวนออเดอร์" means customers to prep for today, not raw product lines — a multi-item order
+  // (see extraLineItems/buildOrderUnits) should count once, matching the delivery page.
+  return {orderCount:buildOrderUnits(list).length, productsNeeded, materialsNeeded, uncoveredCount};
 }
 function renderPrepMaterialRows(list, tbodyId, checks, emptyMsg){
   const tbody = document.getElementById(tbodyId);
@@ -3265,7 +3267,9 @@ function renderReport(){
   const totalOutstanding = list.reduce((s,o)=>s+o._amt.outstanding,0);
   const totalQtySmall = list.reduce((s,o)=>s+(Number(o.jarSmall)||0),0);
   const totalQtyLarge = list.reduce((s,o)=>s+(Number(o.jarLarge)||0),0);
-  const orderCount = list.length;
+  // "ออเดอร์" here means customers/visits, not raw product lines — a multi-item order (see
+  // extraLineItems/buildOrderUnits) counts once, both for the shown count and for the average.
+  const orderCount = buildOrderUnits(list).length;
   const avgPerOrder = orderCount ? totalSales/orderCount : 0;
 
   // Shown as a waterfall (gross -> less discount -> net product sales -> + shipping -> grand
@@ -5044,7 +5048,8 @@ function computePnL(from, to){
   const netProfit = grossProfit - totalOpex;
   const netMarginPct = netRevenue>0 ? netProfit/netRevenue*100 : 0;
 
-  return {orderCount:list.length, salesRevenue, shippingRevenue, discountTotal, grossRevenue, netRevenue, cogs, uncoveredCount, grossProfit, grossMarginPct, opexByCategory, totalOpex, netProfit, netMarginPct};
+  // "จำนวนออเดอร์" means customers/visits, not raw product lines — see buildOrderUnits.
+  return {orderCount:buildOrderUnits(list).length, salesRevenue, shippingRevenue, discountTotal, grossRevenue, netRevenue, cogs, uncoveredCount, grossProfit, grossMarginPct, opexByCategory, totalOpex, netProfit, netMarginPct};
 }
 function pnlAmt(n, negative){
   const cls = negative ? ' class="pnl-amt pnl-neg"' : ' class="pnl-amt"';
