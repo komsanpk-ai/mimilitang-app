@@ -651,6 +651,10 @@ p.hint.collapsible-hint.show{display:block;}
         </div>
       </div>
 
+      <div class="record-list" id="extraLineItemsBox"></div>
+      <button type="button" class="btn btn-outline btn-small" id="addLineItemBtn" style="align-self:flex-start;">➕ เพิ่มสินค้าอีกรายการ</button>
+      <p class="hint" id="multiItemHint" style="display:none;margin-top:-6px;">ลูกค้าคนเดียวกันสั่งหลายสินค้าพร้อมกัน — ระบบจะบันทึกแยกเป็นคนละรายการต่อสินค้า (รายงานแยกตามสินค้ายังถูกต้อง) แต่นับเป็นการซื้อ 1 ครั้งสำหรับสถิติลูกค้าซื้อซ้ำ</p>
+
       <div class="row cols-3">
         <div class="field"><label>📦 สถานะการจัดส่ง</label>
           <select id="f_shippingStatus">
@@ -2076,9 +2080,19 @@ function computeAmounts(o){
 
 const PALETTE = ['#7a1f1f','#c8961e','#2e7d32','#1565c0','#8e24aa','#ef6c00','#00897b','#6d4c41','#ad1457','#3949ab'];
 
+/* When a customer buys several products in one visit, each product is still saved as its own
+   order document (so per-product reports stay correct) but they share a `groupId` — counting
+   "how many times has this customer bought" must dedupe by that shared id (falling back to the
+   order's own id for older/single-item orders) so one multi-product visit isn't counted as
+   multiple purchases. */
+function distinctVisits(list){
+  const seen = new Set(), out = [];
+  list.forEach(o=>{ const key = o.groupId||o.id; if(seen.has(key)) return; seen.add(key); out.push(o); });
+  return out;
+}
 function customerOrderCount(phone){
   if(!phone) return 0;
-  return orders.filter(o=>o.phone===phone).length;
+  return distinctVisits(orders.filter(o=>o.phone===phone)).length;
 }
 function repeatStarHTML(phone){
   const count = customerOrderCount(phone);
@@ -2262,6 +2276,45 @@ populateSelects();
 f('f_orderDate').value = todayISO();
 f('f_deliveryDate').value = addDaysISO(todayISO(),1);
 
+/* ============ Multi-item order entry ============ */
+// Lets one customer visit that buys several different products (e.g. ลี่ถัง + รังนก together) be
+// entered once instead of retyping ชื่อ/เบอร์/ที่อยู่/วันที่ per product — each product still ends
+// up as its own order document (so every per-product report stays exactly as accurate as before),
+// but they're tagged with a shared groupId so "how many times has this customer bought" (see
+// distinctVisits/customerOrderCount above) counts this as ONE visit, not one per product.
+let extraLineItems = [];
+function renderLineItemRows(){
+  const box = document.getElementById('extraLineItemsBox');
+  box.innerHTML = extraLineItems.map((item,i)=>`<div class="record-card" data-i="${i}">
+    <div class="record-card-head">
+      <select class="li-product rc-name" data-i="${i}">${products.map(p=>`<option value="${esc(p.name)}" ${p.name===item.product?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
+      <button type="button" class="icon-mini danger li-remove" data-i="${i}" title="ลบสินค้ารายการนี้">✕</button>
+    </div>
+    <div class="record-card-fields">
+      <div class="record-field"><label>🔹 ถ้วยเล็ก</label><input type="number" min="0" class="li-jarSmall" data-i="${i}" value="${item.jarSmall||''}" placeholder="0"></div>
+      <div class="record-field"><label>🔷 ถ้วยใหญ่</label><input type="number" min="0" class="li-jarLarge" data-i="${i}" value="${item.jarLarge||''}" placeholder="0"></div>
+    </div>
+  </div>`).join('');
+  document.getElementById('multiItemHint').style.display = extraLineItems.length ? 'block' : 'none';
+  box.querySelectorAll('.li-product').forEach(el=>el.addEventListener('change', ()=>{
+    extraLineItems[Number(el.dataset.i)].product = el.value; updateTotalPreview();
+  }));
+  box.querySelectorAll('.li-jarSmall').forEach(el=>el.addEventListener('input', ()=>{
+    extraLineItems[Number(el.dataset.i)].jarSmall = Number(el.value)||0; updateTotalPreview();
+  }));
+  box.querySelectorAll('.li-jarLarge').forEach(el=>el.addEventListener('input', ()=>{
+    extraLineItems[Number(el.dataset.i)].jarLarge = Number(el.value)||0; updateTotalPreview();
+  }));
+  box.querySelectorAll('.li-remove').forEach(el=>el.addEventListener('click', ()=>{
+    extraLineItems.splice(Number(el.dataset.i),1); renderLineItemRows(); updateTotalPreview();
+  }));
+}
+document.getElementById('addLineItemBtn').addEventListener('click', ()=>{
+  extraLineItems.push({product: products[0]?products[0].name:'', jarSmall:0, jarLarge:0});
+  renderLineItemRows();
+  updateTotalPreview();
+});
+
 function updateReserveFieldsUI(){
   const isReserve = f('f_isReserve').checked;
   document.getElementById('f_customerNameReq').style.display = isReserve ? 'none' : '';
@@ -2310,10 +2363,21 @@ f('f_paymentSlip').addEventListener('change', e=>{
     .catch(()=>toast('อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 function updateTotalPreview(){
-  const amt = computeAmounts(readForm());
-  f('totalAmount') ? null : null;
-  document.getElementById('totalAmount').textContent = fmt(amt.displayTotal)+' บาท';
-  document.getElementById('totalSub').textContent = `ยอดเต็ม: ${fmt(amt.grandTotal)} บาท`;
+  const data = readForm();
+  const amt = computeAmounts(data);
+  // Extra product lines only add their own subtotal (no separate shipping/discount/deposit —
+  // those apply once for the whole visit, see the submit handler) so the preview matches what
+  // actually gets saved once split into per-product order documents.
+  let extraSubtotal = 0;
+  extraLineItems.forEach(it=>{
+    if(!it.product) return;
+    const prod = getProduct(it.product);
+    extraSubtotal += (Number(it.jarSmall)||0)*prod.priceSmall + (Number(it.jarLarge)||0)*prod.priceLarge;
+  });
+  const grandTotal = amt.grandTotal + extraSubtotal;
+  const displayTotal = data.paymentStatus==='ได้รับเงินแล้ว' ? grandTotal : Math.max(grandTotal - (Number(data.deposit)||0), 0);
+  document.getElementById('totalAmount').textContent = fmt(displayTotal)+' บาท';
+  document.getElementById('totalSub').textContent = `ยอดเต็ม: ${fmt(grandTotal)} บาท`;
 }
 ['f_product','f_jarSmall','f_jarLarge','f_shippingFee','f_discountValue','f_discountType','f_deposit','f_paymentStatus']
   .forEach(id=>{ const el=f(id); el.addEventListener('input', updateTotalPreview); el.addEventListener('change', updateTotalPreview); });
@@ -2322,6 +2386,11 @@ updateTotalPreview();
 function fillFormFromOrder(o){
   f('f_isReserve').checked = !!o.isReserve;
   updateReserveFieldsUI();
+  // Editing always targets exactly one existing order document — adding more product lines here
+  // would be ambiguous (which line is "the" edited order?), so multi-item entry is add-only.
+  extraLineItems = [];
+  renderLineItemRows();
+  document.getElementById('addLineItemBtn').style.display = 'none';
   f('f_customerName').value=o.customerName; f('f_phone').value=o.phone;
   f('f_orderDate').value=o.orderDate; f('f_deliveryDate').value=o.deliveryDate;
   f('f_address').value=o.address; f('f_product').value=o.product; f('f_channel').value=o.channel;
@@ -2344,6 +2413,9 @@ function resetForm(){
   f('f_discountValue').value=''; f('f_deposit').value=''; f('f_discountType').value='baht';
   formSlipData = null; f('f_paymentSlip').value=''; updateSlipPreview();
   updateReserveFieldsUI();
+  extraLineItems = [];
+  renderLineItemRows();
+  document.getElementById('addLineItemBtn').style.display = '';
   populateSelects();
   editingId = null;
   document.getElementById('editingBanner').classList.remove('show');
@@ -2375,10 +2447,25 @@ document.getElementById('orderForm').addEventListener('submit', e=>{
     }
     toast('บันทึกการแก้ไขแล้ว');
   } else {
-    const newConsumption = computeConsumptionForOrder(data);
-    applyConsumption(newConsumption, -1);
-    orders.push(Object.assign({id:uid()}, data, {_stockConsumed:newConsumption}));
-    toast('บันทึกข้อมูลแล้ว');
+    // Extra product lines become their own order documents (so every per-product report stays
+    // accurate) sharing one groupId (so "how many times has this customer bought" counts this as
+    // one visit — see distinctVisits). Shipping fee/discount/deposit describe the whole visit, so
+    // only the first line item keeps them; the rest get 0 to avoid counting them once per product.
+    const validExtraItems = extraLineItems.filter(it=>it.product && ((Number(it.jarSmall)||0)>0 || (Number(it.jarLarge)||0)>0));
+    const groupId = validExtraItems.length ? uid() : null;
+    const lineItems = [
+      {product:data.product, jarSmall:data.jarSmall, jarLarge:data.jarLarge},
+      ...validExtraItems.map(it=>({product:it.product, jarSmall:Number(it.jarSmall)||0, jarLarge:Number(it.jarLarge)||0}))
+    ];
+    lineItems.forEach((item, i)=>{
+      const orderData = Object.assign({}, data, item);
+      if(groupId) orderData.groupId = groupId;
+      if(i>0){ orderData.shippingFee = 0; orderData.discountValue = 0; orderData.deposit = 0; }
+      const newConsumption = computeConsumptionForOrder(orderData);
+      applyConsumption(newConsumption, -1);
+      orders.push(Object.assign({id:uid()}, orderData, {_stockConsumed:newConsumption}));
+    });
+    toast(lineItems.length>1 ? `บันทึกข้อมูล ${lineItems.length} สินค้าแล้ว` : 'บันทึกข้อมูลแล้ว');
   }
   persistOrders();
   syncReportRangeToDate(data.deliveryDate);
@@ -3542,14 +3629,14 @@ document.getElementById('rr-mode').addEventListener('change', ()=>{ rrMode = doc
 
 /* ---- Report 3: new vs repeat customers per bucket ---- */
 function reportCustomerSeries(buckets){
+  const visits = distinctVisits(orders.filter(o=>o.phone && !o.isReserve));
   const firstDeliveryDate = {};
-  orders.forEach(o=>{
-    if(!o.phone || o.isReserve) return;
+  visits.forEach(o=>{
     if(!firstDeliveryDate[o.phone] || o.deliveryDate < firstDeliveryDate[o.phone]) firstDeliveryDate[o.phone] = o.deliveryDate;
   });
   const newCust = buckets.map(()=>0), repeatCust = buckets.map(()=>0);
-  orders.forEach(o=>{
-    if(o.shippingStatus==='ยกเลิก' || !o.phone || o.isReserve) return;
+  visits.forEach(o=>{
+    if(o.shippingStatus==='ยกเลิก') return;
     const idx = buckets.findIndex(b=>o.deliveryDate>=b.from && o.deliveryDate<=b.to);
     if(idx===-1) return;
     if(o.deliveryDate===firstDeliveryDate[o.phone]) newCust[idx]++; else repeatCust[idx]++;

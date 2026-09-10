@@ -252,13 +252,24 @@ async function buildSalesSummaryReport(fromISO, toISO) {
   return lines.join('\n\n');
 }
 
+// When a customer buys several products in one visit, each product is saved as its own order
+// document (so every per-product report stays accurate) but they share a `groupId` — counting
+// "how many times has this customer bought" must dedupe by that shared id (falling back to the
+// order's own id for older/single-item orders) so one multi-product visit isn't counted as
+// multiple purchases. Mirrors index.html's distinctVisits.
+function distinctVisits(list) {
+  const seen = new Set(), out = [];
+  list.forEach(o => { const key = o.groupId || o.id; if (seen.has(key)) return; seen.add(key); out.push(o); });
+  return out;
+}
+
 // รายงาน > 2 > 1 จำนวนลูกค้า > (period) — "new" means this phone's earliest-ever delivery
 // (across all history, not just this window) falls inside the window; everyone else who had
 // a delivery in the window is "repeat" — same rule as index.html's reportCustomerSeries,
 // keyed by deliveryDate for the same accrual-basis reason as buildSalesSummaryReport above.
 async function buildCustomerCountReport(fromISO, toISO) {
   const snap = await db.collection('orders').get();
-  const allOrders = snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && o.phone && !o.isReserve);
+  const allOrders = distinctVisits(snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && o.phone && !o.isReserve));
 
   const firstDeliveryByPhone = new Map();
   allOrders.forEach(o => {
@@ -290,7 +301,7 @@ async function buildCustomerCountReport(fromISO, toISO) {
 // 10-order VIP still shows up somewhere instead of vanishing from every line.
 async function buildRepeatCustomerReport() {
   const snap = await db.collection('orders').get();
-  const orders = snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && o.phone && !o.isReserve);
+  const orders = distinctVisits(snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && o.phone && !o.isReserve));
   const countByPhone = {};
   orders.forEach(o => { countByPhone[o.phone] = (countByPhone[o.phone] || 0) + 1; });
   const counts = Object.values(countByPhone);
