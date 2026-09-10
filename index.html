@@ -2747,6 +2747,20 @@ function unitRowHtml(u, no){
   const isGroup = members.length>1;
   const ids = members.map(o=>o.id).join(',');
   const total = members.reduce((s,o)=>s+o._amt.displayTotal,0);
+  // A ผลิตสำรอง row has no real customer yet, so shippingStatus/paymentStatus/paymentMethod are
+  // just whatever the form defaulted to (typically "รอเตรียมส่ง"/"ยังไม่ได้รับเงิน"/"เงินสด") — shown
+  // as normal editable dropdowns, that reads exactly like a real pending order sitting in the list,
+  // which is confusing to scan through. Replacing them with one plain "📦 สต๊อก" badge each makes a
+  // reserve row visually unmistakable, without touching the stored values themselves — every report/
+  // filter that reads shippingStatus/paymentStatus is completely unaffected by this display-only change.
+  const stockBadge = title => `<span class="badge gray" title="${esc(title)}">📦 สต๊อก</span>`;
+  const shippingStatusCell = p.isReserve
+    ? stockBadge('สต๊อกรอลูกค้า — ยังไม่ใช่การจัดส่งจริง')
+    : badgeSelectHTML(ids, p.shippingStatus, ['รอเตรียมส่ง','กำลังจัดส่ง','ส่งลูกค้าเรียบร้อย','ยกเลิก'], 'shippingStatus');
+  const paymentStatusCell = p.isReserve
+    ? stockBadge('สต๊อกรอลูกค้า — ยังไม่มีการชำระเงินจริง')
+    : badgeSelectHTML(ids, p.paymentStatus, ['ยังไม่ได้รับเงิน','มัดจำ','ได้รับเงินแล้ว'], 'paymentStatus');
+  const paymentMethodCell = p.isReserve ? `<span class="subtle-note">-</span>` : badgeSelectHTML(ids, p.paymentMethod||paymentMethods[0]||'', paymentMethods, 'paymentMethod');
   return `<tr>
     <td>${no}</td>
     <td class="wrap">${p.isReserve?'<span class="badge gray" title="ผลิตสำรอง ยังไม่ใช่ยอดขายจริง">📦 สำรอง</span> ':''}${repeatStarHTML(p.phone)}${esc(p.customerName)}${isGroup?` <span class="badge gray" title="ออเดอร์เดียวกัน ซื้อ ${members.length} สินค้าพร้อมกัน">🧾 ${members.length} สินค้า</span>`:''}</td>
@@ -2754,7 +2768,7 @@ function unitRowHtml(u, no){
     <td>${fmtDate(p.orderDate)}</td>
     <td>${fmtDate(p.deliveryDate)}</td>
     <td class="wrap">${esc(p.address)}</td>
-    <td>${badgeSelectHTML(ids, p.shippingStatus, ['รอเตรียมส่ง','กำลังจัดส่ง','ส่งลูกค้าเรียบร้อย','ยกเลิก'], 'shippingStatus')}</td>
+    <td>${shippingStatusCell}</td>
     <td>${members.map(o=>`<div class="stacked-line">${badgeSelectHTML(o.id, o.product, products.map(pp=>pp.name), 'product')}</div>`).join('')}</td>
     <td>${members.map(o=>`<div class="stacked-line">${o.jarSmall}</div>`).join('')}</td>
     <td>${members.map(o=>`<div class="stacked-line">${o.jarLarge}</div>`).join('')}</td>
@@ -2763,8 +2777,8 @@ function unitRowHtml(u, no){
     <td><span class="badge gray">${p.discountType==='percent'?'เปอร์เซ็นต์':'บาท'}</span></td>
     <td>${p.deposit?fmt(p.deposit)+' บ.':'0 บ.'}</td>
     <td class="amount-cell">${fmt(total)} บ.</td>
-    <td>${badgeSelectHTML(ids, p.paymentStatus, ['ยังไม่ได้รับเงิน','มัดจำ','ได้รับเงินแล้ว'], 'paymentStatus')}</td>
-    <td>${badgeSelectHTML(ids, p.paymentMethod||paymentMethods[0]||'', paymentMethods, 'paymentMethod')}</td>
+    <td>${paymentStatusCell}</td>
+    <td>${paymentMethodCell}</td>
     <td>${p.paymentSlip ? `<button type="button" class="btn btn-outline btn-small slip-view-btn" data-id="${p.id}">🖼️ ดูสลิป</button>` : `<span class="subtle-note">-</span>`}</td>
     <td>${badgeSelectHTML(ids, p.channel, channels, 'channel')}</td>
     <td class="wrap">${esc(p.note)}</td>
@@ -2879,18 +2893,32 @@ function renderDeliveryReport(){
     const isDone = p.shippingStatus==='ส่งลูกค้าเรียบร้อย' && p.paymentStatus==='ได้รับเงินแล้ว';
     const btnClass = isDone ? 'btn-outline btn-small dl-complete-btn dl-done' : 'btn-outline btn-small dl-complete-btn';
     const btnLabel = isDone ? '✅ ส่งสำเร็จ' : 'ยืนยันการส่ง';
+    // A ผลิตสำรอง row has no real customer/payment yet — showing its shippingStatus/paymentStatus
+    // (typically "รอเตรียมส่ง"/"ยังไม่ได้รับเงิน", same as a real pending order) makes it read as one,
+    // and "ยืนยันการส่ง" would wrongly mark a stock item as shipped-and-paid. Swap all three for a
+    // plain "📦 สต๊อก" indicator — display-only, the stored fields (and every report reading them)
+    // are untouched.
+    const actionCell = p.isReserve
+      ? `<span class="badge gray" title="สต๊อกรอลูกค้า — ยังไม่ต้องยืนยันส่ง">📦 สต๊อก</span>`
+      : `<button type="button" class="btn ${btnClass}" data-ids="${ids}" title="ยืนยันส่งสำเร็จ + รับเงินแล้ว">${btnLabel}</button>`;
+    const shippingStatusCell = p.isReserve
+      ? `<span class="badge gray" title="สต๊อกรอลูกค้า — ยังไม่ใช่การจัดส่งจริง">📦 สต๊อก</span>`
+      : `<span class="badge ${badgeClass}">${esc(p.shippingStatus)}</span>`;
+    const paymentStatusCell = p.isReserve
+      ? `<span class="badge gray" title="สต๊อกรอลูกค้า — ยังไม่มีการชำระเงินจริง">📦 สต๊อก</span>`
+      : `<span class="badge ${paymentBadgeClass}">${esc(p.paymentStatus)}</span>`;
     return `<tr data-id="${p.id}">
     <td><span class="drag-handle" title="ลากเพื่อจัดลำดับเส้นทาง">⠿</span></td>
     <td>${idx+1}</td>
-    <td><button type="button" class="btn ${btnClass}" data-ids="${ids}" title="ยืนยันส่งสำเร็จ + รับเงินแล้ว">${btnLabel}</button></td>
+    <td>${actionCell}</td>
     <td class="wrap">${repeatStarHTML(p.phone)}${esc(p.customerName)}${isGroup?` <span class="badge gray" title="ออเดอร์เดียวกัน ซื้อ ${u.members.length} สินค้าพร้อมกัน">🧾 ${u.members.length} สินค้า</span>`:''}</td><td>${telLink(p.phone)}</td><td class="wrap">${esc(p.address)}</td>
     <td>${u.members.map(o=>`<div class="stacked-line">${esc(o.product)}</div>`).join('')}</td>
     <td>${u.members.map(o=>`<div class="stacked-line">${o.jarSmall}</div>`).join('')}</td>
     <td>${u.members.map(o=>`<div class="stacked-line">${o.jarLarge}</div>`).join('')}</td>
-    <td><span class="badge ${badgeClass}">${esc(p.shippingStatus)}</span></td>
+    <td>${shippingStatusCell}</td>
     <td>${p.shippingFee?fmt(p.shippingFee)+' บ.':'0 บ.'}</td>
     <td>${p.deposit?fmt(p.deposit)+' บ.':'0 บ.'}</td>
-    <td><span class="badge ${paymentBadgeClass}">${esc(p.paymentStatus)}</span></td>
+    <td>${paymentStatusCell}</td>
     <td class="amount-cell">${fmt(total)} บ.</td>
     <td class="wrap">${esc(p.note)}</td>
   </tr>`;
