@@ -201,7 +201,9 @@ async function buildSalesSummaryReport(fromISO, toISO) {
     db.collection('settings').doc('recipes').get(),
     db.collection('materials').get()
   ]);
-  const periodOrders = ordersSnap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก');
+  // "ผลิตสำรอง" orders (isReserve — made ahead, no customer yet) are excluded entirely, same
+  // as index.html's renderReport: not a sale yet, so it shouldn't count toward cups sold or revenue.
+  const periodOrders = ordersSnap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && !o.isReserve);
   const products = (productsDoc.exists && productsDoc.data().value) || [];
   const recipes = (recipesDoc.exists && recipesDoc.data().value) || [];
   const materialsById = new Map(materialsSnap.docs.map(d => [d.id, d.data()]));
@@ -256,7 +258,7 @@ async function buildSalesSummaryReport(fromISO, toISO) {
 // keyed by deliveryDate for the same accrual-basis reason as buildSalesSummaryReport above.
 async function buildCustomerCountReport(fromISO, toISO) {
   const snap = await db.collection('orders').get();
-  const allOrders = snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && o.phone);
+  const allOrders = snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && o.phone && !o.isReserve);
 
   const firstDeliveryByPhone = new Map();
   allOrders.forEach(o => {
@@ -288,7 +290,7 @@ async function buildCustomerCountReport(fromISO, toISO) {
 // 10-order VIP still shows up somewhere instead of vanishing from every line.
 async function buildRepeatCustomerReport() {
   const snap = await db.collection('orders').get();
-  const orders = snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && o.phone);
+  const orders = snap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && o.phone && !o.isReserve);
   const countByPhone = {};
   orders.forEach(o => { countByPhone[o.phone] = (countByPhone[o.phone] || 0) + 1; });
   const counts = Object.values(countByPhone);
@@ -327,7 +329,7 @@ async function buildPaymentReport(fromISO, toISO) {
     db.collection('settings').doc('paymentMethods').get(),
     db.collection('settings').doc('products').get()
   ]);
-  const orders = ordersSnap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก');
+  const orders = ordersSnap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && !o.isReserve);
   const methods = (pmDoc.exists && pmDoc.data().value) || [];
   const products = (productsDoc.exists && productsDoc.data().value) || [];
 

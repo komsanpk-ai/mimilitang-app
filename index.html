@@ -619,10 +619,14 @@ p.hint.collapsible-hint.show{display:block;}
       <button type="button" id="cancelEditBtn">ยกเลิกการแก้ไข</button>
     </div>
     <form class="form-grid" id="orderForm">
-      <div class="field"><label>👤 ชื่อลูกค้า <span class="req">*</span></label>
-        <input type="text" id="f_customerName" required placeholder="ชื่อลูกค้า"></div>
-      <div class="field"><label>📞 เบอร์โทร <span class="req">*</span></label>
-        <input type="tel" id="f_phone" required placeholder="081XXXXXXX"></div>
+      <div class="field checkbox-field">
+        <label><input type="checkbox" id="f_isReserve"> 📦 ผลิตสำรอง/ยังไม่ใช่ยอดขายจริง (ยังไม่มีลูกค้า)</label>
+        <p class="hint">ติ๊กช่องนี้ถ้ายังไม่มีลูกค้าจริง (เผื่อผลิตไว้ก่อน) — ระบบจะตัดสต๊อกวัตถุดิบและนับเป็นรายการที่ต้องเตรียมของตามปกติ แต่จะไม่นับเป็นยอดขาย/กำไรในรายงานใดๆ จนกว่าจะแก้ไขกลับมาใส่ชื่อลูกค้าและปลดติ๊กออกตอนขายได้จริง</p>
+      </div>
+      <div class="field"><label>👤 ชื่อลูกค้า <span class="req" id="f_customerNameReq">*</span></label>
+        <input type="text" id="f_customerName" placeholder="ชื่อลูกค้า (เว้นว่างได้ถ้าเป็นของสำรอง)"></div>
+      <div class="field"><label>📞 เบอร์โทร <span class="req" id="f_phoneReq">*</span></label>
+        <input type="tel" id="f_phone" placeholder="081XXXXXXX (เว้นว่างได้ถ้าเป็นของสำรอง)"></div>
 
       <div class="row">
         <div class="field"><label>🧾 วันที่สั่งสินค้า</label><input type="date" id="f_orderDate"></div>
@@ -2252,10 +2256,19 @@ populateSelects();
 f('f_orderDate').value = todayISO();
 f('f_deliveryDate').value = addDaysISO(todayISO(),1);
 
+function updateReserveFieldsUI(){
+  const isReserve = f('f_isReserve').checked;
+  document.getElementById('f_customerNameReq').style.display = isReserve ? 'none' : '';
+  document.getElementById('f_phoneReq').style.display = isReserve ? 'none' : '';
+}
+f('f_isReserve').addEventListener('change', updateReserveFieldsUI);
+updateReserveFieldsUI();
+
 let editingId = null;
 
 function readForm(){
   return {
+    isReserve: f('f_isReserve').checked,
     customerName: f('f_customerName').value.trim(),
     phone: f('f_phone').value.trim(),
     orderDate: f('f_orderDate').value,
@@ -2301,6 +2314,8 @@ function updateTotalPreview(){
 updateTotalPreview();
 
 function fillFormFromOrder(o){
+  f('f_isReserve').checked = !!o.isReserve;
+  updateReserveFieldsUI();
   f('f_customerName').value=o.customerName; f('f_phone').value=o.phone;
   f('f_orderDate').value=o.orderDate; f('f_deliveryDate').value=o.deliveryDate;
   f('f_address').value=o.address; f('f_product').value=o.product; f('f_channel').value=o.channel;
@@ -2322,6 +2337,7 @@ function resetForm(){
   f('f_jarSmall').value=''; f('f_jarLarge').value=''; f('f_shippingFee').value='';
   f('f_discountValue').value=''; f('f_deposit').value=''; f('f_discountType').value='baht';
   formSlipData = null; f('f_paymentSlip').value=''; updateSlipPreview();
+  updateReserveFieldsUI();
   populateSelects();
   editingId = null;
   document.getElementById('editingBanner').classList.remove('show');
@@ -2332,12 +2348,16 @@ function resetForm(){
 
 document.getElementById('orderForm').addEventListener('submit', e=>{
   e.preventDefault();
+  // ชื่อลูกค้า/เบอร์โทร is only required for a real sale — a "ผลิตสำรอง" entry has no
+  // customer yet by definition, so skip this check while that box is ticked.
   let valid = true;
-  [['f_customerName'],['f_phone']].forEach(([id])=>{
-    const el=f(id), wrap=el.closest('.field');
-    if(!el.value.trim()){ wrap.classList.add('invalid'); valid=false; } else wrap.classList.remove('invalid');
-  });
-  if(!valid){ toast('กรุณากรอกชื่อลูกค้าและเบอร์โทร'); return; }
+  if(!f('f_isReserve').checked){
+    [['f_customerName'],['f_phone']].forEach(([id])=>{
+      const el=f(id), wrap=el.closest('.field');
+      if(!el.value.trim()){ wrap.classList.add('invalid'); valid=false; } else wrap.classList.remove('invalid');
+    });
+    if(!valid){ toast('กรุณากรอกชื่อลูกค้าและเบอร์โทร'); return; }
+  }
   const data = readForm();
   if(editingId){
     const idx = orders.findIndex(o=>o.id===editingId);
@@ -2541,7 +2561,7 @@ function rowHtml(o, no){
   const a = o._amt;
   return `<tr>
     <td>${no}</td>
-    <td class="wrap">${repeatStarHTML(o.phone)}${esc(o.customerName)}</td>
+    <td class="wrap">${o.isReserve?'<span class="badge gray" title="ผลิตสำรอง ยังไม่ใช่ยอดขายจริง">📦 สำรอง</span> ':''}${repeatStarHTML(o.phone)}${esc(o.customerName)}</td>
     <td>${esc(o.phone)}</td>
     <td>${fmtDate(o.orderDate)}</td>
     <td>${fmtDate(o.deliveryDate)}</td>
@@ -2624,8 +2644,12 @@ function renderDeliveryReport(){
   }
   const totalSmall = list.reduce((s,o)=>s+(Number(o.jarSmall)||0),0);
   const totalLarge = list.reduce((s,o)=>s+(Number(o.jarLarge)||0),0);
-  const totalValue = list.reduce((s,o)=>s+o._amt.grandTotal,0);
-  const totalOutstanding = list.reduce((s,o)=>s+o._amt.outstanding,0);
+  // Cup counts above include "ผลิตสำรอง" entries (still real production for today), but the
+  // money stats below don't — a reserve item has no customer/price yet, so it shouldn't make
+  // "ยังไม่ได้รับเงิน"/profit look like there's an unpaid balance that doesn't really exist.
+  const realSalesList = list.filter(o=>!o.isReserve);
+  const totalValue = realSalesList.reduce((s,o)=>s+o._amt.grandTotal,0);
+  const totalOutstanding = realSalesList.reduce((s,o)=>s+o._amt.outstanding,0);
 
   const dayProfit = computeDeliveryDayProfit(date);
   document.getElementById('deliveryStats').innerHTML = [
@@ -2908,7 +2932,7 @@ document.getElementById('dlCompleteModal').addEventListener('click', e=>{ if(e.t
 
 /* ============ Celebration popup: all deliveries for the day confirmed ============ */
 function computeDeliveryDayProfit(date){
-  const list = orders.filter(o=>o.deliveryDate===date && o.shippingStatus!=='ยกเลิก').map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
+  const list = orders.filter(o=>o.deliveryDate===date && o.shippingStatus!=='ยกเลิก' && !o.isReserve).map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
   const revenue = list.reduce((s,o)=>s+o._amt.grandTotal,0);
   let cogs = 0;
   list.forEach(o=>{
@@ -3008,7 +3032,7 @@ function statCard(label, value, sub){
 
 function renderReport(){
   const {from, to} = getRangeForTab();
-  const list = orders.filter(o=>o.deliveryDate>=from && o.deliveryDate<=to).map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
+  const list = orders.filter(o=>!o.isReserve && o.deliveryDate>=from && o.deliveryDate<=to).map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
 
   const totalSales = list.reduce((s,o)=>s+o._amt.grandTotal,0);
   const totalProductSales = list.reduce((s,o)=>s+o._amt.subtotal,0);
@@ -3458,7 +3482,7 @@ function initReportModule(cfg){
 function reportSalesSeries(buckets){
   const small = buckets.map(()=>0), large = buckets.map(()=>0);
   orders.forEach(o=>{
-    if(o.shippingStatus==='ยกเลิก') return;
+    if(o.shippingStatus==='ยกเลิก' || o.isReserve) return;
     const idx = buckets.findIndex(b=>o.deliveryDate>=b.from && o.deliveryDate<=b.to);
     if(idx===-1) return;
     small[idx] += Number(o.jarSmall)||0;
@@ -3477,7 +3501,7 @@ function reportRevenueSeries(buckets){
   const revenue=buckets.map(()=>0), cost=buckets.map(()=>0), qty=buckets.map(()=>0);
   let uncovered=0;
   orders.forEach(o=>{
-    if(o.shippingStatus==='ยกเลิก') return;
+    if(o.shippingStatus==='ยกเลิก' || o.isReserve) return;
     const idx = buckets.findIndex(b=>o.deliveryDate>=b.from && o.deliveryDate<=b.to);
     if(idx===-1) return;
     const amt = computeAmounts(o);
@@ -3514,12 +3538,12 @@ document.getElementById('rr-mode').addEventListener('change', ()=>{ rrMode = doc
 function reportCustomerSeries(buckets){
   const firstDeliveryDate = {};
   orders.forEach(o=>{
-    if(!o.phone) return;
+    if(!o.phone || o.isReserve) return;
     if(!firstDeliveryDate[o.phone] || o.deliveryDate < firstDeliveryDate[o.phone]) firstDeliveryDate[o.phone] = o.deliveryDate;
   });
   const newCust = buckets.map(()=>0), repeatCust = buckets.map(()=>0);
   orders.forEach(o=>{
-    if(o.shippingStatus==='ยกเลิก' || !o.phone) return;
+    if(o.shippingStatus==='ยกเลิก' || !o.phone || o.isReserve) return;
     const idx = buckets.findIndex(b=>o.deliveryDate>=b.from && o.deliveryDate<=b.to);
     if(idx===-1) return;
     if(o.deliveryDate===firstDeliveryDate[o.phone]) newCust[idx]++; else repeatCust[idx]++;
@@ -3552,7 +3576,7 @@ function reportPaymentSeries(buckets){
   const seriesMap = {};
   paymentMethods.forEach((m,i)=>{ seriesMap[m] = {name:m, color:PALETTE[(i+2)%PALETTE.length], values:buckets.map(()=>0)}; });
   orders.forEach(o=>{
-    if(o.shippingStatus==='ยกเลิก') return;
+    if(o.shippingStatus==='ยกเลิก' || o.isReserve) return;
     const amt = computeAmounts(o);
     if(amt.amountReceived<=0) return;
     const idx = buckets.findIndex(b=>o.deliveryDate>=b.from && o.deliveryDate<=b.to);
@@ -4568,6 +4592,7 @@ function computeMonthlyBreakEven(){
   const monthly = {};
   let uncoveredOrders = 0;
   orders.forEach(o=>{
+    if(o.isReserve) return;
     const amt = computeAmounts(o);
     const month = (o.deliveryDate||todayISO()).slice(0,7);
     if(!monthly[month]) monthly[month] = {revenue:0, variableCost:0};
@@ -4681,6 +4706,7 @@ function computeCashFlowBreakEven(){
     monthly[month].opexSpend += (x.amount||0);
   });
   orders.forEach(o=>{
+    if(o.isReserve) return;
     const month = (o.deliveryDate||todayISO()).slice(0,7);
     if(!monthly[month]) monthly[month] = {revenue:0, materialSpend:0, opexSpend:0};
     monthly[month].revenue += computeAmounts(o).grandTotal;
@@ -4760,7 +4786,7 @@ document.getElementById('pnl_next').addEventListener('click', ()=>{
 document.getElementById('pnl_printBtn').addEventListener('click', ()=>window.print());
 
 function computePnL(from, to){
-  const list = orders.filter(o=>o.deliveryDate>=from && o.deliveryDate<=to).map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
+  const list = orders.filter(o=>!o.isReserve && o.deliveryDate>=from && o.deliveryDate<=to).map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
   const salesRevenue = list.reduce((s,o)=>s+o._amt.subtotal,0);
   const shippingRevenue = list.reduce((s,o)=>s+o._amt.shipping,0);
   const discountTotal = list.reduce((s,o)=>s+o._amt.discountAmount,0);
