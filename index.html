@@ -189,6 +189,9 @@ tbody td.wrap{white-space:normal;max-width:180px;}
 .day-group-row td{
   background:#fbe9c8!important;font-weight:700;color:var(--maroon-dark);padding:8px 10px;position:sticky;left:0;
 }
+/* Plain per-column sum row at the bottom of the delivery table (see renderDeliveryReport) — a
+   real <tfoot>, not a tbody row, so drag-reorder never mistakes it for a draggable order. */
+.table-total-row td{background:#fbe9c8;font-weight:700;color:var(--maroon-dark);border-top:2px solid var(--gold);}
 .badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;border:none;cursor:pointer;}
 .badge.green{background:var(--green-bg);color:var(--green);}
 .badge.orange{background:var(--orange-bg);color:var(--orange);}
@@ -1131,6 +1134,7 @@ p.hint.collapsible-hint.show{display:block;}
       <table id="deliveryTable">
         <thead><tr><th style="width:28px;"></th><th style="width:36px;">No.</th><th></th><th>ชื่อลูกค้า</th><th>เบอร์โทร</th><th>ที่อยู่จัดส่ง</th><th>สินค้า</th><th>ถ้วยเล็ก</th><th>ถ้วยใหญ่</th><th>สถานะจัดส่ง</th><th>ค่าจัดส่ง</th><th>มัดจำ</th><th>การชำระเงิน</th><th>ยอดเงิน</th><th>หมายเหตุ</th></tr></thead>
         <tbody id="deliveryBody"></tbody>
+        <tfoot id="deliveryFoot"></tfoot>
       </table>
     </div>
 
@@ -2858,7 +2862,8 @@ function renderDeliveryReport(){
     : 'ไม่มีออเดอร์ในวันนี้';
 
   const tbody = document.getElementById('deliveryBody');
-  if(!list.length){ tbody.innerHTML = `<tr><td colspan="15" class="empty-state">ไม่มีออเดอร์ที่ต้องส่งวันที่ ${fmtDate(date)}</td></tr>`; renderDeliveryMapPhoto(date); return; }
+  const tfoot = document.getElementById('deliveryFoot');
+  if(!list.length){ tbody.innerHTML = `<tr><td colspan="15" class="empty-state">ไม่มีออเดอร์ที่ต้องส่งวันที่ ${fmtDate(date)}</td></tr>`; tfoot.innerHTML = ''; renderDeliveryMapPhoto(date); return; }
   const savedRoute = deliveryRouteOrder[date] || [];
   if(savedRoute.length){
     const routeIndex = id => { const idx = savedRoute.indexOf(id); return idx===-1 ? Infinity : idx; };
@@ -2899,6 +2904,25 @@ function renderDeliveryReport(){
     persistDeliveryRouteOrder();
     renderDeliveryReport();
   });
+  // A plain sum of each numeric column as literally shown in the table — kept in its own <tfoot>
+  // rather than a normal tbody row so initDragReorder (which walks tbody's own <tr> rows) can never
+  // pick it up as a draggable/droppable row. Deliberately separate from the "ยอดรวม..." stat cards
+  // above: those exclude ผลิตสำรอง (stock-only, no real sale yet) from money, so a day with reserve
+  // stock will show a bigger number here than up there — that's expected, not a bug.
+  const totalShippingFee = list.reduce((s,o)=>s+(Number(o.shippingFee)||0),0);
+  const totalDeposit = list.reduce((s,o)=>s+(Number(o.deposit)||0),0);
+  const totalAmount = list.reduce((s,o)=>s+o._amt.displayTotal,0);
+  tfoot.innerHTML = `<tr class="table-total-row">
+    <td colspan="7">รวมทั้งหมด</td>
+    <td>${totalSmall}</td>
+    <td>${totalLarge}</td>
+    <td></td>
+    <td>${fmt(totalShippingFee)} บ.</td>
+    <td>${fmt(totalDeposit)} บ.</td>
+    <td></td>
+    <td class="amount-cell">${fmt(totalAmount)} บ.</td>
+    <td></td>
+  </tr>`;
   renderDeliveryMapPhoto(date);
 }
 function renderDeliveryMapPhoto(date){
