@@ -146,14 +146,13 @@ main{max-width:1180px;margin:0 auto;padding:18px 16px 0;display:flex;flex-direct
 /* ---------- Table ---------- */
 .table-scroll{overflow-x:auto;border-radius:12px;border:1px solid var(--border);}
 table{border-collapse:collapse;width:100%;min-width:1400px;font-size:13px;}
-/* Narrow, few-column tables (startup cost / operating expenses) don't need the 1400px min-width
-   meant for the wide orders/delivery tables — without this override they'd force horizontal
-   scrolling on mobile even though 2-4 columns comfortably fit the screen. Same fix pattern as
-   .pnl-table below. */
-.compact-table{min-width:0;font-size:12.5px;}
-.compact-table td,.compact-table th{white-space:normal;padding:8px 6px;}
-.compact-table .row-actions{gap:4px;}
-.compact-table .icon-mini{width:25px;height:25px;font-size:11.5px;}
+/* Tables with only a handful of columns (startup cost, operating expenses, break-even, cash flow)
+   don't need the 1400px min-width meant for the wide orders/delivery tables — without this
+   override every column gets stretched apart with a lot of dead space on mobile. Columns still
+   keep their natural (nowrap) width here, so text/headers never wrap into a second line; if the
+   content genuinely doesn't fit the screen, .table-scroll lets it scroll horizontally a little
+   instead. */
+.compact-table{min-width:0;}
 thead th{
   background:#fff3d6;color:#6b4a12;font-weight:600;text-align:left;padding:10px 10px;
   position:sticky;top:0;white-space:nowrap;cursor:pointer;user-select:none;border-bottom:2px solid var(--gold-light);
@@ -1455,7 +1454,7 @@ p.hint.collapsible-hint.show{display:block;}
     <div class="stat-grid" id="breakEvenStats"></div>
     <div class="chart-box" id="breakEvenChartBox" style="max-width:100%;"></div>
     <div class="table-scroll" style="margin-top:14px;">
-      <table id="breakEvenTable">
+      <table id="breakEvenTable" class="compact-table">
         <thead><tr><th>เดือน</th><th>ยอดขาย</th><th>ต้นทุนผันแปร</th><th>กำไรขั้นต้น</th><th>กำไรสะสม</th><th>สถานะ</th></tr></thead>
         <tbody id="breakEvenBody"></tbody>
       </table>
@@ -1469,7 +1468,7 @@ p.hint.collapsible-hint.show{display:block;}
     <div class="stat-grid" id="cashFlowStats"></div>
     <div class="chart-box" id="cashFlowChartBox" style="max-width:100%;"></div>
     <div class="table-scroll" style="margin-top:14px;">
-      <table id="cashFlowTable">
+      <table id="cashFlowTable" class="compact-table">
         <thead><tr><th>เดือน</th><th>ยอดขาย</th><th>เงินจ่ายซื้อวัตถุดิบ</th><th>ค่าใช้จ่ายดำเนินงาน</th><th>กระแสเงินสดสุทธิ</th><th>สะสม (เทียบต้นทุนเริ่มต้น)</th><th>สถานะ</th></tr></thead>
         <tbody id="cashFlowBody"></tbody>
       </table>
