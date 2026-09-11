@@ -146,6 +146,14 @@ main{max-width:1180px;margin:0 auto;padding:18px 16px 0;display:flex;flex-direct
 /* ---------- Table ---------- */
 .table-scroll{overflow-x:auto;border-radius:12px;border:1px solid var(--border);}
 table{border-collapse:collapse;width:100%;min-width:1400px;font-size:13px;}
+/* Narrow, few-column tables (startup cost / operating expenses) don't need the 1400px min-width
+   meant for the wide orders/delivery tables — without this override they'd force horizontal
+   scrolling on mobile even though 2-4 columns comfortably fit the screen. Same fix pattern as
+   .pnl-table below. */
+.compact-table{min-width:0;font-size:12.5px;}
+.compact-table td,.compact-table th{white-space:normal;padding:8px 6px;}
+.compact-table .row-actions{gap:4px;}
+.compact-table .icon-mini{width:25px;height:25px;font-size:11.5px;}
 thead th{
   background:#fff3d6;color:#6b4a12;font-weight:600;text-align:left;padding:10px 10px;
   position:sticky;top:0;white-space:nowrap;cursor:pointer;user-select:none;border-bottom:2px solid var(--gold-light);
@@ -342,17 +350,28 @@ tr.dragging td{background:#fffdf3;}
    100% of its container's width, so it can never overflow sideways ("ตกขอบ") the way a fixed
    multi-column grid or a wide table did. No horizontal scrolling needed for these. */
 .record-list{margin-bottom:2px;}
-.record-card{border:1.5px solid var(--border);border-radius:12px;padding:12px;background:#fff;margin-bottom:10px;}
-.record-card-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.record-card{border:1px solid var(--border);border-radius:14px;padding:14px 16px;background:#fff;margin-bottom:10px;box-shadow:0 2px 10px rgba(90,40,20,.05);}
+.record-card-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);}
 .record-card-head .item-photo{flex:none;}
 .record-card-head input.rc-name,.record-card-head select.rc-name{
-  flex:1;min-width:0;font-weight:600;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;
+  flex:1;min-width:0;font-weight:700;font-size:15px;color:var(--maroon-dark);
+  border:none;border-radius:0;padding:4px 2px;background:transparent;box-shadow:none;
+  border-bottom:1.5px solid transparent;transition:.15s;
 }
-.record-card-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px 14px;}
-.record-field{display:flex;flex-direction:column;gap:5px;min-width:0;}
+.record-card-head input.rc-name:focus,.record-card-head select.rc-name:focus{
+  outline:none;border-bottom-color:var(--gold);
+}
+.record-card-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px 20px;}
+.record-field{display:flex;flex-direction:column;gap:2px;min-width:0;}
 .record-field.full{grid-column:1/-1;}
-.record-field label{font-size:11px;color:var(--muted);}
-.record-field input,.record-field select{width:100%;min-width:0;border:1.5px solid var(--border);border-radius:8px;padding:9px 10px;font-size:13px;}
+.record-field label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+.record-field input,.record-field select{
+  width:100%;min-width:0;font-size:14.5px;font-weight:600;color:var(--ink);
+  border:none;border-radius:0;padding:3px 2px;background:transparent;box-shadow:none;
+  border-bottom:1.5px solid transparent;transition:.15s;
+}
+.record-field input:focus,.record-field select:focus{outline:none;border-bottom-color:var(--gold);}
+.record-field input::placeholder{color:#c9beb2;font-weight:400;}
 .record-row-cost{text-align:right;margin-top:8px;}
 .record-total-row{
   display:flex;justify-content:space-between;align-items:center;gap:10px;
@@ -1380,7 +1399,12 @@ p.hint.collapsible-hint.show{display:block;}
     <div class="card-head"><h2><span class="emoji">🏗️</span>ต้นทุนเริ่มต้น (เงินลงทุนเริ่มแรก)</h2></div>
     <p class="hint">หมวด: ต้นทุนเริ่มต้น — ค่าใช้จ่ายครั้งเดียวตอนเริ่มกิจการ เช่น อุปกรณ์เครื่องครัว ค่าโต๊ะ ค่าภาชนะ หม้อ เตาไฟฟ้า (ไม่ใช่ต้นทุนต่อถ้วย) ใช้คำนวณจุดคุ้มทุนด้านล่าง</p>
     <button type="button" class="btn btn-primary btn-small" id="addStartupCostBtn" style="align-self:flex-start;margin-bottom:14px;">➕ เพิ่มต้นทุนเริ่มต้น</button>
-    <div class="record-list" id="startupCostRows"></div>
+    <div class="table-scroll">
+      <table id="startupCostTable" class="compact-table">
+        <thead><tr><th>ต้นทุน</th><th>ราคา (บาท)</th><th></th></tr></thead>
+        <tbody id="startupCostRows"></tbody>
+      </table>
+    </div>
     <datalist id="startupLabelList">
       <option value="อุปกรณ์เครื่องครัว"><option value="ค่าโต๊ะ"><option value="ค่าภาชนะ"><option value="หม้อ"><option value="เตาไฟฟ้า">
     </datalist>
@@ -1409,7 +1433,12 @@ p.hint.collapsible-hint.show{display:block;}
         </select>
       </div>
     </div>
-    <div class="record-list" id="opexBody"></div>
+    <div class="table-scroll">
+      <table id="opexTable" class="compact-table">
+        <thead><tr><th>วันที่</th><th>หมวด</th><th>จำนวนเงิน</th><th>หมายเหตุ</th><th></th></tr></thead>
+        <tbody id="opexBody"></tbody>
+      </table>
+    </div>
     <div class="table-footer">
       <div class="pagination" id="opexPagination"></div>
     </div>
@@ -1652,7 +1681,7 @@ p.hint.collapsible-hint.show{display:block;}
 <div class="modal-overlay" id="startupCostModal">
   <div class="modal" style="max-width:380px;">
     <button class="modal-close" id="closeStartupCostModalBtn">✕</button>
-    <h3>เพิ่มต้นทุนเริ่มต้น</h3>
+    <h3 id="startupCostModalTitle">เพิ่มต้นทุนเริ่มต้น</h3>
     <form class="form-grid" id="startupCostForm">
       <div class="field"><label>ต้นทุน</label><input type="text" id="sc_modal_label" list="startupLabelList" placeholder="เช่น อุปกรณ์เครื่องครัว" required></div>
       <div class="field"><label>ราคา (บาท)</label><input type="number" min="0" step="any" id="sc_modal_amount" placeholder="0" required></div>
@@ -1667,7 +1696,7 @@ p.hint.collapsible-hint.show{display:block;}
 <div class="modal-overlay" id="opexModal">
   <div class="modal" style="max-width:420px;">
     <button class="modal-close" id="closeOpexModalBtn">✕</button>
-    <h3>เพิ่มค่าใช้จ่ายดำเนินงาน</h3>
+    <h3 id="opexModalTitle">เพิ่มค่าใช้จ่ายดำเนินงาน</h3>
     <form class="form-grid" id="opexForm">
       <div class="row cols-3">
         <div class="field"><label>วันที่</label><input type="date" id="opex_date"></div>
@@ -4811,27 +4840,27 @@ function renderRecipeOverviewTable(){
 }
 
 /* ============ Startup / capital cost ============ */
+let editingStartupCostIndex = null;
 function renderStartupCostRows(){
   const box = document.getElementById('startupCostRows');
-  if(!startupCosts.length){ box.innerHTML = '<p class="empty-state">ยังไม่มีรายการต้นทุนเริ่มต้น กด "➕ เพิ่มต้นทุนเริ่มต้น" ด้านบน</p>'; }
+  if(!startupCosts.length){ box.innerHTML = '<tr><td colspan="3" class="empty-state">ยังไม่มีรายการต้นทุนเริ่มต้น กด "➕ เพิ่มต้นทุนเริ่มต้น" ด้านบน</td></tr>'; }
   else {
-    box.innerHTML = startupCosts.map((c,i)=>`<div class="record-card">
-      <div class="record-card-head">
-        <input type="text" class="sc-label rc-name" data-i="${i}" list="startupLabelList" value="${esc(c.label)}" placeholder="เช่น อุปกรณ์เครื่องครัว">
+    box.innerHTML = startupCosts.map((c,i)=>`<tr>
+      <td>${esc(c.label)}</td>
+      <td class="amount-cell">${fmt(c.amount)} บ.</td>
+      <td><div class="row-actions">
+        <button type="button" class="icon-mini sc-edit" data-i="${i}" title="แก้ไข">✏️</button>
         <button type="button" class="icon-mini danger sc-remove" data-i="${i}" title="ลบ">🗑️</button>
-      </div>
-      <div class="record-card-fields">
-        <div class="record-field full"><label>ราคา (บาท)</label><input type="number" min="0" step="any" class="sc-amount" data-i="${i}" value="${c.amount||''}" placeholder="0"></div>
-      </div>
-    </div>`).join('');
-    box.querySelectorAll('.sc-label').forEach(el=>{
-      el.addEventListener('input', ()=>{ startupCosts[Number(el.dataset.i)].label = el.value; persistStartupCosts(); });
-      el.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
-    });
-    box.querySelectorAll('.sc-amount').forEach(el=>{
-      el.addEventListener('input', ()=>{ startupCosts[Number(el.dataset.i)].amount = Number(el.value)||0; persistStartupCosts(); renderStartupTotal(); renderBreakEven(); renderCashFlow(); });
-      el.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
-    });
+      </div></td>
+    </tr>`).join('');
+    box.querySelectorAll('.sc-edit').forEach(el=>el.addEventListener('click', ()=>{
+      const i = Number(el.dataset.i);
+      const c = startupCosts[i];
+      editingStartupCostIndex = i;
+      f('sc_modal_label').value = c.label; f('sc_modal_amount').value = c.amount;
+      document.getElementById('startupCostModalTitle').textContent = 'แก้ไขต้นทุนเริ่มต้น';
+      document.getElementById('startupCostModal').classList.add('show');
+    }));
     box.querySelectorAll('.sc-remove').forEach(el=>el.addEventListener('click', ()=>{
       if(!confirm('ยืนยันลบรายการนี้หรือไม่?')) return;
       startupCosts.splice(Number(el.dataset.i),1); persistStartupCosts(); renderStartupCostRows(); renderStartupTotal(); renderBreakEven(); renderCashFlow(); toast('ลบรายการแล้ว');
@@ -4842,7 +4871,9 @@ function renderStartupCostRows(){
 function computeStartupTotal(){ return startupCosts.reduce((s,c)=>s+(Number(c.amount)||0),0); }
 function renderStartupTotal(){ document.getElementById('startupCostTotal').textContent = fmt(computeStartupTotal())+' บาท'; }
 document.getElementById('addStartupCostBtn').addEventListener('click', ()=>{
+  editingStartupCostIndex = null;
   f('sc_modal_label').value = ''; f('sc_modal_amount').value = '';
+  document.getElementById('startupCostModalTitle').textContent = 'เพิ่มต้นทุนเริ่มต้น';
   document.getElementById('startupCostModal').classList.add('show');
 });
 document.getElementById('closeStartupCostModalBtn').addEventListener('click', ()=>{
@@ -4856,16 +4887,25 @@ document.getElementById('startupCostForm').addEventListener('submit', e=>{
   const label = f('sc_modal_label').value.trim();
   const amount = Number(f('sc_modal_amount').value)||0;
   if(!label || amount<=0){ toast('กรุณากรอกต้นทุนและราคา'); return; }
-  startupCosts.push({label, amount});
+  if(editingStartupCostIndex!==null){
+    startupCosts[editingStartupCostIndex] = {label, amount};
+  } else {
+    startupCosts.push({label, amount});
+  }
+  const wasEditing = editingStartupCostIndex!==null;
   persistStartupCosts(); renderStartupCostRows(); renderBreakEven(); renderCashFlow();
   document.getElementById('startupCostModal').classList.remove('show');
-  toast('เพิ่มรายการแล้ว');
+  editingStartupCostIndex = null;
+  toast(wasEditing ? 'แก้ไขรายการแล้ว' : 'เพิ่มรายการแล้ว');
 });
 
 /* ============ Operating expenses ============ */
+let editingOpexId = null;
 document.getElementById('opex_date').value = todayISO();
 document.getElementById('openOpexModalBtn').addEventListener('click', ()=>{
+  editingOpexId = null;
   f('opex_date').value = todayISO(); f('opex_category').value=''; f('opex_amount').value=''; f('opex_note').value='';
+  document.getElementById('opexModalTitle').textContent = 'เพิ่มค่าใช้จ่ายดำเนินงาน';
   document.getElementById('opexModal').classList.add('show');
 });
 document.getElementById('closeOpexModalBtn').addEventListener('click', ()=>{
@@ -4881,11 +4921,18 @@ document.getElementById('opexForm').addEventListener('submit', e=>{
   const amount = Number(f('opex_amount').value)||0;
   const note = f('opex_note').value.trim();
   if(!category || amount<=0){ toast('กรุณากรอกหมวดค่าใช้จ่ายและจำนวนเงิน'); return; }
-  operatingExpenses.push({id:uid(), date, category, amount, note});
+  if(editingOpexId!==null){
+    const x = operatingExpenses.find(o=>o.id===editingOpexId);
+    if(x){ x.date=date; x.category=category; x.amount=amount; x.note=note; }
+  } else {
+    operatingExpenses.push({id:uid(), date, category, amount, note});
+  }
+  const wasEditing = editingOpexId!==null;
   persistOperatingExpenses();
-  toast('บันทึกค่าใช้จ่ายแล้ว');
+  toast(wasEditing ? 'แก้ไขรายการแล้ว' : 'บันทึกค่าใช้จ่ายแล้ว');
   document.getElementById('opexModal').classList.remove('show');
-  opexCurrentPage = 1;
+  editingOpexId = null;
+  if(!wasEditing) opexCurrentPage = 1;
   renderOpex(); renderCashFlow();
 });
 let opexCurrentPage = 1;
@@ -4905,35 +4952,28 @@ function renderOpex(){
   const pageItems = list.slice(start, start+pageSize);
 
   const box = document.getElementById('opexBody');
-  if(!list.length){ box.innerHTML = '<p class="empty-state">ยังไม่มีรายการค่าใช้จ่าย</p>'; }
+  if(!list.length){ box.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีรายการค่าใช้จ่าย</td></tr>'; }
   else {
-    box.innerHTML = pageItems.map(x=>`<div class="record-card">
-      <div class="record-card-head">
-        <input type="text" class="opex-category rc-name" data-id="${x.id}" list="opexCategoryList" value="${esc(x.category)}" placeholder="หมวดค่าใช้จ่าย">
-        <button class="icon-mini danger opex-remove" data-id="${x.id}" title="ลบ">🗑️</button>
-      </div>
-      <div class="record-card-fields">
-        <div class="record-field"><label>วันที่</label><input type="date" class="opex-date" data-id="${x.id}" value="${x.date}"></div>
-        <div class="record-field"><label>จำนวนเงิน (บาท)</label><input type="number" min="0" step="any" class="opex-amount" data-id="${x.id}" value="${x.amount}"></div>
-        <div class="record-field full"><label>หมายเหตุ</label><input type="text" class="opex-note" data-id="${x.id}" value="${esc(x.note)}" placeholder="หมายเหตุ (ถ้ามี)"></div>
-      </div>
-    </div>`).join('');
-    box.querySelectorAll('.opex-date').forEach(el=>el.addEventListener('change', ()=>{
-      const x = operatingExpenses.find(o=>o.id===el.dataset.id); if(!x) return;
-      x.date = el.value; persistOperatingExpenses(); renderOpex(); renderCashFlow(); toast('แก้ไขสำเร็จ');
-    }));
-    box.querySelectorAll('.opex-category').forEach(el=>el.addEventListener('change', ()=>{
-      const x = operatingExpenses.find(o=>o.id===el.dataset.id); if(!x) return;
-      x.category = el.value.trim(); persistOperatingExpenses(); toast('แก้ไขสำเร็จ');
-    }));
-    box.querySelectorAll('.opex-amount').forEach(el=>el.addEventListener('change', ()=>{
-      const x = operatingExpenses.find(o=>o.id===el.dataset.id); if(!x) return;
-      x.amount = Number(el.value)||0; persistOperatingExpenses(); renderOpex(); renderCashFlow(); toast('แก้ไขสำเร็จ');
-    }));
-    box.querySelectorAll('.opex-note').forEach(el=>el.addEventListener('change', ()=>{
-      const x = operatingExpenses.find(o=>o.id===el.dataset.id); if(!x) return;
-      x.note = el.value.trim(); persistOperatingExpenses(); toast('แก้ไขสำเร็จ');
-    }));
+    box.innerHTML = pageItems.map(x=>`<tr>
+      <td>${fmtDate(x.date)}</td>
+      <td>${esc(x.category)}</td>
+      <td class="amount-cell">${fmt(x.amount)} บ.</td>
+      <td class="wrap">${esc(x.note)||'-'}</td>
+      <td><div class="row-actions">
+        <button type="button" class="icon-mini opex-edit" data-id="${x.id}" title="แก้ไข">✏️</button>
+        <button type="button" class="icon-mini danger opex-remove" data-id="${x.id}" title="ลบ">🗑️</button>
+      </div></td>
+    </tr>`).join('');
+    box.querySelectorAll('.opex-edit').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const x = operatingExpenses.find(o=>o.id===btn.dataset.id); if(!x) return;
+        editingOpexId = x.id;
+        f('opex_date').value = x.date; f('opex_category').value = x.category;
+        f('opex_amount').value = x.amount; f('opex_note').value = x.note||'';
+        document.getElementById('opexModalTitle').textContent = 'แก้ไขค่าใช้จ่ายดำเนินงาน';
+        document.getElementById('opexModal').classList.add('show');
+      });
+    });
     box.querySelectorAll('.opex-remove').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         if(!confirm('ยืนยันลบรายการค่าใช้จ่ายนี้หรือไม่?')) return;
