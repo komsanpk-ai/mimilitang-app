@@ -1583,8 +1583,13 @@ p.hint.collapsible-hint.show{display:block;}
 <main id="page-settings-products" class="page-view">
   <section class="card">
     <div class="card-head"><h2><span class="emoji">🍐</span>สินค้า &amp; ราคา</h2></div>
-    <div class="settings-list" id="productList"></div>
-    <button type="button" class="btn btn-outline btn-small" id="addProductBtn">+ เพิ่มสินค้า</button>
+    <button type="button" class="btn btn-primary btn-small" id="addProductBtn" style="margin-bottom:14px;">➕ เพิ่มสินค้า</button>
+    <div class="table-scroll">
+      <table id="productSettingsTable" class="compact-table">
+        <thead><tr><th>สินค้า</th><th>ราคาเล็ก</th><th>ราคาใหญ่</th><th></th></tr></thead>
+        <tbody id="productList"></tbody>
+      </table>
+    </div>
   </section>
 </main>
 
@@ -1823,6 +1828,31 @@ p.hint.collapsible-hint.show{display:block;}
         <div class="field"><label>กี่หน่วยย่อย/หน่วย</label><input type="number" min="0" step="1" id="mat_modal_subUnitCount" placeholder="กี่ชิ้น/หน่วย"></div>
       </div>
       <div class="field"><label>กรัม/ชิ้น (ถ้านับชิ้น)</label><input type="number" min="0" step="any" id="mat_modal_pieceWeight" placeholder="ถ้านับชิ้น"></div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">💾 บันทึก</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add/edit product modal -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal" style="max-width:380px;">
+    <button class="modal-close" id="closeProductModalBtn">✕</button>
+    <h3 id="productModalTitle">เพิ่มสินค้า</h3>
+    <form class="form-grid" id="productForm">
+      <div class="field">
+        <label>รูปภาพ (ถ้ามี)</label>
+        <label class="item-photo" title="คลิกเพื่ออัปโหลด/เปลี่ยนรูปสินค้า">
+          <span id="prod_modal_photo_preview">🍐</span>
+          <input type="file" accept="image/*" id="prod_modal_photo_input">
+        </label>
+      </div>
+      <div class="field"><label>ชื่อสินค้า</label><input type="text" id="prod_modal_name" placeholder="ชื่อสินค้า" required></div>
+      <div class="row">
+        <div class="field"><label>ราคาเล็ก (บาท)</label><input type="number" min="0" step="any" id="prod_modal_priceSmall" placeholder="0"></div>
+        <div class="field"><label>ราคาใหญ่ (บาท)</label><input type="number" min="0" step="any" id="prod_modal_priceLarge" placeholder="0"></div>
+      </div>
       <div class="form-actions">
         <button type="submit" class="btn btn-primary">💾 บันทึก</button>
       </div>
@@ -4057,16 +4087,27 @@ document.getElementById('settingsDrawerBtn').addEventListener('click', ()=>{ clo
 
 function renderSettingsLists(){
   document.getElementById('productList').innerHTML = products.map((p,i)=>`
-    <div class="item-row product">
-      <label class="item-photo" title="คลิกเพื่ออัปโหลด/เปลี่ยนรูปสินค้า">
-        ${p.image ? `<img src="${p.image}">` : '🍐'}
-        <input type="file" accept="image/*" data-i="${i}" class="product-photo-input">
-      </label>
-      <input type="text" data-i="${i}" data-f="name" value="${esc(p.name)}" placeholder="ชื่อสินค้า">
-      <input type="number" data-i="${i}" data-f="priceSmall" value="${p.priceSmall||''}" placeholder="ราคาเล็ก">
-      <input type="number" data-i="${i}" data-f="priceLarge" value="${p.priceLarge||''}" placeholder="ราคาใหญ่">
-      <button class="icon-mini danger" data-i="${i}" data-act="delProduct">✕</button>
-    </div>`).join('') || '<p class="hint">ยังไม่มีสินค้า</p>';
+    <tr>
+      <td><div style="display:flex;align-items:center;gap:8px;">
+        <span class="mat-thumb">${p.image ? `<img src="${p.image}">` : '🍐'}</span>
+        <span>${esc(p.name)||'-'}</span>
+      </div></td>
+      <td class="amount-cell">${p.priceSmall?fmt(p.priceSmall)+' บ.':'-'}</td>
+      <td class="amount-cell">${p.priceLarge?fmt(p.priceLarge)+' บ.':'-'}</td>
+      <td><div class="row-actions">
+        <button type="button" class="icon-mini prod-edit" data-i="${i}" title="แก้ไข">✏️</button>
+        <button type="button" class="icon-mini danger prod-remove" data-i="${i}" title="ลบ">🗑️</button>
+      </div></td>
+    </tr>`).join('') || '<tr><td colspan="4" class="empty-state">ยังไม่มีสินค้า</td></tr>';
+  document.getElementById('productList').querySelectorAll('.prod-edit').forEach(btn=>{
+    btn.addEventListener('click', ()=>openProductModalForEdit(Number(btn.dataset.i)));
+  });
+  document.getElementById('productList').querySelectorAll('.prod-remove').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(!confirm('ลบสินค้านี้หรือไม่?')) return;
+      products.splice(Number(btn.dataset.i),1); persistProducts(); renderSettingsLists(); populateSelects(); renderTable(); renderAllReports(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable(); toast('ลบรายการแล้ว');
+    });
+  });
   document.getElementById('channelList').innerHTML = channels.map((c,i)=>`
     <div class="item-row channel">
       <input type="text" data-i="${i}" value="${esc(c)}" placeholder="ชื่อช่องทาง">
@@ -4078,27 +4119,6 @@ function renderSettingsLists(){
       <button class="icon-mini danger" data-i="${i}" data-act="delPaymentMethod">✕</button>
     </div>`).join('') || '<p class="hint">ยังไม่มีประเภทการจ่ายเงิน</p>';
 
-  document.getElementById('productList').querySelectorAll('input:not(.product-photo-input)').forEach(inp=>{
-    inp.addEventListener('input', ()=>{
-      const i = Number(inp.dataset.i), field = inp.dataset.f;
-      products[i][field] = field==='name' ? inp.value : Number(inp.value)||0;
-      persistProducts(); populateSelects(); renderTable(); renderAllReports(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable();
-    });
-    // Fires once per edit (on blur, only if the value actually changed) rather than per
-    // keystroke like 'input' above — so this confirms a save without spamming a toast per letter typed.
-    inp.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
-  });
-  document.getElementById('productList').querySelectorAll('.product-photo-input').forEach(inp=>{
-    inp.addEventListener('change', e=>{
-      const file = e.target.files[0]; if(!file) return;
-      const i = Number(inp.dataset.i);
-      compressImageFile(file).then(dataUrl=>{ products[i].image = dataUrl; persistProducts(); renderSettingsLists(); toast('แก้ไขสำเร็จ'); })
-        .catch(()=>toast('อัปโหลดรูปสินค้าไม่สำเร็จ ลองใหม่อีกครั้ง'));
-    });
-  });
-  document.getElementById('productList').querySelectorAll('[data-act="delProduct"]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ products.splice(Number(btn.dataset.i),1); persistProducts(); renderSettingsLists(); populateSelects(); renderTable(); renderAllReports(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable(); toast('ลบรายการแล้ว'); });
-  });
   document.getElementById('channelList').querySelectorAll('input').forEach(inp=>{
     inp.addEventListener('input', ()=>{ channels[Number(inp.dataset.i)] = inp.value; persistChannels(); populateSelects(); renderTable(); });
     inp.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
@@ -4114,8 +4134,61 @@ function renderSettingsLists(){
     btn.addEventListener('click', ()=>{ paymentMethods.splice(Number(btn.dataset.i),1); persistPaymentMethods(); renderSettingsLists(); populateSelects(); renderTable(); toast('ลบรายการแล้ว'); });
   });
 }
+let editingProductIndex = null;
+let productModalPendingImage;
+function setProductPhotoPreview(image){
+  f('prod_modal_photo_preview').outerHTML = image ? `<img id="prod_modal_photo_preview" src="${image}">` : `<span id="prod_modal_photo_preview">🍐</span>`;
+}
+function openProductModalForEdit(i){
+  const p = products[i];
+  editingProductIndex = i;
+  productModalPendingImage = undefined;
+  f('prod_modal_name').value = p.name;
+  f('prod_modal_priceSmall').value = p.priceSmall || '';
+  f('prod_modal_priceLarge').value = p.priceLarge || '';
+  setProductPhotoPreview(p.image);
+  f('productModalTitle').textContent = 'แก้ไขสินค้า';
+  document.getElementById('productModal').classList.add('show');
+}
 document.getElementById('addProductBtn').addEventListener('click', ()=>{
-  products.push({name:'', priceSmall:0, priceLarge:0}); persistProducts(); renderSettingsLists(); populateSelects(); populateMaterialSelects(); toast('เพิ่มรายการแล้ว');
+  editingProductIndex = null;
+  productModalPendingImage = undefined;
+  f('prod_modal_name').value = '';
+  f('prod_modal_priceSmall').value = '';
+  f('prod_modal_priceLarge').value = '';
+  setProductPhotoPreview(null);
+  f('productModalTitle').textContent = 'เพิ่มสินค้า';
+  document.getElementById('productModal').classList.add('show');
+});
+document.getElementById('prod_modal_photo_input').addEventListener('change', e=>{
+  const file = e.target.files[0]; if(!file) return;
+  compressImageFile(file).then(dataUrl=>{ productModalPendingImage = dataUrl; setProductPhotoPreview(dataUrl); })
+    .catch(()=>toast('อัปโหลดรูปสินค้าไม่สำเร็จ ลองใหม่อีกครั้ง'));
+});
+document.getElementById('closeProductModalBtn').addEventListener('click', ()=>{
+  document.getElementById('productModal').classList.remove('show');
+});
+document.getElementById('productModal').addEventListener('click', e=>{
+  if(e.target.id==='productModal') document.getElementById('productModal').classList.remove('show');
+});
+document.getElementById('productForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const name = f('prod_modal_name').value.trim();
+  if(!name){ toast('กรุณากรอกชื่อสินค้า'); return; }
+  const priceSmall = Number(f('prod_modal_priceSmall').value)||0;
+  const priceLarge = Number(f('prod_modal_priceLarge').value)||0;
+  const wasEditing = editingProductIndex!==null;
+  if(wasEditing){
+    const p = products[editingProductIndex];
+    Object.assign(p, {name, priceSmall, priceLarge});
+    if(productModalPendingImage!==undefined) p.image = productModalPendingImage;
+  } else {
+    products.push({name, priceSmall, priceLarge, image: productModalPendingImage||null});
+  }
+  editingProductIndex = null; productModalPendingImage = undefined;
+  persistProducts(); renderSettingsLists(); populateSelects(); renderTable(); renderAllReports(); populateMaterialSelects(); loadRecipeIntoBuilder(); renderRecipeOverviewTable();
+  document.getElementById('productModal').classList.remove('show');
+  toast(wasEditing ? 'แก้ไขรายการแล้ว' : 'เพิ่มรายการแล้ว');
 });
 document.getElementById('addChannelBtn').addEventListener('click', ()=>{
   channels.push(''); persistChannels(); renderSettingsLists(); populateSelects(); toast('เพิ่มรายการแล้ว');
