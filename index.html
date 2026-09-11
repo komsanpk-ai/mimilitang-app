@@ -1359,17 +1359,39 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="category-label">🔵 หมวด: ต้นทุนผันแปร (Variable Cost) — แปรผันตามจำนวนที่ผลิต</div>
 
       <div class="mini-title">วัตถุดิบที่ใช้ (ต่อ 1 ถ้วย)</div>
-      <div class="record-list" id="ingredientRows"></div>
-      <button type="button" class="btn btn-outline btn-small" id="addIngredientBtn">+ เพิ่มวัตถุดิบ</button>
+      <div class="table-scroll">
+        <table id="ingredientTable" class="compact-table">
+          <thead><tr><th>วัตถุดิบ</th><th>จำนวน</th><th>หน่วย</th><th>ต้นทุน</th><th></th></tr></thead>
+          <tbody id="ingredientRows"></tbody>
+        </table>
+      </div>
+      <div class="record-total-row" style="margin-top:8px;"><span>รวมต้นทุนวัตถุดิบ</span><span class="value" id="ingredientCostTotal">= 0 บ.</span></div>
+      <button type="button" class="btn btn-outline btn-small" id="addIngredientBtn" style="margin-top:10px;">+ เพิ่มวัตถุดิบ</button>
 
       <div class="mini-title" style="margin-top:18px;">ต้นทุนผันแปรอื่นๆ (ต่อ 1 ถ้วย)</div>
       <p class="hint" style="margin-top:-6px;">สำหรับของที่มีสต๊อกนับจำนวนได้ เช่น ถ้วย ฝา สติ๊กเกอร์ ถุงหูหิ้ว — เลือกจากรายการวัตถุดิบหมวด "อุปกรณ์/บรรจุภัณฑ์" (เพิ่มรายการได้ที่ ⚙️ ตั้งค่า → วัตถุดิบ) ระบบจะคำนวณต้นทุนและตัดสต๊อกให้อัตโนมัติเหมือนวัตถุดิบอาหาร แสดงหน่วยให้ตรงกับที่ตั้งค่าไว้เสมอ<br>
       ส่วนค่าใช้จ่ายที่ไม่มีของให้นับสต๊อก เช่น ค่าไฟ ค่าน้ำ ค่าโฆษณาเพจ ให้ใช้ปุ่ม "กรอกเองแบบเหมา" แทน — แบบนี้มีช่อง "หน่วย" ให้พิมพ์เองด้วย (ไว้บอกความหมายเฉยๆ ไม่ได้ใช้คำนวณ เพราะยอดที่กรอกคือยอดรวมต่อถ้วยอยู่แล้ว)</p>
-      <div class="record-list" id="otherCostRows"></div>
-      <div class="form-actions">
-        <button type="button" class="btn btn-outline btn-small" id="addCostBtn">+ เพิ่มอุปกรณ์/บรรจุภัณฑ์</button>
-        <button type="button" class="btn btn-outline btn-small" id="addFlatCostBtn">+ เพิ่มค่าใช้จ่ายอื่นๆ (กรอกเองแบบเหมา)</button>
+
+      <div class="subgroup-label">🔵 อุปกรณ์/บรรจุภัณฑ์ — มีหน่วยย่อย ตัดสต๊อกอัตโนมัติ</div>
+      <div class="table-scroll">
+        <table id="otherCostItemTable" class="compact-table">
+          <thead><tr><th>อุปกรณ์/บรรจุภัณฑ์</th><th>จำนวน</th><th>หน่วย</th><th>ต้นทุน</th><th></th></tr></thead>
+          <tbody id="otherCostItemRows"></tbody>
+        </table>
       </div>
+      <div class="record-total-row items" style="margin-top:8px;"><span>รวมต้นทุนอุปกรณ์/บรรจุภัณฑ์</span><span class="value" id="otherCostItemTotal">= 0 บ.</span></div>
+      <button type="button" class="btn btn-outline btn-small" id="addCostBtn" style="margin-top:10px;">+ เพิ่มอุปกรณ์/บรรจุภัณฑ์</button>
+
+      <div class="subgroup-label" style="margin-top:18px;">📝 ค่าใช้จ่ายเหมา — กรอกเอง ไม่ตัดสต๊อก</div>
+      <div class="table-scroll">
+        <table id="otherCostFlatTable" class="compact-table">
+          <thead><tr><th>รายการ</th><th>หน่วย</th><th>จำนวนเงิน</th><th></th></tr></thead>
+          <tbody id="otherCostFlatRows"></tbody>
+        </table>
+      </div>
+      <div class="record-total-row flat" style="margin-top:8px;"><span>รวมค่าใช้จ่ายเหมา</span><span class="value" id="otherCostFlatTotal">= 0 บ.</span></div>
+      <button type="button" class="btn btn-outline btn-small" id="addFlatCostBtn" style="margin-top:10px;">+ เพิ่มค่าใช้จ่ายอื่นๆ (กรอกเองแบบเหมา)</button>
+
       <datalist id="costLabelList">
         <option value="ค่าน้ำมัน"><option value="ค่าไฟ"><option value="ค่าน้ำ"><option value="ค่าโฆษณาเพจ">
       </datalist>
@@ -1387,7 +1409,7 @@ p.hint.collapsible-hint.show{display:block;}
     <hr class="section-divider">
     <div class="mini-title">สรุปต้นทุนทุกสูตรที่บันทึกไว้</div>
     <div class="table-scroll">
-      <table id="recipeOverviewTable">
+      <table id="recipeOverviewTable" class="compact-table">
         <thead><tr><th>สินค้า</th><th>ขนาด</th><th>ต้นทุนวัตถุดิบ</th><th>ต้นทุนผันแปรอื่นๆ</th><th>ต้นทุนรวม</th><th>ราคาขาย</th><th>กำไร/หน่วย</th><th>%กำไร</th><th></th></tr></thead>
         <tbody id="recipeOverviewBody"></tbody>
       </table>
@@ -1709,6 +1731,54 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="field"><label>หมายเหตุ</label><input type="text" id="opex_note" placeholder="หมายเหตุ (ถ้ามี)"></div>
       <div class="form-actions">
         <button type="submit" class="btn btn-primary" id="opexSubmitBtn">💾 บันทึกค่าใช้จ่าย</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add/edit recipe ingredient modal -->
+<div class="modal-overlay" id="ingredientModal">
+  <div class="modal" style="max-width:380px;">
+    <button class="modal-close" id="closeIngredientModalBtn">✕</button>
+    <h3 id="ingredientModalTitle">เพิ่มวัตถุดิบ</h3>
+    <form class="form-grid" id="ingredientForm">
+      <div class="field"><label>วัตถุดิบ</label><select id="ing_modal_material" required></select></div>
+      <div class="field"><label>จำนวน</label><input type="number" min="0" step="any" id="ing_modal_qty" placeholder="0" required></div>
+      <div class="field"><label>หน่วย</label><div id="ing_modal_unit_wrap"></div></div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">💾 บันทึก</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add/edit recipe other-cost item (equipment/packaging) modal -->
+<div class="modal-overlay" id="otherCostItemModal">
+  <div class="modal" style="max-width:380px;">
+    <button class="modal-close" id="closeOtherCostItemModalBtn">✕</button>
+    <h3 id="otherCostItemModalTitle">เพิ่มอุปกรณ์/บรรจุภัณฑ์</h3>
+    <form class="form-grid" id="otherCostItemForm">
+      <div class="field"><label>อุปกรณ์/บรรจุภัณฑ์</label><select id="oci_modal_material" required></select></div>
+      <div class="field"><label>จำนวน</label><input type="number" min="0" step="any" id="oci_modal_qty" placeholder="0" required></div>
+      <div class="field"><label>หน่วย</label><div id="oci_modal_unit_wrap"></div></div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">💾 บันทึก</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add/edit recipe other-cost flat (lump-sum) modal -->
+<div class="modal-overlay" id="otherCostFlatModal">
+  <div class="modal" style="max-width:380px;">
+    <button class="modal-close" id="closeOtherCostFlatModalBtn">✕</button>
+    <h3 id="otherCostFlatModalTitle">เพิ่มค่าใช้จ่ายอื่นๆ (กรอกเองแบบเหมา)</h3>
+    <form class="form-grid" id="otherCostFlatForm">
+      <div class="field"><label>รายการ</label><input type="text" id="ocf_modal_label" list="costLabelList" placeholder="เช่น ค่าน้ำมัน" required></div>
+      <div class="field"><label>หน่วย (ถ้ามี)</label><input type="text" id="ocf_modal_unit" list="unitSuggestList" placeholder="หน่วย (ถ้ามี)"></div>
+      <div class="field"><label>จำนวนเงิน (บาท)</label><input type="number" min="0" step="any" id="ocf_modal_amount" placeholder="0" required></div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">💾 บันทึก</button>
       </div>
     </form>
   </div>
@@ -4562,216 +4632,244 @@ function loadRecipeIntoBuilder(){
   renderOtherCostRows();
   updateCostSummary();
 }
+/* Shared unit-field renderer for the ingredient/other-cost-item modals: a material with only one
+   possible unit just shows it as a fixed tag (nothing to choose), one with a real choice (a
+   sub-unit alongside its main unit, or the ชิ้น/กรัม/กิโลกรัม weight options) gets a dropdown. */
+function renderUnitFieldInto(wrapId, mat, selectedUnit){
+  const wrap = document.getElementById(wrapId);
+  if(!mat){ wrap.innerHTML = `<div class="unit-tag">-</div>`; return; }
+  const options = getIngredientUnitOptions(mat);
+  if(options.length<=1){ wrap.innerHTML = `<div class="unit-tag">${esc(mat.unit)}</div>`; return; }
+  const unitIsAmbiguous = isIngredientUnitAmbiguous(mat, selectedUnit);
+  wrap.innerHTML = `<select id="${wrapId}_select">${unitIsAmbiguous?`<option value="" selected>⚠️ เลือกหน่วยใหม่</option>`:''}${options.map(u=>{
+    const label = ingredientUnitLabel(mat, u);
+    return `<option value="${esc(u)}" ${selectedUnit===u?'selected':''}>${esc(label)}</option>`;
+  }).join('')}</select>`;
+}
+function getUnitFieldValue(wrapId, mat){
+  const sel = document.getElementById(wrapId+'_select');
+  if(sel) return sel.value;
+  return getIngredientUnitOptions(mat)[0] || '';
+}
+function ingredientRowDisplay(entry){
+  const mat = getMaterial(entry.materialId);
+  const name = mat ? esc(mat.name) : '⚠️ ไม่พบวัตถุดิบ';
+  const unitLabel = !mat ? '-' : isIngredientUnitAmbiguous(mat, entry.unit) ? '⚠️ เลือกหน่วยใหม่' : esc(ingredientUnitLabel(mat, entry.unit));
+  const costInfo = recipeIngredientCost(entry);
+  const costDisplay = !mat ? '-' : costInfo.invalidUnit ? '⚠️' : costInfo.missingPrice ? '⚠️ ไม่มีราคา' : `${fmt(costInfo.cost)} บ.`;
+  return {name, unitLabel, costDisplay};
+}
+
+let editingIngredientIndex = null;
+function populateIngredientMaterialSelect(selectedId){
+  const foodMaterials = materials.filter(m=>(m.category||'food')==='food');
+  f('ing_modal_material').innerHTML = `<option value="" ${!selectedId?'selected':''}>— เลือกวัตถุดิบ —</option>` +
+    foodMaterials.map(m=>`<option value="${m.id}" ${m.id===selectedId?'selected':''}>${esc(m.name)}</option>`).join('');
+}
 function renderIngredientRows(){
   const box = document.getElementById('ingredientRows');
-  if(!builderIngredients.length){ box.innerHTML = '<p class="hint">ยังไม่มีวัตถุดิบในสูตรนี้ กด "+ เพิ่มวัตถุดิบ" ด้านล่าง</p>'; return; }
-  box.innerHTML = builderIngredients.map((ing,i)=>{
-    const mat = getMaterial(ing.materialId);
-    const options = getIngredientUnitOptions(mat);
-    const unitIsAmbiguous = mat && isIngredientUnitAmbiguous(mat, ing.unit);
-    const unitField = options.length>1
-      ? `<select class="ing-unit" data-i="${i}">${unitIsAmbiguous?`<option value="" selected>⚠️ เลือกหน่วยใหม่</option>`:''}${options.map(u=>{
-          const label = ingredientUnitLabel(mat, u);
-          return `<option value="${esc(u)}" ${ing.unit===u?'selected':''}>${esc(label)}</option>`;
-        }).join('')}</select>`
-      : `<div class="unit-tag">${mat?esc(mat.unit):'-'}</div>`;
-    const foodMaterials = materials.filter(m=>(m.category||'food')==='food');
-    // Distinguish "this row never had a material chosen yet" (a fresh row from "+ เพิ่มวัตถุดิบ")
-    // from "the material it used to point at got deleted since" -- same underlying mat-is-falsy
-    // state, but very different messages; showing "ไม่พบวัตถุดิบเดิม" (previous one not found) on a
-    // brand new row that never had a previous selection is confusing/wrong.
-    const missingOption = mat ? '' : ing.materialId
-      ? `<option value="" selected>⚠️ ไม่พบวัตถุดิบเดิม — กรุณาเลือกใหม่</option>`
-      : `<option value="" selected>— เลือกวัตถุดิบ —</option>`;
-    const costInfo = recipeIngredientCost(ing);
-    const costDisplay = !mat ? '' : costInfo.invalidUnit ? `<span class="row-cost warn">⚠️ หน่วยไม่ตรง — เลือกใหม่</span>` : costInfo.missingPrice ? `<span class="row-cost warn">⚠️ ไม่มีราคา</span>` : `<span class="row-cost">= ${fmt(costInfo.cost)} บ.</span>`;
-    return `<div class="record-card">
-      <div class="record-card-head">
-        <select class="ing-material rc-name" data-i="${i}">${missingOption}${foodMaterials.map(m=>`<option value="${m.id}" ${m.id===ing.materialId?'selected':''}>${esc(m.name)}</option>`).join('')}</select>
-        <button type="button" class="icon-mini danger ing-remove" data-i="${i}">✕</button>
-      </div>
-      <div class="record-card-fields">
-        <div class="record-field"><label>จำนวน</label><input type="number" min="0" step="any" class="ing-qty" data-i="${i}" value="${ing.qty||''}" placeholder="จำนวน"></div>
-        <div class="record-field"><label>หน่วย</label>${unitField}</div>
-      </div>
-      <div class="record-row-cost">${costDisplay}</div>
-    </div>`;
-  }).join('') + (()=>{
-    const total = builderIngredients.reduce((s,ing)=>s+recipeIngredientCost(ing).cost,0);
-    return `<div class="record-total-row"><span>รวมต้นทุนวัตถุดิบ</span><span class="value">= ${fmt(total)} บ.</span></div>`;
-  })();
-  box.querySelectorAll('.ing-material').forEach(el=>el.addEventListener('change', ()=>{
-    const i = Number(el.dataset.i);
-    const wasMissing = !getMaterial(builderIngredients[i].materialId);
-    builderIngredients[i].materialId = el.value;
-    const mat = getMaterial(el.value); const options = getIngredientUnitOptions(mat);
-    builderIngredients[i].unit = options[0] || '';
-    /* Recovering a row that pointed at a missing material: the old qty was measured against
-       whatever unit that dead reference used, which has no relation to the newly-picked
-       material's unit — carrying it over silently produces a nonsense cost (e.g. "50 ชิ้น" when
-       the old value meant "50 กรัม" of something else). Reset to 0 so the wrong number can't
-       hide — a normal swap between two already-valid materials still keeps qty as before. */
-    if(wasMissing) builderIngredients[i].qty = 0;
-    renderIngredientRows(); updateCostSummary();
-  }));
-  function refreshRowCost(row, ing){
-    const costEl = row.querySelector('.row-cost');
-    if(!costEl) return;
-    const info = recipeIngredientCost(ing);
-    costEl.textContent = info.invalidUnit ? '⚠️ หน่วยไม่ตรง — เลือกใหม่' : info.missingPrice ? '⚠️ ไม่มีราคา' : `= ${fmt(info.cost)} บ.`;
-    costEl.classList.toggle('warn', info.invalidUnit || info.missingPrice);
+  if(!builderIngredients.length){ box.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีวัตถุดิบในสูตรนี้ กด "+ เพิ่มวัตถุดิบ" ด้านล่าง</td></tr>'; }
+  else {
+    box.innerHTML = builderIngredients.map((ing,i)=>{
+      const {name, unitLabel, costDisplay} = ingredientRowDisplay(ing);
+      return `<tr>
+        <td>${name}</td>
+        <td>${ing.qty||0}</td>
+        <td>${unitLabel}</td>
+        <td class="amount-cell">${costDisplay}</td>
+        <td><div class="row-actions">
+          <button type="button" class="icon-mini ing-edit" data-i="${i}" title="แก้ไข">✏️</button>
+          <button type="button" class="icon-mini danger ing-remove" data-i="${i}" title="ลบ">🗑️</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+    box.querySelectorAll('.ing-edit').forEach(el=>el.addEventListener('click', ()=>{
+      const i = Number(el.dataset.i);
+      const ing = builderIngredients[i];
+      editingIngredientIndex = i;
+      populateIngredientMaterialSelect(ing.materialId);
+      f('ing_modal_qty').value = ing.qty || '';
+      renderUnitFieldInto('ing_modal_unit_wrap', getMaterial(ing.materialId), ing.unit);
+      f('ingredientModalTitle').textContent = 'แก้ไขวัตถุดิบ';
+      document.getElementById('ingredientModal').classList.add('show');
+    }));
+    box.querySelectorAll('.ing-remove').forEach(el=>el.addEventListener('click', ()=>{
+      if(!confirm('ยืนยันลบรายการนี้หรือไม่?')) return;
+      builderIngredients.splice(Number(el.dataset.i),1); renderIngredientRows(); updateCostSummary();
+    }));
   }
-  function refreshIngredientTotal(){
-    const totalEl = box.querySelector('.record-total-row .value');
-    if(!totalEl) return;
-    const total = builderIngredients.reduce((s,ing)=>s+recipeIngredientCost(ing).cost,0);
-    totalEl.textContent = `= ${fmt(total)} บ.`;
-  }
-  box.querySelectorAll('.ing-qty').forEach(el=>el.addEventListener('input', ()=>{
-    const i = Number(el.dataset.i);
-    builderIngredients[i].qty = Number(el.value)||0;
-    updateCostSummary();
-    refreshRowCost(el.closest('.record-card'), builderIngredients[i]);
-    refreshIngredientTotal();
-  }));
-  box.querySelectorAll('.ing-unit').forEach(el=>el.addEventListener('change', ()=>{
-    const i = Number(el.dataset.i);
-    builderIngredients[i].unit = el.value;
-    updateCostSummary();
-    refreshRowCost(el.closest('.record-card'), builderIngredients[i]);
-    refreshIngredientTotal();
-  }));
-  box.querySelectorAll('.ing-remove').forEach(el=>el.addEventListener('click', ()=>{
-    builderIngredients.splice(Number(el.dataset.i),1); renderIngredientRows(); updateCostSummary();
-  }));
+  const total = builderIngredients.reduce((s,ing)=>s+recipeIngredientCost(ing).cost,0);
+  f('ingredientCostTotal').textContent = `= ${fmt(total)} บ.`;
 }
 document.getElementById('addIngredientBtn').addEventListener('click', ()=>{
   const foodMaterials = materials.filter(m=>(m.category||'food')==='food');
   if(!foodMaterials.length){ toast('กรุณาเพิ่มวัตถุดิบอาหารก่อนที่ ⚙️ ตั้งค่า'); return; }
-  // materialId starts null (not the first food material) so the new row's own select shows
-  // "— เลือกวัตถุดิบ —" instead of a real material that reads as if it were added automatically.
-  builderIngredients.push({materialId:null, qty:0, unit:''});
-  renderIngredientRows(); updateCostSummary();
+  editingIngredientIndex = null;
+  populateIngredientMaterialSelect(null);
+  f('ing_modal_qty').value = '';
+  renderUnitFieldInto('ing_modal_unit_wrap', null, '');
+  f('ingredientModalTitle').textContent = 'เพิ่มวัตถุดิบ';
+  document.getElementById('ingredientModal').classList.add('show');
 });
-function renderOtherCostRows(){
-  const box = document.getElementById('otherCostRows');
+document.getElementById('ing_modal_material').addEventListener('change', ()=>{
+  const mat = getMaterial(f('ing_modal_material').value);
+  renderUnitFieldInto('ing_modal_unit_wrap', mat, getIngredientUnitOptions(mat)[0]||'');
+});
+document.getElementById('closeIngredientModalBtn').addEventListener('click', ()=>{
+  document.getElementById('ingredientModal').classList.remove('show');
+});
+document.getElementById('ingredientModal').addEventListener('click', e=>{
+  if(e.target.id==='ingredientModal') document.getElementById('ingredientModal').classList.remove('show');
+});
+document.getElementById('ingredientForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const materialId = f('ing_modal_material').value;
+  const qty = Number(f('ing_modal_qty').value)||0;
+  if(!materialId || qty<=0){ toast('กรุณาเลือกวัตถุดิบและกรอกจำนวน'); return; }
+  const mat = getMaterial(materialId);
+  const unit = getUnitFieldValue('ing_modal_unit_wrap', mat);
+  const wasEditing = editingIngredientIndex!==null;
+  if(wasEditing){ builderIngredients[editingIngredientIndex] = {materialId, qty, unit}; }
+  else { builderIngredients.push({materialId, qty, unit}); }
+  editingIngredientIndex = null;
+  renderIngredientRows(); updateCostSummary();
+  document.getElementById('ingredientModal').classList.remove('show');
+  toast(wasEditing ? 'แก้ไขรายการแล้ว' : 'เพิ่มรายการแล้ว');
+});
+let editingOtherCostItemIndex = null;
+let editingOtherCostFlatIndex = null;
+function populateOtherCostItemMaterialSelect(selectedId){
   const supplyMaterials = materials.filter(m=>m.category==='supply');
-  if(!builderOtherCosts.length){ box.innerHTML = '<p class="hint">ยังไม่มีต้นทุนผันแปรอื่นๆ ในสูตรนี้ กด "+ เพิ่ม" ด้านล่าง</p>'; return; }
-
-  function itemRowHtml(entry, i){
-    const mat = getMaterial(entry.materialId);
-    const options = getIngredientUnitOptions(mat);
-    const unitIsAmbiguous = mat && isIngredientUnitAmbiguous(mat, entry.unit);
-    const unitField = options.length>1
-      ? `<select class="oc-unit" data-i="${i}">${unitIsAmbiguous?`<option value="" selected>⚠️ เลือกหน่วยใหม่</option>`:''}${options.map(u=>{
-          const label = ingredientUnitLabel(mat, u);
-          return `<option value="${esc(u)}" ${entry.unit===u?'selected':''}>${esc(label)}</option>`;
-        }).join('')}</select>`
-      : `<div class="unit-tag">${mat?esc(mat.unit):'-'}</div>`;
-    const missingOption = mat ? '' : entry.materialId
-      ? `<option value="" selected>⚠️ ไม่พบวัตถุดิบเดิม — กรุณาเลือกใหม่</option>`
-      : `<option value="" selected>— เลือกวัตถุดิบ —</option>`;
-    const costInfo = recipeIngredientCost(entry);
-    const costDisplay = !mat ? '' : costInfo.invalidUnit ? `<span class="row-cost warn">⚠️ หน่วยไม่ตรง — เลือกใหม่</span>` : costInfo.missingPrice ? `<span class="row-cost warn">⚠️ ไม่มีราคา</span>` : `<span class="row-cost">= ${fmt(costInfo.cost)} บ.</span>`;
-    return `<div class="record-card">
-      <div class="record-card-head">
-        <select class="oc-material rc-name" data-i="${i}">${missingOption}${supplyMaterials.map(m=>`<option value="${m.id}" ${m.id===entry.materialId?'selected':''}>${esc(m.name)}</option>`).join('')}</select>
-        <button type="button" class="icon-mini danger oc-remove" data-i="${i}">✕</button>
-      </div>
-      <div class="record-card-fields">
-        <div class="record-field"><label>จำนวน</label><input type="number" min="0" step="any" class="oc-qty" data-i="${i}" value="${entry.qty||''}" placeholder="จำนวน"></div>
-        <div class="record-field"><label>หน่วย</label>${unitField}</div>
-      </div>
-      <div class="record-row-cost">${costDisplay}</div>
-    </div>`;
-  }
-  function flatRowHtml(entry, i){
-    return `<div class="record-card">
-      <div class="record-card-head">
-        <input type="text" class="cost-label rc-name" data-i="${i}" list="costLabelList" value="${esc(entry.label)}" placeholder="เช่น ค่าน้ำมัน">
-        <button type="button" class="icon-mini danger cost-remove" data-i="${i}">✕</button>
-      </div>
-      <div class="record-card-fields">
-        <div class="record-field"><label>หน่วย (ถ้ามี)</label><input type="text" class="cost-unit" data-i="${i}" list="unitSuggestList" value="${esc(entry.unit||'')}" placeholder="หน่วย (ถ้ามี)"></div>
-        <div class="record-field"><label>จำนวนเงิน</label><input type="number" min="0" step="any" class="cost-amount" data-i="${i}" value="${entry.amount||''}" placeholder="บาท"></div>
-      </div>
-    </div>`;
-  }
+  f('oci_modal_material').innerHTML = `<option value="" ${!selectedId?'selected':''}>— เลือกวัตถุดิบ —</option>` +
+    supplyMaterials.map(m=>`<option value="${m.id}" ${m.id===selectedId?'selected':''}>${esc(m.name)}</option>`).join('');
+}
+function renderOtherCostRows(){
   const indexed = builderOtherCosts.map((entry,i)=>({entry,i}));
   const itemRows = indexed.filter(x=>x.entry.materialId!==undefined);
   const flatRows = indexed.filter(x=>x.entry.materialId===undefined);
-  let html = '';
-  if(itemRows.length){
-    const itemTotal = itemRows.reduce((s,x)=>s+recipeIngredientCost(x.entry).cost,0);
-    html += `<div class="subgroup-label">🔵 อุปกรณ์/บรรจุภัณฑ์ — มีหน่วยย่อย ตัดสต๊อกอัตโนมัติ</div>`;
-    html += itemRows.map(x=>itemRowHtml(x.entry, x.i)).join('');
-    html += `<div class="record-total-row items"><span>รวมต้นทุนอุปกรณ์/บรรจุภัณฑ์</span><span class="value">= ${fmt(itemTotal)} บ.</span></div>`;
+
+  const itemBox = document.getElementById('otherCostItemRows');
+  if(!itemRows.length){ itemBox.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีอุปกรณ์/บรรจุภัณฑ์ในสูตรนี้</td></tr>'; }
+  else {
+    itemBox.innerHTML = itemRows.map(({entry,i})=>{
+      const {name, unitLabel, costDisplay} = ingredientRowDisplay(entry);
+      return `<tr>
+        <td>${name}</td>
+        <td>${entry.qty||0}</td>
+        <td>${unitLabel}</td>
+        <td class="amount-cell">${costDisplay}</td>
+        <td><div class="row-actions">
+          <button type="button" class="icon-mini oc-item-edit" data-i="${i}" title="แก้ไข">✏️</button>
+          <button type="button" class="icon-mini danger oc-item-remove" data-i="${i}" title="ลบ">🗑️</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+    itemBox.querySelectorAll('.oc-item-edit').forEach(el=>el.addEventListener('click', ()=>{
+      const i = Number(el.dataset.i);
+      const entry = builderOtherCosts[i];
+      editingOtherCostItemIndex = i;
+      populateOtherCostItemMaterialSelect(entry.materialId);
+      f('oci_modal_qty').value = entry.qty || '';
+      renderUnitFieldInto('oci_modal_unit_wrap', getMaterial(entry.materialId), entry.unit);
+      f('otherCostItemModalTitle').textContent = 'แก้ไขอุปกรณ์/บรรจุภัณฑ์';
+      document.getElementById('otherCostItemModal').classList.add('show');
+    }));
+    itemBox.querySelectorAll('.oc-item-remove').forEach(el=>el.addEventListener('click', ()=>{
+      if(!confirm('ยืนยันลบรายการนี้หรือไม่?')) return;
+      builderOtherCosts.splice(Number(el.dataset.i),1); renderOtherCostRows(); updateCostSummary();
+    }));
   }
-  if(flatRows.length){
-    const flatTotal = flatRows.reduce((s,x)=>s+(Number(x.entry.amount)||0),0);
-    html += `<div class="subgroup-label" style="margin-top:${itemRows.length?'14px':'0'};">📝 ค่าใช้จ่ายเหมา — กรอกเอง ไม่ตัดสต๊อก</div>`;
-    html += flatRows.map(x=>flatRowHtml(x.entry, x.i)).join('');
-    html += `<div class="record-total-row flat"><span>รวมค่าใช้จ่ายเหมา</span><span class="value">= ${fmt(flatTotal)} บ.</span></div>`;
+  const itemTotal = itemRows.reduce((s,x)=>s+recipeIngredientCost(x.entry).cost,0);
+  f('otherCostItemTotal').textContent = `= ${fmt(itemTotal)} บ.`;
+
+  const flatBox = document.getElementById('otherCostFlatRows');
+  if(!flatRows.length){ flatBox.innerHTML = '<tr><td colspan="4" class="empty-state">ยังไม่มีค่าใช้จ่ายเหมาในสูตรนี้</td></tr>'; }
+  else {
+    flatBox.innerHTML = flatRows.map(({entry,i})=>`<tr>
+      <td>${esc(entry.label)}</td>
+      <td>${esc(entry.unit||'-')}</td>
+      <td class="amount-cell">${fmt(entry.amount||0)} บ.</td>
+      <td><div class="row-actions">
+        <button type="button" class="icon-mini oc-flat-edit" data-i="${i}" title="แก้ไข">✏️</button>
+        <button type="button" class="icon-mini danger oc-flat-remove" data-i="${i}" title="ลบ">🗑️</button>
+      </div></td>
+    </tr>`).join('');
+    flatBox.querySelectorAll('.oc-flat-edit').forEach(el=>el.addEventListener('click', ()=>{
+      const i = Number(el.dataset.i);
+      const entry = builderOtherCosts[i];
+      editingOtherCostFlatIndex = i;
+      f('ocf_modal_label').value = entry.label; f('ocf_modal_unit').value = entry.unit||''; f('ocf_modal_amount').value = entry.amount||'';
+      f('otherCostFlatModalTitle').textContent = 'แก้ไขค่าใช้จ่ายเหมา';
+      document.getElementById('otherCostFlatModal').classList.add('show');
+    }));
+    flatBox.querySelectorAll('.oc-flat-remove').forEach(el=>el.addEventListener('click', ()=>{
+      if(!confirm('ยืนยันลบรายการนี้หรือไม่?')) return;
+      builderOtherCosts.splice(Number(el.dataset.i),1); renderOtherCostRows(); updateCostSummary();
+    }));
   }
-  box.innerHTML = html;
-  box.querySelectorAll('.oc-material').forEach(el=>el.addEventListener('change', ()=>{
-    const i = Number(el.dataset.i);
-    const wasMissing = !getMaterial(builderOtherCosts[i].materialId);
-    builderOtherCosts[i].materialId = el.value;
-    const mat = getMaterial(el.value); builderOtherCosts[i].unit = getIngredientUnitOptions(mat)[0] || '';
-    if(wasMissing) builderOtherCosts[i].qty = 0;
-    renderOtherCostRows(); updateCostSummary();
-  }));
-  function refreshRowCost(row, entry){
-    const costEl = row.querySelector('.row-cost');
-    if(!costEl) return;
-    const info = recipeIngredientCost(entry);
-    costEl.textContent = info.invalidUnit ? '⚠️ หน่วยไม่ตรง — เลือกใหม่' : info.missingPrice ? '⚠️ ไม่มีราคา' : `= ${fmt(info.cost)} บ.`;
-    costEl.classList.toggle('warn', info.invalidUnit || info.missingPrice);
-  }
-  function refreshItemTotal(){
-    const totalEl = box.querySelector('.record-total-row.items .value');
-    if(!totalEl) return;
-    const total = builderOtherCosts.filter(e=>e.materialId!==undefined).reduce((s,e)=>s+recipeIngredientCost(e).cost,0);
-    totalEl.textContent = `= ${fmt(total)} บ.`;
-  }
-  function refreshFlatTotal(){
-    const totalEl = box.querySelector('.record-total-row.flat .value');
-    if(!totalEl) return;
-    const total = builderOtherCosts.filter(e=>e.materialId===undefined).reduce((s,e)=>s+(Number(e.amount)||0),0);
-    totalEl.textContent = `= ${fmt(total)} บ.`;
-  }
-  box.querySelectorAll('.oc-qty').forEach(el=>el.addEventListener('input', ()=>{
-    const i = Number(el.dataset.i);
-    builderOtherCosts[i].qty = Number(el.value)||0;
-    updateCostSummary();
-    refreshRowCost(el.closest('.record-card'), builderOtherCosts[i]);
-    refreshItemTotal();
-  }));
-  box.querySelectorAll('.oc-unit').forEach(el=>el.addEventListener('change', ()=>{
-    const i = Number(el.dataset.i);
-    builderOtherCosts[i].unit = el.value;
-    updateCostSummary();
-    refreshRowCost(el.closest('.record-card'), builderOtherCosts[i]);
-    refreshItemTotal();
-  }));
-  box.querySelectorAll('.oc-remove').forEach(el=>el.addEventListener('click', ()=>{
-    builderOtherCosts.splice(Number(el.dataset.i),1); renderOtherCostRows(); updateCostSummary();
-  }));
-  box.querySelectorAll('.cost-label').forEach(el=>el.addEventListener('input', ()=>{ builderOtherCosts[Number(el.dataset.i)].label = el.value; }));
-  box.querySelectorAll('.cost-unit').forEach(el=>el.addEventListener('input', ()=>{ builderOtherCosts[Number(el.dataset.i)].unit = el.value; }));
-  box.querySelectorAll('.cost-amount').forEach(el=>el.addEventListener('input', ()=>{ builderOtherCosts[Number(el.dataset.i)].amount = Number(el.value)||0; updateCostSummary(); refreshFlatTotal(); }));
-  box.querySelectorAll('.cost-remove').forEach(el=>el.addEventListener('click', ()=>{ builderOtherCosts.splice(Number(el.dataset.i),1); renderOtherCostRows(); updateCostSummary(); }));
+  const flatTotal = flatRows.reduce((s,x)=>s+(Number(x.entry.amount)||0),0);
+  f('otherCostFlatTotal').textContent = `= ${fmt(flatTotal)} บ.`;
 }
 document.getElementById('addCostBtn').addEventListener('click', ()=>{
   const supplyMaterials = materials.filter(m=>m.category==='supply');
   if(!supplyMaterials.length){ toast('กรุณาเพิ่มวัตถุดิบหมวด "อุปกรณ์/บรรจุภัณฑ์" ก่อนที่ ⚙️ ตั้งค่า'); return; }
-  builderOtherCosts.push({materialId:null, qty:0, unit:''});
+  editingOtherCostItemIndex = null;
+  populateOtherCostItemMaterialSelect(null);
+  f('oci_modal_qty').value = '';
+  renderUnitFieldInto('oci_modal_unit_wrap', null, '');
+  f('otherCostItemModalTitle').textContent = 'เพิ่มอุปกรณ์/บรรจุภัณฑ์';
+  document.getElementById('otherCostItemModal').classList.add('show');
+});
+document.getElementById('oci_modal_material').addEventListener('change', ()=>{
+  const mat = getMaterial(f('oci_modal_material').value);
+  renderUnitFieldInto('oci_modal_unit_wrap', mat, getIngredientUnitOptions(mat)[0]||'');
+});
+document.getElementById('closeOtherCostItemModalBtn').addEventListener('click', ()=>{
+  document.getElementById('otherCostItemModal').classList.remove('show');
+});
+document.getElementById('otherCostItemModal').addEventListener('click', e=>{
+  if(e.target.id==='otherCostItemModal') document.getElementById('otherCostItemModal').classList.remove('show');
+});
+document.getElementById('otherCostItemForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const materialId = f('oci_modal_material').value;
+  const qty = Number(f('oci_modal_qty').value)||0;
+  if(!materialId || qty<=0){ toast('กรุณาเลือกวัตถุดิบและกรอกจำนวน'); return; }
+  const mat = getMaterial(materialId);
+  const unit = getUnitFieldValue('oci_modal_unit_wrap', mat);
+  const wasEditing = editingOtherCostItemIndex!==null;
+  if(wasEditing){ builderOtherCosts[editingOtherCostItemIndex] = {materialId, qty, unit}; }
+  else { builderOtherCosts.push({materialId, qty, unit}); }
+  editingOtherCostItemIndex = null;
   renderOtherCostRows(); updateCostSummary();
+  document.getElementById('otherCostItemModal').classList.remove('show');
+  toast(wasEditing ? 'แก้ไขรายการแล้ว' : 'เพิ่มรายการแล้ว');
 });
 document.getElementById('addFlatCostBtn').addEventListener('click', ()=>{
-  builderOtherCosts.push({label:'', amount:0, unit:''});
+  editingOtherCostFlatIndex = null;
+  f('ocf_modal_label').value=''; f('ocf_modal_unit').value=''; f('ocf_modal_amount').value='';
+  f('otherCostFlatModalTitle').textContent = 'เพิ่มค่าใช้จ่ายอื่นๆ (กรอกเองแบบเหมา)';
+  document.getElementById('otherCostFlatModal').classList.add('show');
+});
+document.getElementById('closeOtherCostFlatModalBtn').addEventListener('click', ()=>{
+  document.getElementById('otherCostFlatModal').classList.remove('show');
+});
+document.getElementById('otherCostFlatModal').addEventListener('click', e=>{
+  if(e.target.id==='otherCostFlatModal') document.getElementById('otherCostFlatModal').classList.remove('show');
+});
+document.getElementById('otherCostFlatForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const label = f('ocf_modal_label').value.trim();
+  const unit = f('ocf_modal_unit').value.trim();
+  const amount = Number(f('ocf_modal_amount').value)||0;
+  if(!label || amount<=0){ toast('กรุณากรอกรายการและจำนวนเงิน'); return; }
+  const wasEditing = editingOtherCostFlatIndex!==null;
+  if(wasEditing){ builderOtherCosts[editingOtherCostFlatIndex] = {label, unit, amount}; }
+  else { builderOtherCosts.push({label, unit, amount}); }
+  editingOtherCostFlatIndex = null;
   renderOtherCostRows(); updateCostSummary();
+  document.getElementById('otherCostFlatModal').classList.remove('show');
+  toast(wasEditing ? 'แก้ไขรายการแล้ว' : 'เพิ่มรายการแล้ว');
 });
 
 function updateCostSummary(){
