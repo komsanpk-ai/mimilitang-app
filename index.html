@@ -540,7 +540,11 @@ p.hint.collapsible-hint.show{display:block;}
 
 /* ---------- P&L statement ---------- */
 .pnl-doc{background:#fff;border-radius:12px;padding:28px;max-width:720px;margin:0 auto;}
-@media(max-width:640px){ .pnl-doc{padding:14px;} }
+/* On mobile, shrink the outer card's own padding just for this section (not every .card on the
+   page) so the printable P&L sheet uses nearly the full screen width instead of leaving a wide
+   cream margin on both sides — the doc itself is still white-on-white against the card, so the
+   card's padding was the only thing actually eating into that space. */
+@media(max-width:640px){ .pnl-doc{padding:10px;} #pnlSection{padding:8px;} }
 .pnl-letterhead{display:flex;align-items:center;gap:16px;border-bottom:2.5px solid var(--maroon);padding-bottom:16px;margin-bottom:20px;}
 .pnl-letterhead-logo{width:56px;height:56px;border-radius:50%;overflow:hidden;flex:none;border:2px solid var(--gold-light);display:flex;align-items:center;justify-content:center;background:var(--cream);font-size:28px;}
 .pnl-letterhead-logo img{width:100%;height:100%;object-fit:cover;display:none;}
