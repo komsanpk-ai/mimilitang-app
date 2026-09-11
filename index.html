@@ -521,7 +521,8 @@ p.hint.collapsible-hint{display:none;}
 p.hint.collapsible-hint.show{display:block;}
 
 /* ---------- P&L statement ---------- */
-.pnl-doc{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:28px;max-width:720px;margin:0 auto;}
+.pnl-doc{background:#fff;border-radius:12px;padding:28px;max-width:720px;margin:0 auto;}
+@media(max-width:640px){ .pnl-doc{padding:14px;} }
 .pnl-letterhead{display:flex;align-items:center;gap:16px;border-bottom:2.5px solid var(--maroon);padding-bottom:16px;margin-bottom:20px;}
 .pnl-letterhead-logo{width:56px;height:56px;border-radius:50%;overflow:hidden;flex:none;border:2px solid var(--gold-light);display:flex;align-items:center;justify-content:center;background:var(--cream);font-size:28px;}
 .pnl-letterhead-logo img{width:100%;height:100%;object-fit:cover;display:none;}
@@ -529,8 +530,18 @@ p.hint.collapsible-hint.show{display:block;}
 .pnl-biz-name{font-family:'Kanit',sans-serif;font-size:17px;font-weight:700;color:var(--maroon-dark);}
 .pnl-doc-title{font-size:15px;font-weight:600;color:var(--ink);margin-top:2px;}
 .pnl-period{font-size:12.5px;color:var(--muted);margin-top:2px;}
-.pnl-table{width:100%;border-collapse:collapse;font-size:13.5px;}
-.pnl-table td{padding:6px 4px;color:var(--ink);}
+/* min-width:0 overrides the generic table{min-width:1400px} rule (meant for the wide orders
+   table) — without it this simple 2-column statement was forced 1400px wide, leaving a huge blank
+   gap between the label and amount columns on a narrow phone screen. */
+/* table-layout:fixed + the <colgroup> in renderPnL's markup fix the amount column at 92px and let
+   the label column take the rest, regardless of which row's cells happen to have a colspan — an
+   explicit colgroup is unaffected by that, unlike letting fixed-layout infer widths from row cells. */
+.pnl-table{width:100%;min-width:0;border-collapse:collapse;font-size:13.5px;table-layout:fixed;}
+/* white-space:normal overrides the generic tbody td{white-space:nowrap} rule (meant for the
+   orders/delivery tables) — without it, every label here refused to wrap at all and just spilled
+   past its fixed-width cell. overflow-wrap:anywhere then handles Thai runs with no spaces at all
+   (e.g. "ค่าใช้จ่ายค่าจัดส่งจริง"), letting them break mid-run as a last resort. */
+.pnl-table td{padding:6px 4px;color:var(--ink);white-space:normal;overflow-wrap:anywhere;}
 .pnl-table td.pnl-amt{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .pnl-table tr.pnl-section td{font-weight:700;color:var(--maroon-dark);padding-top:16px;font-size:13px;text-transform:uppercase;letter-spacing:.3px;}
 .pnl-table tr.pnl-section:first-child td{padding-top:4px;}
@@ -5127,6 +5138,7 @@ function renderPnL(){
     .map(cat=>`<tr class="pnl-item"><td>${esc(cat)}</td>${pnlAmt(pnl.opexByCategory[cat], true)}</tr>`).join('');
 
   document.getElementById('pnlTable').innerHTML = `
+    <colgroup><col><col style="width:92px"></colgroup>
     <tr class="pnl-section"><td colspan="2">รายได้จากการขายสินค้า</td></tr>
     <tr class="pnl-item"><td>ยอดขายสินค้า</td>${pnlAmt(pnl.salesRevenue)}</tr>
     <tr class="pnl-item"><td>หัก ส่วนลด</td>${pnlAmt(pnl.discountTotal, true)}</tr>
