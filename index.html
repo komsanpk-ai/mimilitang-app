@@ -1380,12 +1380,7 @@ p.hint.collapsible-hint.show{display:block;}
     <div class="card-head"><h2><span class="emoji">🏗️</span>ต้นทุนเริ่มต้น (เงินลงทุนเริ่มแรก)</h2></div>
     <p class="hint">หมวด: ต้นทุนเริ่มต้น — ค่าใช้จ่ายครั้งเดียวตอนเริ่มกิจการ เช่น อุปกรณ์เครื่องครัว ค่าโต๊ะ ค่าภาชนะ หม้อ เตาไฟฟ้า (ไม่ใช่ต้นทุนต่อถ้วย) ใช้คำนวณจุดคุ้มทุนด้านล่าง</p>
     <button type="button" class="btn btn-primary btn-small" id="addStartupCostBtn" style="align-self:flex-start;margin-bottom:14px;">➕ เพิ่มต้นทุนเริ่มต้น</button>
-    <div class="table-scroll">
-      <table id="startupCostTable">
-        <thead><tr><th>ต้นทุน</th><th>ราคา (บาท)</th><th></th></tr></thead>
-        <tbody id="startupCostRows"></tbody>
-      </table>
-    </div>
+    <div class="record-list" id="startupCostRows"></div>
     <datalist id="startupLabelList">
       <option value="อุปกรณ์เครื่องครัว"><option value="ค่าโต๊ะ"><option value="ค่าภาชนะ"><option value="หม้อ"><option value="เตาไฟฟ้า">
     </datalist>
@@ -1414,12 +1409,7 @@ p.hint.collapsible-hint.show{display:block;}
         </select>
       </div>
     </div>
-    <div class="table-scroll">
-      <table id="opexTable">
-        <thead><tr><th>วันที่</th><th>หมวด</th><th>จำนวนเงิน</th><th>หมายเหตุ</th><th></th></tr></thead>
-        <tbody id="opexBody"></tbody>
-      </table>
-    </div>
+    <div class="record-list" id="opexBody"></div>
     <div class="table-footer">
       <div class="pagination" id="opexPagination"></div>
     </div>
@@ -4823,13 +4813,17 @@ function renderRecipeOverviewTable(){
 /* ============ Startup / capital cost ============ */
 function renderStartupCostRows(){
   const box = document.getElementById('startupCostRows');
-  if(!startupCosts.length){ box.innerHTML = '<tr><td colspan="3" class="empty-state">ยังไม่มีรายการต้นทุนเริ่มต้น กด "➕ เพิ่มต้นทุนเริ่มต้น" ด้านบน</td></tr>'; }
+  if(!startupCosts.length){ box.innerHTML = '<p class="empty-state">ยังไม่มีรายการต้นทุนเริ่มต้น กด "➕ เพิ่มต้นทุนเริ่มต้น" ด้านบน</p>'; }
   else {
-    box.innerHTML = startupCosts.map((c,i)=>`<tr>
-      <td><input type="text" class="sc-label" data-i="${i}" list="startupLabelList" value="${esc(c.label)}" placeholder="เช่น อุปกรณ์เครื่องครัว"></td>
-      <td><input type="number" min="0" step="any" class="sc-amount" data-i="${i}" value="${c.amount||''}" placeholder="0"></td>
-      <td><button type="button" class="icon-mini danger sc-remove" data-i="${i}" title="ลบ">🗑️</button></td>
-    </tr>`).join('');
+    box.innerHTML = startupCosts.map((c,i)=>`<div class="record-card">
+      <div class="record-card-head">
+        <input type="text" class="sc-label rc-name" data-i="${i}" list="startupLabelList" value="${esc(c.label)}" placeholder="เช่น อุปกรณ์เครื่องครัว">
+        <button type="button" class="icon-mini danger sc-remove" data-i="${i}" title="ลบ">🗑️</button>
+      </div>
+      <div class="record-card-fields">
+        <div class="record-field full"><label>ราคา (บาท)</label><input type="number" min="0" step="any" class="sc-amount" data-i="${i}" value="${c.amount||''}" placeholder="0"></div>
+      </div>
+    </div>`).join('');
     box.querySelectorAll('.sc-label').forEach(el=>{
       el.addEventListener('input', ()=>{ startupCosts[Number(el.dataset.i)].label = el.value; persistStartupCosts(); });
       el.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
@@ -4910,33 +4904,37 @@ function renderOpex(){
   const start = (opexCurrentPage-1)*pageSize;
   const pageItems = list.slice(start, start+pageSize);
 
-  const tbody = document.getElementById('opexBody');
-  if(!list.length){ tbody.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีรายการค่าใช้จ่าย</td></tr>'; }
+  const box = document.getElementById('opexBody');
+  if(!list.length){ box.innerHTML = '<p class="empty-state">ยังไม่มีรายการค่าใช้จ่าย</p>'; }
   else {
-    tbody.innerHTML = pageItems.map(x=>`<tr>
-      <td><input type="date" class="opex-date" data-id="${x.id}" value="${x.date}"></td>
-      <td><input type="text" class="opex-category" data-id="${x.id}" list="opexCategoryList" value="${esc(x.category)}"></td>
-      <td><input type="number" min="0" step="any" class="opex-amount" data-id="${x.id}" value="${x.amount}"></td>
-      <td><input type="text" class="opex-note" data-id="${x.id}" value="${esc(x.note)}" placeholder="หมายเหตุ"></td>
-      <td><button class="icon-mini danger opex-remove" data-id="${x.id}" title="ลบ">🗑️</button></td>
-    </tr>`).join('');
-    tbody.querySelectorAll('.opex-date').forEach(el=>el.addEventListener('change', ()=>{
+    box.innerHTML = pageItems.map(x=>`<div class="record-card">
+      <div class="record-card-head">
+        <input type="text" class="opex-category rc-name" data-id="${x.id}" list="opexCategoryList" value="${esc(x.category)}" placeholder="หมวดค่าใช้จ่าย">
+        <button class="icon-mini danger opex-remove" data-id="${x.id}" title="ลบ">🗑️</button>
+      </div>
+      <div class="record-card-fields">
+        <div class="record-field"><label>วันที่</label><input type="date" class="opex-date" data-id="${x.id}" value="${x.date}"></div>
+        <div class="record-field"><label>จำนวนเงิน (บาท)</label><input type="number" min="0" step="any" class="opex-amount" data-id="${x.id}" value="${x.amount}"></div>
+        <div class="record-field full"><label>หมายเหตุ</label><input type="text" class="opex-note" data-id="${x.id}" value="${esc(x.note)}" placeholder="หมายเหตุ (ถ้ามี)"></div>
+      </div>
+    </div>`).join('');
+    box.querySelectorAll('.opex-date').forEach(el=>el.addEventListener('change', ()=>{
       const x = operatingExpenses.find(o=>o.id===el.dataset.id); if(!x) return;
       x.date = el.value; persistOperatingExpenses(); renderOpex(); renderCashFlow(); toast('แก้ไขสำเร็จ');
     }));
-    tbody.querySelectorAll('.opex-category').forEach(el=>el.addEventListener('change', ()=>{
+    box.querySelectorAll('.opex-category').forEach(el=>el.addEventListener('change', ()=>{
       const x = operatingExpenses.find(o=>o.id===el.dataset.id); if(!x) return;
       x.category = el.value.trim(); persistOperatingExpenses(); toast('แก้ไขสำเร็จ');
     }));
-    tbody.querySelectorAll('.opex-amount').forEach(el=>el.addEventListener('change', ()=>{
+    box.querySelectorAll('.opex-amount').forEach(el=>el.addEventListener('change', ()=>{
       const x = operatingExpenses.find(o=>o.id===el.dataset.id); if(!x) return;
       x.amount = Number(el.value)||0; persistOperatingExpenses(); renderOpex(); renderCashFlow(); toast('แก้ไขสำเร็จ');
     }));
-    tbody.querySelectorAll('.opex-note').forEach(el=>el.addEventListener('change', ()=>{
+    box.querySelectorAll('.opex-note').forEach(el=>el.addEventListener('change', ()=>{
       const x = operatingExpenses.find(o=>o.id===el.dataset.id); if(!x) return;
       x.note = el.value.trim(); persistOperatingExpenses(); toast('แก้ไขสำเร็จ');
     }));
-    tbody.querySelectorAll('.opex-remove').forEach(btn=>{
+    box.querySelectorAll('.opex-remove').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         if(!confirm('ยืนยันลบรายการค่าใช้จ่ายนี้หรือไม่?')) return;
         operatingExpenses = operatingExpenses.filter(x=>x.id!==btn.dataset.id);
