@@ -896,7 +896,7 @@ p.hint.collapsible-hint.show{display:block;}
           </select></div>
       </div>
       <div class="table-scroll">
-        <table id="slipTable">
+        <table id="slipTable" class="compact-table">
           <thead><tr><th>วันที่สั่ง</th><th>ชื่อลูกค้า</th><th>ประเภทการจ่ายเงิน</th><th>ยอดที่ได้รับ</th><th>สลิปการโอน</th></tr></thead>
           <tbody id="slipBody"></tbody>
         </table>
@@ -3616,7 +3616,23 @@ function renderPaymentBreakdown(list){
   const data = Object.keys(byMethod).map((k,i)=>({label:k, value:byMethod[k], color:PALETTE[(i+3)%PALETTE.length]})).sort((a,b)=>b.value-a.value);
   renderChartInto(data, 'pmChartBoxBar', 'pmChartBoxPie', 'pmChartLegend', 'pmChartAxisBar');
 
-  const paidList = list.filter(o=>o._amt.amountReceived>0).slice().sort((a,b)=>b.orderDate.localeCompare(a.orderDate));
+  // A multi-item order (see extraLineItems) saves as several order documents sharing a groupId,
+  // each with its own partial amountReceived — grouping them back into one unit here means a
+  // customer who bought 2 products in one visit shows one payment row with the combined total,
+  // matching the single slip/transfer that was actually made (instead of 2 rows with 2 different
+  // amounts, which reads as a discrepancy when reconciling against the one attached slip).
+  const paidList = buildOrderUnits(list).map(u=>{
+    const first = u.members[0];
+    return {
+      id: first.id,
+      orderDate: first.orderDate,
+      customerName: first.customerName,
+      phone: first.phone,
+      paymentMethod: first.paymentMethod,
+      amountReceived: u.members.reduce((s,o)=>s+o._amt.amountReceived,0),
+      paymentSlip: u.members.map(o=>o.paymentSlip).find(Boolean) || null
+    };
+  }).filter(o=>o.amountReceived>0).sort((a,b)=>b.orderDate.localeCompare(a.orderDate));
   const tbody = document.getElementById('slipBody');
   if(!paidList.length){
     tbody.innerHTML = `<tr><td colspan="5" class="empty-state">ยังไม่มีรายการรับเงินในช่วงนี้</td></tr>`;
@@ -3645,7 +3661,7 @@ function renderPaymentBreakdown(list){
       <td>${fmtDate(o.orderDate)}</td>
       <td class="wrap">${repeatStarHTML(o.phone)}${esc(o.customerName)}</td>
       <td><span class="badge ${STATUS_COLOR[o.paymentMethod]||'gray'}">${esc(o.paymentMethod||paymentMethods[0]||'ไม่ระบุ')}</span></td>
-      <td class="amount-cell">${fmt(o._amt.amountReceived)} บ.</td>
+      <td class="amount-cell">${fmt(o.amountReceived)} บ.</td>
       <td>${slipCell}</td>
     </tr>`;
   }).join('');
