@@ -193,6 +193,19 @@ tbody td.wrap{white-space:normal;max-width:180px;}
 #prepProductTable tbody td:nth-child(2),#prepMaterialFoodTable tbody td:nth-child(2),#prepMaterialSupplyTable tbody td:nth-child(2){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
 #prepProductTable tbody tr:nth-child(even) td:nth-child(2),#prepMaterialFoodTable tbody tr:nth-child(even) td:nth-child(2),#prepMaterialSupplyTable tbody tr:nth-child(even) td:nth-child(2){background:#f6fbf5;}
 #prepProductTable tbody tr:hover td:nth-child(2),#prepMaterialFoodTable tbody tr:hover td:nth-child(2),#prepMaterialSupplyTable tbody tr:hover td:nth-child(2){background:#fdf3df;}
+/* Same pin, applied to the payment/slip report table — its ชื่อลูกค้า column is the 2nd cell. */
+#slipTable thead th:nth-child(2){position:sticky;left:0;z-index:3;background:#fff3d6;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#slipTable tbody td:nth-child(2){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
+#slipTable tbody tr:nth-child(even) td:nth-child(2){background:#f6fbf5;}
+#slipTable tbody tr:hover td:nth-child(2){background:#fdf3df;}
+/* The "ประเภทการจ่ายเงิน" header cell holds a <select> instead of plain text, so tapping the
+   header itself opens a native picker to filter the table by payment method — styled to blend
+   into the header (no visible box) so it still reads as a column label at a glance. */
+#slipTable thead th:nth-child(3){padding:0;}
+#slipTable thead th:nth-child(3) select{
+  font:inherit;font-weight:700;color:inherit;background:transparent;border:none;
+  cursor:pointer;width:100%;height:100%;padding:10px 10px;
+}
 .day-group-row td{
   background:#fbe9c8!important;font-weight:700;color:var(--maroon-dark);padding:8px 10px;position:sticky;left:0;
 }
@@ -897,7 +910,7 @@ p.hint.collapsible-hint.show{display:block;}
       </div>
       <div class="table-scroll">
         <table id="slipTable" class="compact-table">
-          <thead><tr><th>วันที่สั่ง</th><th>ชื่อลูกค้า</th><th>ประเภทการจ่ายเงิน</th><th>ยอดที่ได้รับ</th><th>สลิปการโอน</th></tr></thead>
+          <thead><tr><th>วันที่สั่ง</th><th>ชื่อลูกค้า</th><th id="sp_paymentFilterHead"></th><th>ยอดที่ได้รับ</th><th>สลิปการโอน</th></tr></thead>
           <tbody id="slipBody"></tbody>
         </table>
       </div>
@@ -3605,6 +3618,7 @@ function renderChartInto(data, barBoxId, pieBoxId, legendId, axisBoxId){
 
 /* ============ Payment method (cash/transfer) breakdown + slip attachment ============ */
 let slipPage = 1;
+let spPaymentFilter = 'all';
 function renderPaymentBreakdown(list){
   const byMethod = {};
   list.forEach(o=>{
@@ -3633,20 +3647,36 @@ function renderPaymentBreakdown(list){
       paymentSlip: u.members.map(o=>o.paymentSlip).find(Boolean) || null
     };
   }).filter(o=>o.amountReceived>0).sort((a,b)=>b.orderDate.localeCompare(a.orderDate));
+
+  // The "ประเภทการจ่ายเงิน" header holds a <select> instead of plain text — tapping the header
+  // itself opens a native picker to filter the table down to one payment method.
+  const filterHead = document.getElementById('sp_paymentFilterHead');
+  filterHead.innerHTML = `<select id="sp_paymentFilter">
+    <option value="all">ประเภทการจ่ายเงิน (ทั้งหมด)</option>
+    ${paymentMethods.map(pm=>`<option value="${esc(pm)}" ${spPaymentFilter===pm?'selected':''}>${esc(pm)}</option>`).join('')}
+  </select>`;
+  document.getElementById('sp_paymentFilter').addEventListener('change', ()=>{
+    spPaymentFilter = document.getElementById('sp_paymentFilter').value;
+    slipPage = 1;
+    renderPaymentBreakdown(list);
+  });
+
+  const filteredPaidList = spPaymentFilter==='all' ? paidList : paidList.filter(o=>(o.paymentMethod||paymentMethods[0]||'ไม่ระบุ')===spPaymentFilter);
+
   const tbody = document.getElementById('slipBody');
-  if(!paidList.length){
+  if(!filteredPaidList.length){
     tbody.innerHTML = `<tr><td colspan="5" class="empty-state">ยังไม่มีรายการรับเงินในช่วงนี้</td></tr>`;
     document.getElementById('spSummary').innerHTML = '';
     document.getElementById('spPagination').innerHTML = '';
     return;
   }
   const pageSizeSel = document.getElementById('sp_pageSize').value;
-  const pageSize = pageSizeSel==='all' ? paidList.length : Number(pageSizeSel);
-  const totalPages = Math.max(1, Math.ceil(paidList.length/pageSize));
+  const pageSize = pageSizeSel==='all' ? filteredPaidList.length : Number(pageSizeSel);
+  const totalPages = Math.max(1, Math.ceil(filteredPaidList.length/pageSize));
   if(slipPage>totalPages) slipPage = totalPages;
   const start = (slipPage-1)*pageSize;
-  const pageItems = paidList.slice(start, start+pageSize);
-  document.getElementById('spSummary').innerHTML = `แสดง <b>${pageItems.length}</b> จาก ${paidList.length} รายการ`;
+  const pageItems = filteredPaidList.slice(start, start+pageSize);
+  document.getElementById('spSummary').innerHTML = `แสดง <b>${pageItems.length}</b> จาก ${filteredPaidList.length} รายการ`;
   document.getElementById('spPagination').innerHTML = `
     <button id="spPrevPageBtn" ${slipPage<=1?'disabled':''}>‹</button>
     <span>หน้า ${slipPage}/${totalPages}</span>
