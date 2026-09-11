@@ -247,6 +247,13 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
 }
 .item-photo img{width:100%;height:100%;object-fit:cover;}
 .item-photo input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+/* Small read-only thumbnail for a table row (materials settings list) — same rounded-square look
+   as .item-photo but not clickable; changing the photo happens in the edit modal instead. */
+.mat-thumb{
+  width:26px;height:26px;border-radius:6px;overflow:hidden;flex:none;border:1px solid var(--border);
+  background:var(--cream);display:inline-flex;align-items:center;justify-content:center;font-size:14px;
+}
+.mat-thumb img{width:100%;height:100%;object-fit:cover;}
 .row-actions{display:flex;gap:6px;}
 .icon-mini{border:none;background:#f1e9de;border-radius:7px;width:28px;height:28px;font-size:13px;}
 .icon-mini.danger{background:var(--red-bg);color:var(--red);}
@@ -1608,8 +1615,13 @@ p.hint.collapsible-hint.show{display:block;}
       <button type="button" data-cat="food" class="active" id="matSetFoodBtn">วัตถุดิบอาหาร</button>
       <button type="button" data-cat="supply" id="matSetSupplyBtn">อุปกรณ์/บรรจุภัณฑ์</button>
     </div>
-    <div class="record-list" id="materialSettingsList"></div>
-    <button type="button" class="btn btn-outline btn-small" id="addMaterialBtn">+ เพิ่มวัตถุดิบ</button>
+    <button type="button" class="btn btn-primary btn-small" id="addMaterialBtn" style="margin-bottom:14px;">➕ เพิ่มวัตถุดิบ</button>
+    <div class="table-scroll">
+      <table id="materialSettingsTable" class="compact-table">
+        <thead><tr><th></th><th>ชื่อ</th><th>หมวด</th><th>หน่วยนับ</th><th>จุดสั่งซื้อ</th><th></th></tr></thead>
+        <tbody id="materialSettingsList"></tbody>
+      </table>
+    </div>
   </section>
 </main>
 
@@ -1777,6 +1789,40 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="field"><label>รายการ</label><input type="text" id="ocf_modal_label" list="costLabelList" placeholder="เช่น ค่าน้ำมัน" required></div>
       <div class="field"><label>หน่วย (ถ้ามี)</label><input type="text" id="ocf_modal_unit" list="unitSuggestList" placeholder="หน่วย (ถ้ามี)"></div>
       <div class="field"><label>จำนวนเงิน (บาท)</label><input type="number" min="0" step="any" id="ocf_modal_amount" placeholder="0" required></div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">💾 บันทึก</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add/edit material (settings) modal -->
+<div class="modal-overlay" id="materialModal">
+  <div class="modal" style="max-width:420px;">
+    <button class="modal-close" id="closeMaterialModalBtn">✕</button>
+    <h3 id="materialModalTitle">เพิ่มวัตถุดิบ</h3>
+    <form class="form-grid" id="materialForm">
+      <div class="field">
+        <label>รูปภาพ (ถ้ามี)</label>
+        <label class="item-photo" title="คลิกเพื่ออัปโหลด/เปลี่ยนรูปวัตถุดิบ">
+          <span id="mat_modal_photo_preview">🧂</span>
+          <input type="file" accept="image/*" id="mat_modal_photo_input">
+        </label>
+      </div>
+      <div class="field"><label>ชื่อวัตถุดิบ</label><input type="text" id="mat_modal_name" placeholder="ชื่อวัตถุดิบ" required></div>
+      <div class="row">
+        <div class="field"><label>หมวด</label><select id="mat_modal_category">
+          <option value="food">วัตถุดิบอาหาร</option>
+          <option value="supply">อุปกรณ์/บรรจุภัณฑ์</option>
+        </select></div>
+        <div class="field"><label>หน่วยนับ</label><select id="mat_modal_unit"></select></div>
+      </div>
+      <div class="field"><label>จุดสั่งซื้อ</label><input type="number" min="0" step="any" id="mat_modal_reorderPoint" placeholder="ยังไม่กำหนด"></div>
+      <div class="row">
+        <div class="field"><label>หน่วยย่อย (ถ้ามี)</label><input type="text" id="mat_modal_subUnitName" placeholder="เช่น ชิ้น"></div>
+        <div class="field"><label>กี่หน่วยย่อย/หน่วย</label><input type="number" min="0" step="1" id="mat_modal_subUnitCount" placeholder="กี่ชิ้น/หน่วย"></div>
+      </div>
+      <div class="field"><label>กรัม/ชิ้น (ถ้านับชิ้น)</label><input type="number" min="0" step="any" id="mat_modal_pieceWeight" placeholder="ถ้านับชิ้น"></div>
       <div class="form-actions">
         <button type="submit" class="btn btn-primary">💾 บันทึก</button>
       </div>
@@ -5460,8 +5506,8 @@ function initDragReorder(container, rowSelector, onReorder){
 }
 function initMaterialDragReorder(){
   const container = document.getElementById('materialSettingsList');
-  initDragReorder(container, '.record-card', ()=>{
-    const newOrderIds = Array.from(container.querySelectorAll('.record-card')).map(r=>r.dataset.id);
+  initDragReorder(container, 'tr', ()=>{
+    const newOrderIds = Array.from(container.querySelectorAll('tr')).map(r=>r.dataset.id);
     materials.sort((a,b)=> newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id));
     persistMaterials();
     renderMaterialSettingsList();
@@ -5473,55 +5519,28 @@ let materialSettingsFilter = 'food';
 function renderMaterialSettingsList(){
   const list = document.getElementById('materialSettingsList');
   // Map to {m,i} BEFORE filtering so data-i always stays the item's real index in the full
-  // `materials` array (used by every field-edit/delete handler below) even though only one
-  // category's cards are actually rendered at a time.
+  // `materials` array (used by every edit/delete handler below) even though only one category's
+  // rows are actually rendered at a time.
   const rows = materials.map((m,i)=>({m,i})).filter(({m})=>(m.category||'food')===materialSettingsFilter);
-  if(!rows.length){ list.innerHTML = '<p class="hint">ยังไม่มีวัตถุดิบในหมวดนี้</p>'; return; }
+  if(!rows.length){ list.innerHTML = '<tr><td colspan="6" class="empty-state">ยังไม่มีวัตถุดิบในหมวดนี้</td></tr>'; return; }
   list.innerHTML = rows.map(({m,i})=>`
-    <div class="record-card" data-id="${esc(m.id)}">
-      <div class="record-card-head">
-        <span class="drag-handle" title="ลากเพื่อจัดเรียงลำดับ">⠿</span>
-        <label class="item-photo" title="คลิกเพื่ออัปโหลด/เปลี่ยนรูปวัตถุดิบ">
-          ${m.image ? `<img src="${m.image}">` : '🧂'}
-          <input type="file" accept="image/*" data-i="${i}" class="material-photo-input">
-        </label>
-        <input type="text" class="rc-name" data-i="${i}" data-f="name" value="${esc(m.name)}" placeholder="ชื่อวัตถุดิบ">
-        <button class="icon-mini danger" data-i="${i}" data-act="delMaterial">✕</button>
-      </div>
-      <div class="record-card-fields">
-        <div class="record-field"><label>หมวด</label><select data-i="${i}" data-f="category" class="rc-category">
-          <option value="food" ${(m.category||'food')==='food'?'selected':''}>วัตถุดิบอาหาร</option>
-          <option value="supply" ${m.category==='supply'?'selected':''}>อุปกรณ์/บรรจุภัณฑ์</option>
-        </select></div>
-        <div class="record-field"><label>หน่วยนับ</label><select data-i="${i}" data-f="unit">${units.map(u=>`<option value="${esc(u)}" ${u===m.unit?'selected':''}>${esc(u)}</option>`).join('')}</select></div>
-        <div class="record-field"><label>จุดสั่งซื้อ</label><input type="number" min="0" step="any" data-i="${i}" data-f="reorderPoint" value="${m.reorderPoint?m.reorderPoint:''}" placeholder="ยังไม่กำหนด"></div>
-        <div class="record-field"><label>หน่วยย่อย (ถ้ามี)</label><input type="text" data-i="${i}" data-f="subUnitName" value="${esc(m.subUnitName||'')}" placeholder="เช่น ชิ้น"></div>
-        <div class="record-field"><label>กี่หน่วยย่อย/หน่วย</label><input type="number" min="0" step="1" data-i="${i}" data-f="subUnitCount" value="${m.subUnitCount?m.subUnitCount:''}" placeholder="กี่ชิ้น/หน่วย"></div>
-        <div class="record-field"><label>กรัม/ชิ้น (ถ้านับชิ้น)</label><input type="number" min="0" step="any" data-i="${i}" data-f="pieceWeight" value="${m.pieceWeight?m.pieceWeight:''}" placeholder="ถ้านับชิ้น"></div>
-      </div>
-    </div>`).join('');
+    <tr data-id="${esc(m.id)}">
+      <td><span class="drag-handle" title="ลากเพื่อจัดเรียงลำดับ">⠿</span></td>
+      <td><div style="display:flex;align-items:center;gap:8px;">
+        <span class="mat-thumb">${m.image ? `<img src="${m.image}">` : '🧂'}</span>
+        <span>${esc(m.name)||'-'}</span>
+      </div></td>
+      <td><span class="badge ${(m.category||'food')==='supply'?'blue':'green'}">${(m.category||'food')==='supply'?'อุปกรณ์':'วัตถุดิบอาหาร'}</span></td>
+      <td>${esc(m.unit)}</td>
+      <td>${m.reorderPoint?fmt(m.reorderPoint):'-'}</td>
+      <td><div class="row-actions">
+        <button type="button" class="icon-mini mat-edit" data-i="${i}" title="แก้ไข">✏️</button>
+        <button type="button" class="icon-mini danger mat-remove" data-i="${i}" title="ลบ">🗑️</button>
+      </div></td>
+    </tr>`).join('');
   initMaterialDragReorder();
-  document.getElementById('materialSettingsList').querySelectorAll('input:not(.material-photo-input),select').forEach(el=>{
-    el.addEventListener('input', ()=>{
-      const i = Number(el.dataset.i), field = el.dataset.f;
-      materials[i][field] = (field==='name'||field==='unit'||field==='subUnitName'||field==='category') ? el.value : Number(el.value)||0;
-      persistMaterials(); renderStockPage(); loadRecipeIntoBuilder();
-      // Changing the category moves the card to the other tab -- re-render right away so it
-      // doesn't linger in a list it no longer belongs to (every other field skips this on purpose,
-      // so retyping a name doesn't rebuild the list mid-keystroke and drop focus).
-      if(field==='category') renderMaterialSettingsList();
-    });
-    el.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
-  });
-  document.getElementById('materialSettingsList').querySelectorAll('.material-photo-input').forEach(inp=>{
-    inp.addEventListener('change', e=>{
-      const file = e.target.files[0]; if(!file) return;
-      const i = Number(inp.dataset.i);
-      compressImageFile(file).then(dataUrl=>{ materials[i].image = dataUrl; persistMaterials(); renderMaterialSettingsList(); toast('แก้ไขสำเร็จ'); })
-        .catch(()=>toast('อัปโหลดรูปวัตถุดิบไม่สำเร็จ ลองใหม่อีกครั้ง'));
-    });
-  });
-  document.getElementById('materialSettingsList').querySelectorAll('[data-act="delMaterial"]').forEach(btn=>{
+  list.querySelectorAll('.mat-edit').forEach(btn=>btn.addEventListener('click', ()=>openMaterialModalForEdit(Number(btn.dataset.i))));
+  list.querySelectorAll('.mat-remove').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       if(!confirm('ลบวัตถุดิบนี้หรือไม่? ประวัติการซื้อ/สูตรที่เคยอ้างอิงจะยังอยู่แต่จะไม่พบชื่อวัตถุดิบ')) return;
       materials.splice(Number(btn.dataset.i),1); persistMaterials(); renderMaterialSettingsList(); renderStockPage(); toast('ลบรายการแล้ว');
@@ -5535,10 +5554,78 @@ function renderMaterialSettingsList(){
     renderMaterialSettingsList();
   });
 });
+
+let editingMaterialIndex = null;
+let materialModalPendingImage;
+function populateMaterialUnitSelect(selectedUnit){
+  f('mat_modal_unit').innerHTML = units.map(u=>`<option value="${esc(u)}" ${u===selectedUnit?'selected':''}>${esc(u)}</option>`).join('');
+}
+function setMaterialPhotoPreview(image){
+  f('mat_modal_photo_preview').outerHTML = image ? `<img id="mat_modal_photo_preview" src="${image}">` : `<span id="mat_modal_photo_preview">🧂</span>`;
+}
+function openMaterialModalForEdit(i){
+  const m = materials[i];
+  editingMaterialIndex = i;
+  materialModalPendingImage = undefined;
+  f('mat_modal_name').value = m.name;
+  f('mat_modal_category').value = m.category||'food';
+  populateMaterialUnitSelect(m.unit);
+  f('mat_modal_reorderPoint').value = m.reorderPoint || '';
+  f('mat_modal_subUnitName').value = m.subUnitName || '';
+  f('mat_modal_subUnitCount').value = m.subUnitCount || '';
+  f('mat_modal_pieceWeight').value = m.pieceWeight || '';
+  setMaterialPhotoPreview(m.image);
+  f('materialModalTitle').textContent = 'แก้ไขวัตถุดิบ';
+  document.getElementById('materialModal').classList.add('show');
+}
 document.getElementById('addMaterialBtn').addEventListener('click', ()=>{
+  editingMaterialIndex = null;
+  materialModalPendingImage = undefined;
+  f('mat_modal_name').value = '';
   // New item lands in whichever tab is currently open, matching where the user clicked "add" from.
-  materials.push({id:uid(), name:'', unit:units[0]||'กรัม', category:materialSettingsFilter, reorderPoint:0, currentStock:0, latestPrice:null, latestSupplier:null, latestDate:null, subUnitName:null, subUnitCount:null, pieceWeight:null});
-  persistMaterials(); renderMaterialSettingsList(); renderStockPage(); toast('เพิ่มรายการแล้ว');
+  f('mat_modal_category').value = materialSettingsFilter;
+  populateMaterialUnitSelect(units[0]||'');
+  f('mat_modal_reorderPoint').value = '';
+  f('mat_modal_subUnitName').value = '';
+  f('mat_modal_subUnitCount').value = '';
+  f('mat_modal_pieceWeight').value = '';
+  setMaterialPhotoPreview(null);
+  f('materialModalTitle').textContent = 'เพิ่มวัตถุดิบ';
+  document.getElementById('materialModal').classList.add('show');
+});
+document.getElementById('mat_modal_photo_input').addEventListener('change', e=>{
+  const file = e.target.files[0]; if(!file) return;
+  compressImageFile(file).then(dataUrl=>{ materialModalPendingImage = dataUrl; setMaterialPhotoPreview(dataUrl); })
+    .catch(()=>toast('อัปโหลดรูปวัตถุดิบไม่สำเร็จ ลองใหม่อีกครั้ง'));
+});
+document.getElementById('closeMaterialModalBtn').addEventListener('click', ()=>{
+  document.getElementById('materialModal').classList.remove('show');
+});
+document.getElementById('materialModal').addEventListener('click', e=>{
+  if(e.target.id==='materialModal') document.getElementById('materialModal').classList.remove('show');
+});
+document.getElementById('materialForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const name = f('mat_modal_name').value.trim();
+  if(!name){ toast('กรุณากรอกชื่อวัตถุดิบ'); return; }
+  const category = f('mat_modal_category').value;
+  const unit = f('mat_modal_unit').value;
+  const reorderPoint = Number(f('mat_modal_reorderPoint').value)||0;
+  const subUnitName = f('mat_modal_subUnitName').value.trim() || null;
+  const subUnitCount = Number(f('mat_modal_subUnitCount').value)||null;
+  const pieceWeight = Number(f('mat_modal_pieceWeight').value)||null;
+  const wasEditing = editingMaterialIndex!==null;
+  if(wasEditing){
+    const m = materials[editingMaterialIndex];
+    Object.assign(m, {name, category, unit, reorderPoint, subUnitName, subUnitCount, pieceWeight});
+    if(materialModalPendingImage!==undefined) m.image = materialModalPendingImage;
+  } else {
+    materials.push({id:uid(), name, category, unit, reorderPoint, currentStock:0, latestPrice:null, latestSupplier:null, latestDate:null, subUnitName, subUnitCount, pieceWeight, image: materialModalPendingImage||null});
+  }
+  editingMaterialIndex = null; materialModalPendingImage = undefined;
+  persistMaterials(); renderMaterialSettingsList(); renderStockPage(); loadRecipeIntoBuilder();
+  document.getElementById('materialModal').classList.remove('show');
+  toast(wasEditing ? 'แก้ไขรายการแล้ว' : 'เพิ่มรายการแล้ว');
 });
 function renderUnitSettingsList(){
   document.getElementById('unitList').innerHTML = units.map((u,i)=>`
