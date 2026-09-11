@@ -1379,8 +1379,13 @@ p.hint.collapsible-hint.show{display:block;}
   <section class="card" id="startupCostSection">
     <div class="card-head"><h2><span class="emoji">🏗️</span>ต้นทุนเริ่มต้น (เงินลงทุนเริ่มแรก)</h2></div>
     <p class="hint">หมวด: ต้นทุนเริ่มต้น — ค่าใช้จ่ายครั้งเดียวตอนเริ่มกิจการ เช่น อุปกรณ์เครื่องครัว ค่าโต๊ะ ค่าภาชนะ หม้อ เตาไฟฟ้า (ไม่ใช่ต้นทุนต่อถ้วย) ใช้คำนวณจุดคุ้มทุนด้านล่าง</p>
-    <div class="record-list" id="startupCostRows"></div>
-    <button type="button" class="btn btn-outline btn-small" id="addStartupCostBtn">+ เพิ่มต้นทุนเริ่มต้น</button>
+    <button type="button" class="btn btn-primary btn-small" id="addStartupCostBtn" style="align-self:flex-start;margin-bottom:14px;">➕ เพิ่มต้นทุนเริ่มต้น</button>
+    <div class="table-scroll">
+      <table id="startupCostTable">
+        <thead><tr><th>ต้นทุน</th><th>ราคา (บาท)</th><th></th></tr></thead>
+        <tbody id="startupCostRows"></tbody>
+      </table>
+    </div>
     <datalist id="startupLabelList">
       <option value="อุปกรณ์เครื่องครัว"><option value="ค่าโต๊ะ"><option value="ค่าภาชนะ"><option value="หม้อ"><option value="เตาไฟฟ้า">
     </datalist>
@@ -1394,31 +1399,29 @@ p.hint.collapsible-hint.show{display:block;}
   <section class="card" id="opexSection">
     <div class="card-head"><h2><span class="emoji">💸</span>ค่าใช้จ่ายดำเนินงาน</h2></div>
     <p class="hint">หมวด: ค่าใช้จ่ายที่เกิดขึ้นซ้ำๆ ระหว่างดำเนินกิจการ (ไม่ใช่ต้นทุนเริ่มต้นที่จ่ายครั้งเดียว และไม่ใช่ต้นทุนต่อถ้วยในสูตร) เช่น ค่าน้ำมันส่งของ ค่าเช่า ค่าจ้าง ค่าไฟ ค่าน้ำ ค่าอินเทอร์เน็ต — <b>ค่าใช้จ่ายในการส่งของ (ค่าน้ำมัน/ค่าคอมมิชชั่นไรเดอร์) ให้ตั้งหมวดเป็น "ค่าจัดส่ง" เป๊ะๆ</b> เพื่อให้หน้า P&L ดึงไปเทียบกับ "ค่าจัดส่งที่เก็บจากลูกค้า" ให้อัตโนมัติว่าค่าส่งที่เก็บมาคุ้มกับที่จ่ายจริงหรือไม่ (ยังรวมอยู่ในจุดคุ้มทุนแบบเงินสดด้านล่างเหมือนเดิมไม่ว่าจะตั้งหมวดว่าอะไร)</p>
-    <form class="form-grid" id="opexForm">
-      <div class="row cols-3">
-        <div class="field"><label>วันที่</label><input type="date" id="opex_date"></div>
-        <div class="field"><label>หมวดค่าใช้จ่าย</label><input type="text" id="opex_category" list="opexCategoryList" placeholder="เช่น ค่าจัดส่ง"></div>
-        <div class="field"><label>จำนวนเงิน (บาท)</label><input type="number" min="0" step="any" id="opex_amount" value="" placeholder="0"></div>
-      </div>
-      <datalist id="opexCategoryList">
-        <option value="ค่าจัดส่ง"><option value="ค่าน้ำมัน"><option value="ค่าเช่า"><option value="ค่าจ้าง/เงินเดือน"><option value="ค่าไฟ"><option value="ค่าน้ำ"><option value="ค่าอินเทอร์เน็ต/โทรศัพท์">
-      </datalist>
-      <div class="field"><label>หมายเหตุ</label><input type="text" id="opex_note" placeholder="หมายเหตุ (ถ้ามี)"></div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" id="opexSubmitBtn">💾 บันทึกค่าใช้จ่าย</button>
-      </div>
-    </form>
-    <hr class="section-divider">
+    <datalist id="opexCategoryList">
+      <option value="ค่าจัดส่ง"><option value="ค่าน้ำมัน"><option value="ค่าเช่า"><option value="ค่าจ้าง/เงินเดือน"><option value="ค่าไฟ"><option value="ค่าน้ำ"><option value="ค่าอินเทอร์เน็ต/โทรศัพท์">
+    </datalist>
+    <button type="button" class="btn btn-primary btn-small" id="openOpexModalBtn" style="align-self:flex-start;margin-bottom:14px;">➕ เพิ่มค่าใช้จ่าย</button>
     <div class="toolbar">
       <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="opex_from"></div>
       <div class="field"><label>ถึงวันที่</label><input type="date" id="opex_to"></div>
       <button type="button" class="btn btn-outline btn-small" id="opex_clearBtn">ล้างตัวกรอง</button>
+      <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
+        <select id="opex_pageSize">
+          <option value="10">10</option><option value="25" selected>25</option>
+          <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
+        </select>
+      </div>
     </div>
     <div class="table-scroll">
       <table id="opexTable">
         <thead><tr><th>วันที่</th><th>หมวด</th><th>จำนวนเงิน</th><th>หมายเหตุ</th><th></th></tr></thead>
         <tbody id="opexBody"></tbody>
       </table>
+    </div>
+    <div class="table-footer">
+      <div class="pagination" id="opexPagination"></div>
     </div>
     <div class="total-box" style="margin-top:14px;">
       <div class="label">รวมค่าใช้จ่ายที่แสดง</div>
@@ -1652,6 +1655,40 @@ p.hint.collapsible-hint.show{display:block;}
     <button class="modal-close" id="closeSlipViewBtn">✕</button>
     <h3>สลิปการโอนเงิน</h3>
     <img id="slipViewImg" style="max-width:100%;border-radius:10px;margin-top:8px;">
+  </div>
+</div>
+
+<!-- Add startup cost modal -->
+<div class="modal-overlay" id="startupCostModal">
+  <div class="modal" style="max-width:380px;">
+    <button class="modal-close" id="closeStartupCostModalBtn">✕</button>
+    <h3>เพิ่มต้นทุนเริ่มต้น</h3>
+    <form class="form-grid" id="startupCostForm">
+      <div class="field"><label>ต้นทุน</label><input type="text" id="sc_modal_label" list="startupLabelList" placeholder="เช่น อุปกรณ์เครื่องครัว" required></div>
+      <div class="field"><label>ราคา (บาท)</label><input type="number" min="0" step="any" id="sc_modal_amount" placeholder="0" required></div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="startupCostModalSaveBtn">💾 บันทึก</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add operating expense modal -->
+<div class="modal-overlay" id="opexModal">
+  <div class="modal" style="max-width:420px;">
+    <button class="modal-close" id="closeOpexModalBtn">✕</button>
+    <h3>เพิ่มค่าใช้จ่ายดำเนินงาน</h3>
+    <form class="form-grid" id="opexForm">
+      <div class="row cols-3">
+        <div class="field"><label>วันที่</label><input type="date" id="opex_date"></div>
+        <div class="field"><label>หมวดค่าใช้จ่าย</label><input type="text" id="opex_category" list="opexCategoryList" placeholder="เช่น ค่าจัดส่ง"></div>
+        <div class="field"><label>จำนวนเงิน (บาท)</label><input type="number" min="0" step="any" id="opex_amount" value="" placeholder="0"></div>
+      </div>
+      <div class="field"><label>หมายเหตุ</label><input type="text" id="opex_note" placeholder="หมายเหตุ (ถ้ามี)"></div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="opexSubmitBtn">💾 บันทึกค่าใช้จ่าย</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -4786,18 +4823,13 @@ function renderRecipeOverviewTable(){
 /* ============ Startup / capital cost ============ */
 function renderStartupCostRows(){
   const box = document.getElementById('startupCostRows');
-  if(!startupCosts.length){ box.innerHTML = '<p class="hint">ยังไม่มีรายการต้นทุนเริ่มต้น กด "+ เพิ่มต้นทุนเริ่มต้น" ด้านล่าง</p>'; }
+  if(!startupCosts.length){ box.innerHTML = '<tr><td colspan="3" class="empty-state">ยังไม่มีรายการต้นทุนเริ่มต้น กด "➕ เพิ่มต้นทุนเริ่มต้น" ด้านบน</td></tr>'; }
   else {
-    box.innerHTML = startupCosts.map((c,i)=>`
-      <div class="record-card">
-        <div class="record-card-head">
-          <input type="text" class="sc-label rc-name" data-i="${i}" list="startupLabelList" value="${esc(c.label)}" placeholder="เช่น อุปกรณ์เครื่องครัว">
-          <button type="button" class="icon-mini danger sc-remove" data-i="${i}">✕</button>
-        </div>
-        <div class="record-card-fields">
-          <div class="record-field"><label>จำนวนเงิน</label><input type="number" min="0" step="any" class="sc-amount" data-i="${i}" value="${c.amount||''}" placeholder="บาท"></div>
-        </div>
-      </div>`).join('');
+    box.innerHTML = startupCosts.map((c,i)=>`<tr>
+      <td><input type="text" class="sc-label" data-i="${i}" list="startupLabelList" value="${esc(c.label)}" placeholder="เช่น อุปกรณ์เครื่องครัว"></td>
+      <td><input type="number" min="0" step="any" class="sc-amount" data-i="${i}" value="${c.amount||''}" placeholder="0"></td>
+      <td><button type="button" class="icon-mini danger sc-remove" data-i="${i}" title="ลบ">🗑️</button></td>
+    </tr>`).join('');
     box.querySelectorAll('.sc-label').forEach(el=>{
       el.addEventListener('input', ()=>{ startupCosts[Number(el.dataset.i)].label = el.value; persistStartupCosts(); });
       el.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
@@ -4806,18 +4838,48 @@ function renderStartupCostRows(){
       el.addEventListener('input', ()=>{ startupCosts[Number(el.dataset.i)].amount = Number(el.value)||0; persistStartupCosts(); renderStartupTotal(); renderBreakEven(); renderCashFlow(); });
       el.addEventListener('change', ()=>toast('แก้ไขสำเร็จ'));
     });
-    box.querySelectorAll('.sc-remove').forEach(el=>el.addEventListener('click', ()=>{ startupCosts.splice(Number(el.dataset.i),1); persistStartupCosts(); renderStartupCostRows(); renderStartupTotal(); renderBreakEven(); renderCashFlow(); toast('ลบรายการแล้ว'); }));
+    box.querySelectorAll('.sc-remove').forEach(el=>el.addEventListener('click', ()=>{
+      if(!confirm('ยืนยันลบรายการนี้หรือไม่?')) return;
+      startupCosts.splice(Number(el.dataset.i),1); persistStartupCosts(); renderStartupCostRows(); renderStartupTotal(); renderBreakEven(); renderCashFlow(); toast('ลบรายการแล้ว');
+    }));
   }
   renderStartupTotal();
 }
 function computeStartupTotal(){ return startupCosts.reduce((s,c)=>s+(Number(c.amount)||0),0); }
 function renderStartupTotal(){ document.getElementById('startupCostTotal').textContent = fmt(computeStartupTotal())+' บาท'; }
 document.getElementById('addStartupCostBtn').addEventListener('click', ()=>{
-  startupCosts.push({label:'', amount:0}); persistStartupCosts(); renderStartupCostRows(); renderBreakEven(); renderCashFlow(); toast('เพิ่มรายการแล้ว');
+  f('sc_modal_label').value = ''; f('sc_modal_amount').value = '';
+  document.getElementById('startupCostModal').classList.add('show');
+});
+document.getElementById('closeStartupCostModalBtn').addEventListener('click', ()=>{
+  document.getElementById('startupCostModal').classList.remove('show');
+});
+document.getElementById('startupCostModal').addEventListener('click', e=>{
+  if(e.target.id==='startupCostModal') document.getElementById('startupCostModal').classList.remove('show');
+});
+document.getElementById('startupCostForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const label = f('sc_modal_label').value.trim();
+  const amount = Number(f('sc_modal_amount').value)||0;
+  if(!label || amount<=0){ toast('กรุณากรอกต้นทุนและราคา'); return; }
+  startupCosts.push({label, amount});
+  persistStartupCosts(); renderStartupCostRows(); renderBreakEven(); renderCashFlow();
+  document.getElementById('startupCostModal').classList.remove('show');
+  toast('เพิ่มรายการแล้ว');
 });
 
 /* ============ Operating expenses ============ */
 document.getElementById('opex_date').value = todayISO();
+document.getElementById('openOpexModalBtn').addEventListener('click', ()=>{
+  f('opex_date').value = todayISO(); f('opex_category').value=''; f('opex_amount').value=''; f('opex_note').value='';
+  document.getElementById('opexModal').classList.add('show');
+});
+document.getElementById('closeOpexModalBtn').addEventListener('click', ()=>{
+  document.getElementById('opexModal').classList.remove('show');
+});
+document.getElementById('opexModal').addEventListener('click', e=>{
+  if(e.target.id==='opexModal') document.getElementById('opexModal').classList.remove('show');
+});
 document.getElementById('opexForm').addEventListener('submit', e=>{
   e.preventDefault();
   const date = f('opex_date').value || todayISO();
@@ -4828,9 +4890,11 @@ document.getElementById('opexForm').addEventListener('submit', e=>{
   operatingExpenses.push({id:uid(), date, category, amount, note});
   persistOperatingExpenses();
   toast('บันทึกค่าใช้จ่ายแล้ว');
-  f('opex_category').value=''; f('opex_amount').value=''; f('opex_note').value=''; f('opex_date').value=todayISO();
+  document.getElementById('opexModal').classList.remove('show');
+  opexCurrentPage = 1;
   renderOpex(); renderCashFlow();
 });
+let opexCurrentPage = 1;
 function renderOpex(){
   const from = f('opex_from').value, to = f('opex_to').value;
   const list = operatingExpenses.filter(x=>{
@@ -4838,14 +4902,40 @@ function renderOpex(){
     if(to && x.date>to) return false;
     return true;
   }).sort((a,b)=>b.date.localeCompare(a.date));
+
+  const pageSizeSel = document.getElementById('opex_pageSize').value;
+  const pageSize = pageSizeSel==='all' ? Math.max(list.length,1) : Number(pageSizeSel);
+  const totalPages = Math.max(1, Math.ceil(list.length/pageSize));
+  if(opexCurrentPage>totalPages) opexCurrentPage = totalPages;
+  const start = (opexCurrentPage-1)*pageSize;
+  const pageItems = list.slice(start, start+pageSize);
+
   const tbody = document.getElementById('opexBody');
   if(!list.length){ tbody.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีรายการค่าใช้จ่าย</td></tr>'; }
   else {
-    tbody.innerHTML = list.map(x=>`<tr>
-      <td>${fmtDate(x.date)}</td><td>${esc(x.category)}</td><td class="amount-cell">${fmt(x.amount)} บ.</td>
-      <td class="wrap">${esc(x.note)}</td>
+    tbody.innerHTML = pageItems.map(x=>`<tr>
+      <td><input type="date" class="opex-date" data-id="${x.id}" value="${x.date}"></td>
+      <td><input type="text" class="opex-category" data-id="${x.id}" list="opexCategoryList" value="${esc(x.category)}"></td>
+      <td><input type="number" min="0" step="any" class="opex-amount" data-id="${x.id}" value="${x.amount}"></td>
+      <td><input type="text" class="opex-note" data-id="${x.id}" value="${esc(x.note)}" placeholder="หมายเหตุ"></td>
       <td><button class="icon-mini danger opex-remove" data-id="${x.id}" title="ลบ">🗑️</button></td>
     </tr>`).join('');
+    tbody.querySelectorAll('.opex-date').forEach(el=>el.addEventListener('change', ()=>{
+      const x = operatingExpenses.find(o=>o.id===el.dataset.id); if(!x) return;
+      x.date = el.value; persistOperatingExpenses(); renderOpex(); renderCashFlow(); toast('แก้ไขสำเร็จ');
+    }));
+    tbody.querySelectorAll('.opex-category').forEach(el=>el.addEventListener('change', ()=>{
+      const x = operatingExpenses.find(o=>o.id===el.dataset.id); if(!x) return;
+      x.category = el.value.trim(); persistOperatingExpenses(); toast('แก้ไขสำเร็จ');
+    }));
+    tbody.querySelectorAll('.opex-amount').forEach(el=>el.addEventListener('change', ()=>{
+      const x = operatingExpenses.find(o=>o.id===el.dataset.id); if(!x) return;
+      x.amount = Number(el.value)||0; persistOperatingExpenses(); renderOpex(); renderCashFlow(); toast('แก้ไขสำเร็จ');
+    }));
+    tbody.querySelectorAll('.opex-note').forEach(el=>el.addEventListener('change', ()=>{
+      const x = operatingExpenses.find(o=>o.id===el.dataset.id); if(!x) return;
+      x.note = el.value.trim(); persistOperatingExpenses(); toast('แก้ไขสำเร็จ');
+    }));
     tbody.querySelectorAll('.opex-remove').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         if(!confirm('ยืนยันลบรายการค่าใช้จ่ายนี้หรือไม่?')) return;
@@ -4854,12 +4944,22 @@ function renderOpex(){
       });
     });
   }
+
+  document.getElementById('opexPagination').innerHTML = list.length ? `
+    <button id="opexPrevBtn" ${opexCurrentPage<=1?'disabled':''}>‹</button>
+    <span>หน้า ${opexCurrentPage}/${totalPages}</span>
+    <button id="opexNextBtn" ${opexCurrentPage>=totalPages?'disabled':''}>›</button>` : '';
+  const opexPrevBtn = document.getElementById('opexPrevBtn'), opexNextBtn = document.getElementById('opexNextBtn');
+  if(opexPrevBtn) opexPrevBtn.onclick = ()=>{ opexCurrentPage--; renderOpex(); };
+  if(opexNextBtn) opexNextBtn.onclick = ()=>{ opexCurrentPage++; renderOpex(); };
+
   const total = list.reduce((s,x)=>s+(x.amount||0),0);
   document.getElementById('opexTotal').textContent = fmt(total)+' บาท';
 }
-['opex_from','opex_to'].forEach(id=>document.getElementById(id).addEventListener('input', renderOpex));
+document.getElementById('opex_pageSize').addEventListener('change', ()=>{ opexCurrentPage=1; renderOpex(); });
+['opex_from','opex_to'].forEach(id=>document.getElementById(id).addEventListener('input', ()=>{ opexCurrentPage=1; renderOpex(); }));
 document.getElementById('opex_clearBtn').addEventListener('click', ()=>{
-  f('opex_from').value=''; f('opex_to').value=''; renderOpex();
+  f('opex_from').value=''; f('opex_to').value=''; opexCurrentPage=1; renderOpex();
 });
 
 /* ============ Break-even point ============ */
