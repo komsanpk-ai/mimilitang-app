@@ -159,6 +159,7 @@ thead th{
 }
 thead th:hover{background:#ffe9b8;}
 thead th .arrow{font-size:10px;margin-left:3px;opacity:.6;}
+thead th .th-icon{font-size:16px;margin-right:3px;vertical-align:-2px;}
 tbody td{padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}
 tbody tr:nth-child(even){background:#f6fbf5;}
 tbody tr:hover{background:#fdf3df;}
@@ -1047,11 +1048,21 @@ p.hint.collapsible-hint.show{display:block;}
     <hr class="section-divider">
     <div class="mini-title">สรุปอันดับลูกค้าประจำ (ซื้อซ้ำตั้งแต่ 2 ครั้งขึ้นไป)</div>
     <p class="hint" style="margin-top:-6px;">เรียงจากจำนวนครั้งที่ซื้อมากสุดไปน้อยสุด นับจากประวัติออเดอร์ทั้งหมด (ไม่จำกัดตามช่วงเวลาที่เลือกด้านบน) ไม่นับออเดอร์ที่ยกเลิกหรือของสำรอง — ลูกค้าหลายสินค้าในครั้งเดียวนับเป็น 1 ครั้ง</p>
+    <div class="toolbar">
+      <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
+        <select id="rcTop_pageSize">
+          <option value="10">10</option><option value="25" selected>25</option>
+          <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
+        </select></div>
+    </div>
     <div class="table-scroll">
       <table id="repeatCustomerTable" class="compact-table">
-        <thead><tr><th>อันดับ</th><th>ชื่อลูกค้า</th><th>เบอร์โทร</th><th>จำนวนครั้งที่ซื้อ</th></tr></thead>
+        <thead><tr><th><span class="th-icon">🔢</span>ลำดับ</th><th>ชื่อลูกค้า</th><th>ถ้วยเล็ก</th><th>ถ้วยใหญ่</th><th>จำนวนครั้งที่ซื้อ</th></tr></thead>
         <tbody id="repeatCustomerBody"></tbody>
       </table>
+    </div>
+    <div class="table-footer">
+      <div class="pagination" id="repeatCustomerPagination"></div>
     </div>
   </section>
 </main>
@@ -4095,25 +4106,55 @@ const reportCustomerModule = initReportModule({page:'report-customers', prefix:'
 /* All-time leaderboard of repeat customers, independent of the chart's month/week/day picker
    above — a customer who's bought 2+ times rarely lands twice in the same narrow bucket, so this
    only makes sense as a running total across the whole order history. */
+let repeatCustomerPage = 1;
 function renderRepeatCustomerTable(){
-  const visits = distinctVisits(orders.filter(o=>o.phone && !o.isReserve && o.shippingStatus!=='ยกเลิก'));
+  const validOrders = orders.filter(o=>o.phone && !o.isReserve && o.shippingStatus!=='ยกเลิก');
+  const visits = distinctVisits(validOrders);
   const byPhone = {};
   visits.forEach(o=>{
-    if(!byPhone[o.phone]) byPhone[o.phone] = {phone:o.phone, count:0, customerName:o.customerName, lastDate:o.deliveryDate};
+    if(!byPhone[o.phone]) byPhone[o.phone] = {phone:o.phone, count:0, customerName:o.customerName, lastDate:o.deliveryDate, jarSmall:0, jarLarge:0};
     const c = byPhone[o.phone];
     c.count++;
     if(o.deliveryDate>=c.lastDate){ c.lastDate=o.deliveryDate; c.customerName=o.customerName; }
   });
+  // Cup totals sum every order line (not the deduped visits above) so a multi-item order's other
+  // product lines still contribute their own จำนวนถ้วย to the customer's total.
+  validOrders.forEach(o=>{
+    const c = byPhone[o.phone]; if(!c) return;
+    c.jarSmall += Number(o.jarSmall)||0;
+    c.jarLarge += Number(o.jarLarge)||0;
+  });
   const ranked = Object.values(byPhone).filter(c=>c.count>=2).sort((a,b)=>b.count-a.count || a.customerName.localeCompare(b.customerName));
+
+  const pageSizeSel = document.getElementById('rcTop_pageSize').value;
+  const pageSize = pageSizeSel==='all' ? Math.max(ranked.length,1) : Number(pageSizeSel);
+  const totalPages = Math.max(1, Math.ceil(ranked.length/pageSize));
+  if(repeatCustomerPage>totalPages) repeatCustomerPage = totalPages;
+  const start = (repeatCustomerPage-1)*pageSize;
+  const pageItems = ranked.slice(start, start+pageSize);
+
   const tbody = document.getElementById('repeatCustomerBody');
-  if(!ranked.length){ tbody.innerHTML = '<tr><td colspan="4" class="empty-state">ยังไม่มีลูกค้าที่ซื้อซ้ำ</td></tr>'; return; }
-  tbody.innerHTML = ranked.map((c,i)=>`<tr>
-    <td>${i+1}</td>
-    <td class="wrap">${esc(c.customerName)||'-'}</td>
-    <td>${telLink(c.phone)}</td>
-    <td class="amount-cell">${c.count} ครั้ง</td>
-  </tr>`).join('');
+  if(!ranked.length){
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีลูกค้าที่ซื้อซ้ำ</td></tr>';
+  } else {
+    tbody.innerHTML = pageItems.map((c,i)=>`<tr>
+      <td>${start+i+1}</td>
+      <td class="wrap">${esc(c.customerName)||'-'}</td>
+      <td>${fmt(c.jarSmall)}</td>
+      <td>${fmt(c.jarLarge)}</td>
+      <td class="amount-cell">${c.count} ครั้ง</td>
+    </tr>`).join('');
+  }
+
+  document.getElementById('repeatCustomerPagination').innerHTML = ranked.length ? `
+    <button id="rcTopPrevBtn" ${repeatCustomerPage<=1?'disabled':''}>‹</button>
+    <span>หน้า ${repeatCustomerPage}/${totalPages}</span>
+    <button id="rcTopNextBtn" ${repeatCustomerPage>=totalPages?'disabled':''}>›</button>` : '';
+  const prevBtn = document.getElementById('rcTopPrevBtn'), nextBtn = document.getElementById('rcTopNextBtn');
+  if(prevBtn) prevBtn.onclick = ()=>{ repeatCustomerPage--; renderRepeatCustomerTable(); };
+  if(nextBtn) nextBtn.onclick = ()=>{ repeatCustomerPage++; renderRepeatCustomerTable(); };
 }
+document.getElementById('rcTop_pageSize').addEventListener('change', ()=>{ repeatCustomerPage=1; renderRepeatCustomerTable(); });
 
 /* ---- Report 4: stock purchased per bucket, for one selected material ---- */
 function reportStockSeries(buckets){
