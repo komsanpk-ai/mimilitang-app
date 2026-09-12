@@ -2372,12 +2372,14 @@ function customerOrderCount(phone){
   if(!phone) return 0;
   return distinctVisits(orders.filter(o=>o.phone===phone)).length;
 }
-function repeatStarHTML(phone){
-  const count = customerOrderCount(phone);
+function repeatBadgeForCount(count){
   if(count<2) return '';
   if(count>=10) return `<span class="repeat-badge crown" title="ลูกค้า VIP สั่งซื้อมาแล้ว ${count} ครั้ง">👑<span class="count">${count}</span></span>`;
   if(count>=5) return `<span class="repeat-badge" title="ลูกค้าประจำระดับโบว์ สั่งซื้อมาแล้ว ${count} ครั้ง">🏅<span class="count">${count}</span></span>`;
   return `<span class="repeat-star" title="ลูกค้าประจำ สั่งซื้อมาแล้ว ${count} ครั้ง">${count}</span>`;
+}
+function repeatStarHTML(phone){
+  return repeatBadgeForCount(customerOrderCount(phone));
 }
 
 /* ============ Stock / Materials helpers ============ */
@@ -4132,13 +4134,12 @@ function renderRepeatCustomerTable(){
   const start = (repeatCustomerPage-1)*pageSize;
   const pageItems = ranked.slice(start, start+pageSize);
 
-  const rankMedal = rank => rank===1 ? '🥇 ' : rank===2 ? '🥈 ' : rank===3 ? '🥉 ' : '';
   const tbody = document.getElementById('repeatCustomerBody');
   if(!ranked.length){
     tbody.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีลูกค้าที่ซื้อซ้ำ</td></tr>';
   } else {
     tbody.innerHTML = pageItems.map((c,i)=>`<tr>
-      <td>${rankMedal(start+i+1)}${start+i+1}</td>
+      <td>${start+i+1} ${repeatBadgeForCount(c.count)}</td>
       <td class="wrap">${esc(c.customerName)||'-'}</td>
       <td>${fmt(c.jarSmall)}</td>
       <td>${fmt(c.jarLarge)}</td>
