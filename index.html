@@ -138,7 +138,20 @@ main{max-width:1180px;margin:0 auto;padding:18px 16px 0;display:flex;flex-direct
 .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;}
 .toolbar .field{min-width:140px;flex:none;}
 .toolbar .field.grow{flex:1;min-width:180px;}
-.toolbar input,.toolbar select{padding:8px 10px;font-size:13px;}
+.toolbar input,.toolbar select{padding:8px 10px;font-size:13px;height:40px;}
+/* .btn-small's own padding (6px vertical) is 2px shorter than the toolbar's own input/select
+   padding (8px) above — same font-size ballpark, so the two end up a few pixels off when a
+   button and a select/input sit side by side in the same row. Match it here instead of
+   touching .btn-small globally (used plenty of places that don't have this comparison at all). */
+.toolbar .btn-small{padding:8px 14px;font-size:13px;height:40px;}
+/* Month quick-picker (e.g. ค่าใช้จ่ายดำเนินงาน) — the "◀ เดือนก่อน"/"เดือนถัดไป ▶" pair reliably
+   fits full-width Thai labels only if each gets half the row; stacking the <input type=month>
+   above them (instead of squeezing all three across one row) keeps every label on one line and
+   reads as a clear, centered unit on a narrow phone screen. */
+.month-nav{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+.month-nav input[type=month]{width:100%;}
+.month-nav-row{display:flex;gap:8px;}
+.month-nav-row .btn{flex:1;}
 .pill-toggle{display:flex;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;}
 .pill-toggle button{flex:1;border:none;background:#fff;padding:8px 14px;font-size:13px;color:var(--muted);}
 .pill-toggle button.active{background:var(--maroon);color:#fff;}
@@ -1513,6 +1526,13 @@ p.hint.collapsible-hint.show{display:block;}
       <option value="ค่าจัดส่ง"><option value="ค่าน้ำมัน"><option value="ค่าเช่า"><option value="ค่าจ้าง/เงินเดือน"><option value="ค่าไฟ"><option value="ค่าน้ำ"><option value="ค่าอินเทอร์เน็ต/โทรศัพท์">
     </datalist>
     <button type="button" class="btn btn-primary btn-small" id="openOpexModalBtn" style="align-self:flex-start;margin-bottom:14px;">➕ เพิ่มค่าใช้จ่าย</button>
+    <div class="month-nav">
+      <input type="month" id="opex_mpick">
+      <div class="month-nav-row">
+        <button type="button" class="btn btn-outline btn-small" id="opex_mprev">◀ เดือนก่อน</button>
+        <button type="button" class="btn btn-outline btn-small" id="opex_mnext">เดือนถัดไป ▶</button>
+      </div>
+    </div>
     <div class="toolbar">
       <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="opex_from"></div>
       <div class="field"><label>ถึงวันที่</label><input type="date" id="opex_to"></div>
@@ -5430,6 +5450,28 @@ document.getElementById('opex_pageSize').addEventListener('change', ()=>{ opexCu
 ['opex_from','opex_to'].forEach(id=>document.getElementById(id).addEventListener('input', ()=>{ opexCurrentPage=1; renderOpex(); }));
 document.getElementById('opex_clearBtn').addEventListener('click', ()=>{
   f('opex_from').value=''; f('opex_to').value=''; opexCurrentPage=1; renderOpex();
+});
+/* Month quick-picker: jumping to a month just fills in ตั้งแต่วันที่/ถึงวันที่ with that month's
+   first/last day — the from/to fields underneath stay the real filter, so a custom range still
+   works exactly as before if someone edits them by hand afterward. */
+document.getElementById('opex_mpick').value = todayISO().slice(0,7);
+function applyOpexMonth(){
+  const val = f('opex_mpick').value; if(!val) return;
+  const [y,m] = val.split('-').map(Number);
+  f('opex_from').value = `${y}-${String(m).padStart(2,'0')}-01`;
+  const lastDay = new Date(y, m, 0).getDate();
+  f('opex_to').value = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  opexCurrentPage = 1;
+  renderOpex();
+}
+document.getElementById('opex_mpick').addEventListener('change', applyOpexMonth);
+document.getElementById('opex_mprev').addEventListener('click', ()=>{
+  let [y,m] = f('opex_mpick').value.split('-').map(Number); m--; if(m<1){m=12;y--;}
+  f('opex_mpick').value = `${y}-${String(m).padStart(2,'0')}`; applyOpexMonth();
+});
+document.getElementById('opex_mnext').addEventListener('click', ()=>{
+  let [y,m] = f('opex_mpick').value.split('-').map(Number); m++; if(m>12){m=1;y++;}
+  f('opex_mpick').value = `${y}-${String(m).padStart(2,'0')}`; applyOpexMonth();
 });
 
 /* ============ Break-even point ============ */
