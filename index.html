@@ -774,7 +774,7 @@ p.hint.collapsible-hint.show{display:block;}
           <button type="button" data-mode="byDay" id="modeByDayBtn">แยกตามวัน</button>
         </div>
       </div>
-      <div class="field"><label id="pageSizeLabel">แสดงกี่แถวต่อหน้า</label>
+      <div class="field">
         <select id="pageSize">
           <option value="10" selected>10</option><option value="25">25</option>
           <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
@@ -1021,7 +1021,7 @@ p.hint.collapsible-hint.show{display:block;}
         <input type="number" min="2" id="rcTop_countSearch" placeholder="เช่น 4"></div>
       <button type="button" class="btn btn-primary btn-small" id="rcTop_searchBtn">🔍 ค้นหา</button>
       <button type="button" class="btn btn-outline btn-small" id="rcTop_clearSearchBtn">ล้างตัวกรอง</button>
-      <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
+      <div class="field">
         <select id="rcTop_pageSize">
           <option value="10" selected>10</option><option value="25">25</option>
           <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
@@ -1129,7 +1129,7 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="legend" id="pmChartLegend"></div>
     </div>
     <div class="toolbar" style="margin-top:14px;">
-      <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
+      <div class="field">
         <select id="sp_pageSize">
           <option value="10" selected>10</option><option value="25">25</option>
           <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
@@ -1379,7 +1379,7 @@ p.hint.collapsible-hint.show{display:block;}
     <hr class="section-divider">
     <div class="mini-title">ประวัติการปรับปรุงยอด</div>
     <div class="toolbar">
-      <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
+      <div class="field">
         <select id="sa_pageSize">
           <option value="10" selected>10</option><option value="25">25</option>
           <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
@@ -1408,7 +1408,7 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="sh_from"></div>
       <div class="field"><label>ถึงวันที่</label><input type="date" id="sh_to"></div>
       <button type="button" class="btn btn-outline btn-small" id="sh_clearBtn">ล้างตัวกรอง</button>
-      <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
+      <div class="field">
         <select id="sh_pageSize">
           <option value="10" selected>10</option><option value="25">25</option>
           <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
@@ -1517,7 +1517,7 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="opex_from"></div>
       <div class="field"><label>ถึงวันที่</label><input type="date" id="opex_to"></div>
       <button type="button" class="btn btn-outline btn-small" id="opex_clearBtn">ล้างตัวกรอง</button>
-      <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
+      <div class="field">
         <select id="opex_pageSize">
           <option value="10" selected>10</option><option value="25">25</option>
           <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
@@ -2907,7 +2907,6 @@ function renderTable(){
   const tbody = document.getElementById('tableBody');
   const list = getFilteredSortedUnits();
   const pageSizeSel = document.getElementById('pageSize').value;
-  document.getElementById('pageSizeLabel').textContent = groupMode==='byDay' ? 'แสดงกี่วันล่าสุด' : 'แสดงกี่แถวต่อหน้า';
 
   if(list.length===0){
     tbody.innerHTML = `<tr><td colspan="${COLUMNS.length}" class="empty-state">ยังไม่มีรายการ — เริ่มบันทึกคำสั่งซื้อแรกของคุณด้านบน 🍐</td></tr>`;
