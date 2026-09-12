@@ -4751,18 +4751,28 @@ document.getElementById('si_date').value = todayISO();
 ['si_material','si_qty','si_price'].forEach(id=>{
   f(id).addEventListener('input', updateStockInPreview); f(id).addEventListener('change', updateStockInPreview);
 });
-/* Buying in bulk usually comes with a receipt total, not a pre-calculated per-unit price —
-   filling this in backs out "ราคาต่อหน่วย" above automatically instead of making the user do
-   the division themselves. */
-function updateSiPriceFromTotal(){
-  const totalPaid = f('si_totalPaid').value; if(totalPaid==='') return;
+/* Buying in bulk usually comes with a receipt total, not a pre-calculated per-unit price, so
+   "ราคาต่อหน่วย" and "ราคารวมที่จ่ายทั้งหมด" stay in sync both ways — whichever one was typed
+   most recently is treated as the source of truth and re-derives the other whenever it or the
+   quantity changes. Plain division/multiplication, so it works the same for every unit
+   (กรัม, กิโลกรัม, ชิ้น, ถุง, or any custom unit added in ⚙️ ตั้งค่า) — the unit label is just
+   display text and never enters the math. */
+let siPriceSource = null;
+function siRecalcPricing(){
   const qty = Number(f('si_qty').value)||0;
-  f('si_price').value = qty>0 ? Math.round((Number(totalPaid)/qty)*1e6)/1e6 : '';
+  if(siPriceSource==='total'){
+    const t = f('si_totalPaid').value;
+    if(t!=='' && qty>0) f('si_price').value = Math.round((Number(t)/qty)*1e6)/1e6;
+  } else if(siPriceSource==='price'){
+    const p = f('si_price').value;
+    if(p!=='' && qty>0) f('si_totalPaid').value = Math.round((qty*Number(p))*1e6)/1e6;
+  }
   updateStockInPreview();
 }
-['si_totalPaid','si_qty'].forEach(id=>{
-  f(id).addEventListener('input', updateSiPriceFromTotal); f(id).addEventListener('change', updateSiPriceFromTotal);
-});
+f('si_totalPaid').addEventListener('input', ()=>{ siPriceSource = f('si_totalPaid').value===''?null:'total'; siRecalcPricing(); });
+f('si_price').addEventListener('input', ()=>{ siPriceSource = f('si_price').value===''?null:'price'; siRecalcPricing(); });
+['si_qty','si_material'].forEach(id=> f(id).addEventListener('input', siRecalcPricing));
+f('si_qty').addEventListener('change', siRecalcPricing);
 
 /* ============ Daily stock-in summary ============ */
 document.getElementById('sid_date').value = todayISO();
@@ -4809,23 +4819,32 @@ f('sa_material').addEventListener('change', ()=>{
   updateAdjustPreview();
 });
 /* "ราคาต้นทุนของยอดนี้" in the hint above means the cost of the amount being ADDED (the delta),
-   not the full new on-hand quantity — so a known receipt total divides by the delta to back out
-   the per-unit price, same convenience as the stock-in form's total-price field. */
-function updateSaPriceFromTotal(){
-  const totalPaid = f('sa_totalPaid').value; if(totalPaid==='') return;
+   not the full new on-hand quantity — so "ราคาต่อหน่วย" and "ราคารวมของยอดนี้" divide/multiply by
+   that delta and stay in sync both ways, same convenience as the stock-in form: whichever field
+   was typed most recently re-derives the other whenever it or the quantity changes. Plain
+   division/multiplication, so it works the same for every unit in the system. */
+let saPriceSource = null;
+function saRecalcPricing(){
   const mat = getMaterial(f('sa_material').value);
   const newQty = Number(f('sa_newQty').value)||0;
   const delta = mat ? newQty - (mat.currentStock||0) : 0;
-  f('sa_price').value = delta>0 ? Math.round((Number(totalPaid)/delta)*1e6)/1e6 : '';
+  if(saPriceSource==='total'){
+    const t = f('sa_totalPaid').value;
+    if(t!=='' && delta>0) f('sa_price').value = Math.round((Number(t)/delta)*1e6)/1e6;
+  } else if(saPriceSource==='price'){
+    const p = f('sa_price').value;
+    if(p!=='' && delta>0) f('sa_totalPaid').value = Math.round((delta*Number(p))*1e6)/1e6;
+  }
 }
-['sa_totalPaid','sa_newQty','sa_material'].forEach(id=>{
-  f(id).addEventListener('input', updateSaPriceFromTotal); f(id).addEventListener('change', updateSaPriceFromTotal);
-});
+f('sa_totalPaid').addEventListener('input', ()=>{ saPriceSource = f('sa_totalPaid').value===''?null:'total'; saRecalcPricing(); });
+f('sa_price').addEventListener('input', ()=>{ saPriceSource = f('sa_price').value===''?null:'price'; saRecalcPricing(); });
+['sa_newQty','sa_material'].forEach(id=> f(id).addEventListener('input', saRecalcPricing));
+f('sa_material').addEventListener('change', saRecalcPricing);
 function stockAdjustFormReset(){
   const mat = getMaterial(f('sa_material').value);
   f('sa_newQty').value = mat ? mat.currentStock||0 : '';
   f('sa_note').value=''; f('sa_date').value = todayISO();
-  f('sa_price').value=''; f('sa_totalPaid').value=''; f('sa_supplier').value=''; updateAdjustPreview();
+  f('sa_price').value=''; f('sa_totalPaid').value=''; saPriceSource = null; f('sa_supplier').value=''; updateAdjustPreview();
 }
 document.getElementById('stockAdjustResetBtn').addEventListener('click', stockAdjustFormReset);
 document.getElementById('stockAdjustForm').addEventListener('submit', e=>{
@@ -4911,7 +4930,7 @@ function recomputeMaterialLatest(materialId){
 
 function stockInFormReset(){
   f('si_qty').value = ''; f('si_price').value = ''; f('si_totalPaid').value = ''; f('si_note').value=''; f('si_supplier').value='';
-  f('si_date').value = todayISO(); updateStockInPreview();
+  f('si_date').value = todayISO(); siPriceSource = null; updateStockInPreview();
 }
 document.getElementById('stockInResetBtn').addEventListener('click', stockInFormReset);
 
