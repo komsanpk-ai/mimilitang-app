@@ -86,12 +86,6 @@ main{max-width:1180px;margin:0 auto;padding:18px 16px 0;display:flex;flex-direct
 .hint{font-size:12px;color:var(--muted);margin-top:-8px;margin-bottom:14px;}
 
 /* ---------- Form ---------- */
-.editing-banner{
-  background:var(--gold-light);color:#4a3400;font-size:13px;font-weight:600;
-  padding:8px 14px;border-radius:10px;margin-bottom:14px;display:none;align-items:center;justify-content:space-between;gap:10px;
-}
-.editing-banner.show{display:flex;}
-.editing-banner button{background:none;border:1px solid #4a3400;color:#4a3400;border-radius:6px;padding:3px 10px;font-size:12px;}
 
 .form-grid{display:flex;flex-direction:column;gap:12px;}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -712,82 +706,7 @@ p.hint.collapsible-hint.show{display:block;}
   <!-- ===== FORM ===== -->
   <section class="card" id="formSection">
     <div class="card-head"><h2><span class="emoji">📝</span>บันทึกข้อมูลลูกค้า</h2></div>
-    <div class="editing-banner" id="editingBanner">
-      <span id="editingText">กำลังแก้ไขรายการ</span>
-      <button type="button" id="cancelEditBtn">ยกเลิกการแก้ไข</button>
-    </div>
-    <form class="form-grid" id="orderForm">
-      <div class="field"><label>👤 ชื่อลูกค้า <span class="req" id="f_customerNameReq">*</span></label>
-        <input type="text" id="f_customerName" placeholder="ชื่อลูกค้า (เว้นว่างได้ถ้าเป็นของสำรอง)"></div>
-      <div class="field"><label>📞 เบอร์โทร <span class="req" id="f_phoneReq">*</span></label>
-        <input type="tel" id="f_phone" placeholder="081XXXXXXX (เว้นว่างได้ถ้าเป็นของสำรอง)"></div>
-
-      <div class="row">
-        <div class="field"><label>🧾 วันที่สั่งสินค้า</label><input type="date" id="f_orderDate"></div>
-        <div class="field"><label>🚚 วันที่จัดส่ง</label><input type="date" id="f_deliveryDate"></div>
-      </div>
-
-      <div class="field"><label>📍 ที่อยู่จัดส่ง</label><textarea id="f_address" placeholder="ที่อยู่จัดส่ง"></textarea></div>
-
-      <div class="row">
-        <div class="field"><label>🍐 สินค้า</label><select id="f_product"></select></div>
-        <div class="field"><label>🛒 ช่องทาง</label><select id="f_channel"></select></div>
-      </div>
-
-      <div class="row cols-3">
-        <div class="field"><label>🔹 ถ้วยเล็ก (จำนวน)</label><input type="number" min="0" id="f_jarSmall" value="" placeholder="0"></div>
-        <div class="field"><label>🔷 ถ้วยใหญ่ (จำนวน)</label><input type="number" min="0" id="f_jarLarge" value="" placeholder="0"></div>
-        <div class="field">
-          <label>📦 ผลิตสำรอง</label>
-          <label class="reserve-check"><input type="checkbox" id="f_isReserve"> ยังไม่มีลูกค้า</label>
-        </div>
-      </div>
-
-      <div class="record-list" id="extraLineItemsBox"></div>
-      <button type="button" class="btn btn-outline btn-small" id="addLineItemBtn" style="align-self:flex-start;">➕ เพิ่มสินค้าอีกรายการ</button>
-      <p class="hint" id="multiItemHint" style="display:none;margin-top:-6px;">ลูกค้าคนเดียวกันสั่งหลายสินค้าพร้อมกัน — ระบบจะบันทึกแยกเป็นคนละรายการต่อสินค้า (รายงานแยกตามสินค้ายังถูกต้อง) แต่นับเป็นการซื้อ 1 ครั้งสำหรับสถิติลูกค้าซื้อซ้ำ</p>
-
-      <div class="row cols-3">
-        <div class="field"><label>📦 สถานะการจัดส่ง</label>
-          <select id="f_shippingStatus">
-            <option>รอเตรียมส่ง</option><option>กำลังจัดส่ง</option><option>ส่งลูกค้าเรียบร้อย</option><option>ยกเลิก</option>
-          </select></div>
-        <div class="field"><label>💰 การชำระเงิน</label>
-          <select id="f_paymentStatus">
-            <option>ยังไม่ได้รับเงิน</option><option>มัดจำ</option><option>ได้รับเงินแล้ว</option>
-          </select></div>
-        <div class="field"><label>💵 ประเภทการจ่ายเงิน</label><select id="f_paymentMethod"></select></div>
-      </div>
-
-      <div class="field"><label>📎 แนบสลิปการโอน (ถ้ามี)</label>
-        <input type="file" accept="image/*" id="f_paymentSlip">
-        <div class="subtle-note" id="f_paymentSlipPreview" style="margin-top:2px;"></div>
-      </div>
-
-      <div class="field"><label>📝 หมายเหตุ</label><textarea id="f_note" placeholder="หมายเหตุ"></textarea></div>
-
-      <div class="row cols-3">
-        <div class="field"><label>💴 ค่าจัดส่ง (บาท)</label><input type="number" min="0" id="f_shippingFee" value="" placeholder="0"></div>
-        <div class="field"><label>🏷️ ส่วนลด</label><input type="number" min="0" id="f_discountValue" value="" placeholder="0"></div>
-        <div class="field"><label>🏷️ ประเภทส่วนลด</label>
-          <select id="f_discountType"><option value="baht">บาท</option><option value="percent">เปอร์เซ็นต์ (%)</option></select></div>
-      </div>
-
-      <div class="field"><label>💳 มัดจำ (บาท)</label><input type="number" min="0" id="f_deposit" value="" placeholder="0"></div>
-
-      <div class="total-box">
-        <div>
-          <div class="label">ยอดรวม (หลังหักมัดจำ)</div>
-          <div class="sub" id="totalSub">ยอดเต็ม: 0 บาท</div>
-        </div>
-        <div class="amount" id="totalAmount">0 บาท</div>
-      </div>
-
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" id="submitBtn">💾 บันทึกข้อมูล</button>
-        <button type="button" class="btn btn-secondary" id="resetBtn">ล้างฟอร์ม</button>
-      </div>
-    </form>
+    <button type="button" class="btn btn-primary btn-small" id="openOrderModalBtn">➕ บันทึกข้อมูลลูกค้า</button>
   </section>
 
   <!-- ===== TABLE ===== -->
@@ -1942,6 +1861,86 @@ p.hint.collapsible-hint.show{display:block;}
   </div>
 </div>
 
+<!-- Add/edit order modal -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal" style="max-width:560px;">
+    <button class="modal-close" id="closeOrderModalBtn">✕</button>
+    <h3 id="orderModalTitle">บันทึกข้อมูลลูกค้า</h3>
+    <form class="form-grid" id="orderForm">
+      <div class="field"><label>👤 ชื่อลูกค้า <span class="req" id="f_customerNameReq">*</span></label>
+        <input type="text" id="f_customerName" placeholder="ชื่อลูกค้า (เว้นว่างได้ถ้าเป็นของสำรอง)"></div>
+      <div class="field"><label>📞 เบอร์โทร <span class="req" id="f_phoneReq">*</span></label>
+        <input type="tel" id="f_phone" placeholder="081XXXXXXX (เว้นว่างได้ถ้าเป็นของสำรอง)"></div>
+
+      <div class="row">
+        <div class="field"><label>🧾 วันที่สั่งสินค้า</label><input type="date" id="f_orderDate"></div>
+        <div class="field"><label>🚚 วันที่จัดส่ง</label><input type="date" id="f_deliveryDate"></div>
+      </div>
+
+      <div class="field"><label>📍 ที่อยู่จัดส่ง</label><textarea id="f_address" placeholder="ที่อยู่จัดส่ง"></textarea></div>
+
+      <div class="row">
+        <div class="field"><label>🍐 สินค้า</label><select id="f_product"></select></div>
+        <div class="field"><label>🛒 ช่องทาง</label><select id="f_channel"></select></div>
+      </div>
+
+      <div class="row cols-3">
+        <div class="field"><label>🔹 ถ้วยเล็ก (จำนวน)</label><input type="number" min="0" id="f_jarSmall" value="" placeholder="0"></div>
+        <div class="field"><label>🔷 ถ้วยใหญ่ (จำนวน)</label><input type="number" min="0" id="f_jarLarge" value="" placeholder="0"></div>
+        <div class="field">
+          <label>📦 ผลิตสำรอง</label>
+          <label class="reserve-check"><input type="checkbox" id="f_isReserve"> ยังไม่มีลูกค้า</label>
+        </div>
+      </div>
+
+      <div class="record-list" id="extraLineItemsBox"></div>
+      <button type="button" class="btn btn-outline btn-small" id="addLineItemBtn" style="align-self:flex-start;">➕ เพิ่มสินค้าอีกรายการ</button>
+      <p class="hint" id="multiItemHint" style="display:none;margin-top:-6px;">ลูกค้าคนเดียวกันสั่งหลายสินค้าพร้อมกัน — ระบบจะบันทึกแยกเป็นคนละรายการต่อสินค้า (รายงานแยกตามสินค้ายังถูกต้อง) แต่นับเป็นการซื้อ 1 ครั้งสำหรับสถิติลูกค้าซื้อซ้ำ</p>
+
+      <div class="row cols-3">
+        <div class="field"><label>📦 สถานะการจัดส่ง</label>
+          <select id="f_shippingStatus">
+            <option>รอเตรียมส่ง</option><option>กำลังจัดส่ง</option><option>ส่งลูกค้าเรียบร้อย</option><option>ยกเลิก</option>
+          </select></div>
+        <div class="field"><label>💰 การชำระเงิน</label>
+          <select id="f_paymentStatus">
+            <option>ยังไม่ได้รับเงิน</option><option>มัดจำ</option><option>ได้รับเงินแล้ว</option>
+          </select></div>
+        <div class="field"><label>💵 ประเภทการจ่ายเงิน</label><select id="f_paymentMethod"></select></div>
+      </div>
+
+      <div class="field"><label>📎 แนบสลิปการโอน (ถ้ามี)</label>
+        <input type="file" accept="image/*" id="f_paymentSlip">
+        <div class="subtle-note" id="f_paymentSlipPreview" style="margin-top:2px;"></div>
+      </div>
+
+      <div class="field"><label>📝 หมายเหตุ</label><textarea id="f_note" placeholder="หมายเหตุ"></textarea></div>
+
+      <div class="row cols-3">
+        <div class="field"><label>💴 ค่าจัดส่ง (บาท)</label><input type="number" min="0" id="f_shippingFee" value="" placeholder="0"></div>
+        <div class="field"><label>🏷️ ส่วนลด</label><input type="number" min="0" id="f_discountValue" value="" placeholder="0"></div>
+        <div class="field"><label>🏷️ ประเภทส่วนลด</label>
+          <select id="f_discountType"><option value="baht">บาท</option><option value="percent">เปอร์เซ็นต์ (%)</option></select></div>
+      </div>
+
+      <div class="field"><label>💳 มัดจำ (บาท)</label><input type="number" min="0" id="f_deposit" value="" placeholder="0"></div>
+
+      <div class="total-box">
+        <div>
+          <div class="label">ยอดรวม (หลังหักมัดจำ)</div>
+          <div class="sub" id="totalSub">ยอดเต็ม: 0 บาท</div>
+        </div>
+        <div class="amount" id="totalAmount">0 บาท</div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="submitBtn">💾 บันทึกข้อมูล</button>
+        <button type="button" class="btn btn-secondary" id="resetBtn">ล้างฟอร์ม</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Add/edit product modal -->
 <div class="modal-overlay" id="productModal">
   <div class="modal" style="max-width:380px;">
@@ -2777,7 +2776,7 @@ function resetForm(){
   renderLineItemRows();
   populateSelects();
   editingGroupIds = null;
-  document.getElementById('editingBanner').classList.remove('show');
+  document.getElementById('orderModalTitle').textContent = 'บันทึกข้อมูลลูกค้า';
   document.getElementById('submitBtn').textContent='💾 บันทึกข้อมูล';
   updateTotalPreview();
   document.querySelectorAll('.field.invalid').forEach(el=>el.classList.remove('invalid'));
@@ -2832,6 +2831,7 @@ document.getElementById('orderForm').addEventListener('submit', e=>{
   persistOrders();
   syncReportRangeToDate(data.deliveryDate);
   resetForm();
+  document.getElementById('orderModal').classList.remove('show');
   renderTable();
   renderAllReports();
   renderDeliveryReport();
@@ -2839,7 +2839,26 @@ document.getElementById('orderForm').addEventListener('submit', e=>{
   renderStockPage();
 });
 document.getElementById('resetBtn').addEventListener('click', resetForm);
-document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
+function openOrderModalForAdd(){
+  resetForm();
+  document.getElementById('orderModal').classList.add('show');
+}
+function openOrderModalForEdit(ids){
+  const members = ids.map(id=>orders.find(o=>o.id===id)).filter(Boolean);
+  if(!members.length) return;
+  editingGroupIds = members.map(o=>o.id);
+  fillFormFromGroup(members);
+  document.getElementById('orderModalTitle').textContent = `แก้ไขรายการของ: ${members[0].customerName || '(ไม่ระบุชื่อ)'}`;
+  document.getElementById('submitBtn').textContent='💾 บันทึกการแก้ไข';
+  document.getElementById('orderModal').classList.add('show');
+}
+document.getElementById('openOrderModalBtn').addEventListener('click', openOrderModalForAdd);
+document.getElementById('closeOrderModalBtn').addEventListener('click', ()=>{
+  document.getElementById('orderModal').classList.remove('show');
+});
+document.getElementById('orderModal').addEventListener('click', e=>{
+  if(e.target.id==='orderModal') document.getElementById('orderModal').classList.remove('show');
+});
 
 /* ============ Table ============ */
 const COLUMNS = [
@@ -3028,15 +3047,7 @@ function renderTable(){
   });
   tbody.querySelectorAll('.edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const ids = btn.dataset.ids.split(',');
-      const members = ids.map(id=>orders.find(o=>o.id===id)).filter(Boolean);
-      if(!members.length) return;
-      editingGroupIds = members.map(o=>o.id);
-      fillFormFromGroup(members);
-      document.getElementById('editingBanner').classList.add('show');
-      document.getElementById('editingText').textContent = `กำลังแก้ไขรายการของ: ${members[0].customerName}`;
-      document.getElementById('submitBtn').textContent='💾 บันทึกการแก้ไข';
-      document.getElementById('formSection').scrollIntoView({behavior:'smooth'});
+      openOrderModalForEdit(btn.dataset.ids.split(','));
     });
   });
   tbody.querySelectorAll('.slip-view-btn').forEach(btn=>{
