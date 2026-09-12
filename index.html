@@ -138,26 +138,30 @@ main{max-width:1180px;margin:0 auto;padding:18px 16px 0;display:flex;flex-direct
 .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;}
 .toolbar .field{min-width:140px;flex:none;}
 .toolbar .field.grow{flex:1;min-width:180px;}
-.toolbar input,.toolbar select{padding:8px 10px;font-size:13px;height:40px;}
-/* .btn-small's own padding (6px vertical) is 2px shorter than the toolbar's own input/select
-   padding (8px) above — same font-size ballpark, so the two end up a few pixels off when a
-   button and a select/input sit side by side in the same row. Match it here instead of
-   touching .btn-small globally (used plenty of places that don't have this comparison at all). */
-.toolbar .btn-small{padding:8px 14px;font-size:13px;height:40px;}
+/* Every control on a toolbar row — input, select, small button — is pinned to the same
+   explicit height so mixed rows (e.g. a "ล้างตัวกรอง" button next to a page-size select)
+   line up exactly instead of drifting a few px apart from mismatched padding/font metrics. */
+.toolbar input,.toolbar select{padding:8px 10px;font-size:13px;height:34px;}
+.toolbar .btn-small{padding:6px 14px;font-size:13px;height:34px;}
+/* "ล้างตัวกรอง" + page-size select share one row and split it evenly instead of the select
+   sitting narrow with dead space trailing it. */
+.toolbar-row-half{display:flex;gap:8px;flex:1 1 100%;}
+.toolbar-row-half>*{flex:1;min-width:0;}
 /* Month quick-picker (e.g. ค่าใช้จ่ายดำเนินงาน) — the "◀ เดือนก่อน"/"เดือนถัดไป ▶" pair reliably
    fits full-width Thai labels only if each gets half the row; stacking the <input type=month>
    above them (instead of squeezing all three across one row) keeps every label on one line and
-   reads as a clear, centered unit on a narrow phone screen. */
+   reads as a clear, centered unit on a narrow phone screen. Sized to match the toolbar controls
+   below it (34px tall, half-width) instead of stretching edge-to-edge. */
 .month-nav{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
 .month-nav input[type=month]{
-  width:100%;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;
+  width:50%;height:34px;border:1.5px solid var(--border);border-radius:10px;padding:6px 12px;font-size:13px;
   background:#fffefb;color:var(--ink);transition:.15s;
 }
 .month-nav input[type=month]:focus{
   outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,150,30,.15);
 }
 .month-nav-row{display:flex;gap:8px;}
-.month-nav-row .btn{flex:1;}
+.month-nav-row .btn{flex:1;height:34px;}
 .pill-toggle{display:flex;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;}
 .pill-toggle button{flex:1;border:none;background:#fff;padding:8px 14px;font-size:13px;color:var(--muted);}
 .pill-toggle button.active{background:var(--maroon);color:#fff;}
@@ -1542,8 +1546,8 @@ p.hint.collapsible-hint.show{display:block;}
     <div class="toolbar">
       <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="opex_from"></div>
       <div class="field"><label>ถึงวันที่</label><input type="date" id="opex_to"></div>
-      <button type="button" class="btn btn-outline btn-small" id="opex_clearBtn">ล้างตัวกรอง</button>
-      <div class="field">
+      <div class="toolbar-row-half">
+        <button type="button" class="btn btn-outline btn-small" id="opex_clearBtn">ล้างตัวกรอง</button>
         <select id="opex_pageSize">
           <option value="10" selected>10</option><option value="25">25</option>
           <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
