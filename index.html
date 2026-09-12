@@ -1324,30 +1324,11 @@ p.hint.collapsible-hint.show{display:block;}
   <!-- ===== STOCK-IN FORM ===== -->
   <section class="card" id="stockInSection">
     <div class="card-head"><h2><span class="emoji">🧾</span>รับวัตถุดิบเข้าสต๊อก</h2></div>
-    <form class="form-grid" id="stockInForm">
-      <div class="row cols-3">
-        <div class="field"><label>วัตถุดิบ</label><select id="si_material"></select></div>
-        <div class="field"><label>วันที่ซื้อ</label><input type="date" id="si_date"></div>
-        <div class="field"><label>ร้านค้า / ผู้ขาย</label><input type="text" id="si_supplier" list="supplierList" placeholder="ชื่อร้านค้า"></div>
-      </div>
-      <datalist id="supplierList"></datalist>
-      <div class="row cols-3">
-        <div class="field"><label>จำนวนที่ซื้อ</label><input type="number" min="0" step="any" id="si_qty" value="" placeholder="0"></div>
-        <div class="field"><label>หน่วย</label><input type="text" id="si_unit" disabled></div>
-        <div class="field"><label>ราคาต่อหน่วย (บาท)</label><input type="number" min="0" step="any" id="si_price" value="" placeholder="0"></div>
-      </div>
-      <div class="field"><label>หรือกรอกราคารวมที่จ่ายทั้งหมด (ถ้าทราบ)</label><input type="number" min="0" step="any" id="si_totalPaid" placeholder="ระบบจะคำนวณ &quot;ราคาต่อหน่วย&quot; ด้านบนให้อัตโนมัติ"></div>
-      <div class="field"><label>หมายเหตุ</label><input type="text" id="si_note" placeholder="หมายเหตุ (ถ้ามี)"></div>
-      <div class="total-box">
-        <div><div class="label">ราคารวมที่จ่าย</div><div class="sub" id="si_stockAfter">คงเหลือหลังรับเข้า: -</div></div>
-        <div class="amount" id="si_total">0 บาท</div>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" id="stockInSubmitBtn">💾 บันทึกรับเข้าสต๊อก</button>
-        <button type="button" class="btn btn-secondary" id="stockInResetBtn">ล้างฟอร์ม</button>
-      </div>
-    </form>
+    <p class="hint">บันทึกทุกครั้งที่ซื้อวัตถุดิบเข้าคลัง ระบบจะบวกเข้าสต๊อกคงเหลือและอัปเดต "ราคาล่าสุด" ที่ใช้คำนวณต้นทุนสูตรให้อัตโนมัติ</p>
+    <button type="button" class="btn btn-primary btn-small" id="openStockInModalBtn">➕ รับวัตถุดิบเข้าสต๊อก</button>
   </section>
+
+  <datalist id="supplierList"></datalist>
 
   <!-- ===== DAILY STOCK-IN SUMMARY ===== -->
   <section class="card" id="stockInDailySection">
@@ -1379,33 +1360,11 @@ p.hint.collapsible-hint.show{display:block;}
     <div class="card-head"><h2><span class="emoji">🔧</span>ปรับปรุงยอดคงเหลือ</h2></div>
     <p class="hint">ใช้เมื่อยอดในระบบไม่ตรงกับของจริง เช่น ยอดยกมาก่อนเริ่มใช้ระบบ หรือของทดสอบที่ไม่ได้อ้างอิงสต๊อกจริง — ปรับยอดคงเหลือได้ตรงๆ โดยไม่ต้องผ่าน "รับเข้าสต๊อก" เลือกวันที่ย้อนหลังได้ (ใช้บันทึกประวัติเท่านั้น ยอดคงเหลือจะถูกอัปเดตทันทีที่บันทึก)<br>
     ถ้าทราบราคาต้นทุนของยอดนี้ (เช่น ของเดิมที่มีอยู่ก่อนเริ่มใช้ระบบ) กรอกราคาด้านล่างได้เลย ระบบจะอัปเดต "ราคาล่าสุด" ให้ที่หน้าสต๊อกคงเหลือ โดยไม่นับเป็นการซื้อใหม่ (ไม่บวกเพิ่มเข้าคงเหลืออีกรอบ) — หากไม่ทราบราคา เว้นว่างไว้ได้ แล้วค่อยไปอัปเดตทีหลังผ่านฟอร์มนี้ หรือตอน "รับเข้าสต๊อก" ครั้งถัดไป</p>
-    <form class="form-grid" id="stockAdjustForm">
-      <div class="row cols-3">
-        <div class="field"><label>วัตถุดิบ</label><select id="sa_material"></select></div>
-        <div class="field"><label>วันที่ปรับปรุง</label><input type="date" id="sa_date"></div>
-        <div class="field"><label>เหตุผล / หมายเหตุ</label><input type="text" id="sa_note" list="adjustReasonList" placeholder="เช่น นับสต๊อกจริง"></div>
-      </div>
-      <datalist id="adjustReasonList">
-        <option value="ยอดยกมาก่อนเริ่มใช้ระบบ"><option value="นับสต๊อกจริงประจำเดือน"><option value="แก้ไขข้อมูลทดสอบ"><option value="สต๊อกชำรุด/สูญหาย">
-      </datalist>
-      <div class="row">
-        <div class="field"><label>ยอดคงเหลือในระบบตอนนี้</label><input type="text" id="sa_current" disabled></div>
-        <div class="field"><label>ยอดคงเหลือจริง (ใหม่)</label><input type="number" min="0" step="any" id="sa_newQty" value="" placeholder="0"></div>
-      </div>
-      <div class="row cols-3">
-        <div class="field"><label>ราคาต่อหน่วย (ถ้าทราบ)</label><input type="number" min="0" step="any" id="sa_price" placeholder="เว้นว่างได้ถ้าไม่ทราบ"></div>
-        <div class="field"><label>หรือราคารวมของยอดนี้ (ถ้าทราบ)</label><input type="number" min="0" step="any" id="sa_totalPaid" placeholder="ระบบคำนวณราคาต่อหน่วยให้อัตโนมัติ"></div>
-        <div class="field"><label>ร้านค้า/แหล่งที่มา (ถ้ามี)</label><input type="text" id="sa_supplier" list="supplierList" placeholder="เว้นว่างได้"></div>
-      </div>
-      <div class="total-box">
-        <div><div class="label">ผลต่างที่จะปรับ</div><div class="sub" id="sa_sub">-</div></div>
-        <div class="amount" id="sa_delta">0</div>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" id="stockAdjustSubmitBtn">💾 บันทึกการปรับปรุง</button>
-        <button type="button" class="btn btn-secondary" id="stockAdjustResetBtn">ล้างฟอร์ม</button>
-      </div>
-    </form>
+    <button type="button" class="btn btn-primary btn-small" id="openAdjustModalBtn">➕ ปรับปรุงยอดคงเหลือ</button>
+
+    <datalist id="adjustReasonList">
+      <option value="ยอดยกมาก่อนเริ่มใช้ระบบ"><option value="นับสต๊อกจริงประจำเดือน"><option value="แก้ไขข้อมูลทดสอบ"><option value="สต๊อกชำรุด/สูญหาย">
+    </datalist>
 
     <hr class="section-divider">
     <div class="mini-title">ประวัติการปรับปรุงยอด</div>
@@ -1916,6 +1875,68 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="field"><label>กรัม/ชิ้น (ถ้านับชิ้น)</label><input type="number" min="0" step="any" id="mat_modal_pieceWeight" placeholder="ถ้านับชิ้น"></div>
       <div class="form-actions">
         <button type="submit" class="btn btn-primary">💾 บันทึก</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add/edit stock-in modal -->
+<div class="modal-overlay" id="stockInModal">
+  <div class="modal" style="max-width:460px;">
+    <button class="modal-close" id="closeStockInModalBtn">✕</button>
+    <h3 id="stockInModalTitle">รับวัตถุดิบเข้าสต๊อก</h3>
+    <form class="form-grid" id="stockInForm">
+      <div class="row cols-3">
+        <div class="field"><label>วัตถุดิบ</label><select id="si_material"></select></div>
+        <div class="field"><label>วันที่ซื้อ</label><input type="date" id="si_date"></div>
+        <div class="field"><label>ร้านค้า / ผู้ขาย</label><input type="text" id="si_supplier" list="supplierList" placeholder="ชื่อร้านค้า"></div>
+      </div>
+      <div class="row cols-3">
+        <div class="field"><label>จำนวนที่ซื้อ</label><input type="number" min="0" step="any" id="si_qty" value="" placeholder="0"></div>
+        <div class="field"><label>หน่วย</label><input type="text" id="si_unit" disabled></div>
+        <div class="field"><label>ราคาต่อหน่วย (บาท)</label><input type="number" min="0" step="any" id="si_price" value="" placeholder="0"></div>
+      </div>
+      <div class="field"><label>หรือกรอกราคารวมที่จ่ายทั้งหมด (ถ้าทราบ)</label><input type="number" min="0" step="any" id="si_totalPaid" placeholder="ระบบจะคำนวณ &quot;ราคาต่อหน่วย&quot; ด้านบนให้อัตโนมัติ"></div>
+      <div class="field"><label>หมายเหตุ</label><input type="text" id="si_note" placeholder="หมายเหตุ (ถ้ามี)"></div>
+      <div class="total-box">
+        <div><div class="label">ราคารวมที่จ่าย</div><div class="sub" id="si_stockAfter">คงเหลือหลังรับเข้า: -</div></div>
+        <div class="amount" id="si_total">0 บาท</div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="stockInSubmitBtn">💾 บันทึกรับเข้าสต๊อก</button>
+        <button type="button" class="btn btn-secondary" id="stockInResetBtn">ล้างฟอร์ม</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add/edit stock-adjustment modal -->
+<div class="modal-overlay" id="stockAdjustModal">
+  <div class="modal" style="max-width:460px;">
+    <button class="modal-close" id="closeStockAdjustModalBtn">✕</button>
+    <h3 id="stockAdjustModalTitle">ปรับปรุงยอดคงเหลือ</h3>
+    <form class="form-grid" id="stockAdjustForm">
+      <div class="row cols-3">
+        <div class="field"><label>วัตถุดิบ</label><select id="sa_material"></select></div>
+        <div class="field"><label>วันที่ปรับปรุง</label><input type="date" id="sa_date"></div>
+        <div class="field"><label>เหตุผล / หมายเหตุ</label><input type="text" id="sa_note" list="adjustReasonList" placeholder="เช่น นับสต๊อกจริง"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>ยอดคงเหลือในระบบตอนนี้</label><input type="text" id="sa_current" disabled></div>
+        <div class="field"><label>ยอดคงเหลือจริง (ใหม่)</label><input type="number" min="0" step="any" id="sa_newQty" value="" placeholder="0"></div>
+      </div>
+      <div class="row cols-3">
+        <div class="field"><label>ราคาต่อหน่วย (ถ้าทราบ)</label><input type="number" min="0" step="any" id="sa_price" placeholder="เว้นว่างได้ถ้าไม่ทราบ"></div>
+        <div class="field"><label>หรือราคารวมของยอดนี้ (ถ้าทราบ)</label><input type="number" min="0" step="any" id="sa_totalPaid" placeholder="ระบบคำนวณราคาต่อหน่วยให้อัตโนมัติ"></div>
+        <div class="field"><label>ร้านค้า/แหล่งที่มา (ถ้ามี)</label><input type="text" id="sa_supplier" list="supplierList" placeholder="เว้นว่างได้"></div>
+      </div>
+      <div class="total-box">
+        <div><div class="label">ผลต่างที่จะปรับ</div><div class="sub" id="sa_sub">-</div></div>
+        <div class="amount" id="sa_delta">0</div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="stockAdjustSubmitBtn">💾 บันทึกการปรับปรุง</button>
+        <button type="button" class="btn btn-secondary" id="stockAdjustResetBtn">ล้างฟอร์ม</button>
       </div>
     </form>
   </div>
@@ -4846,7 +4867,44 @@ function stockAdjustFormReset(){
   f('sa_note').value=''; f('sa_date').value = todayISO();
   f('sa_price').value=''; f('sa_totalPaid').value=''; saPriceSource = null; f('sa_supplier').value=''; updateAdjustPreview();
 }
-document.getElementById('stockAdjustResetBtn').addEventListener('click', stockAdjustFormReset);
+let editingAdjustId = null;
+function openAdjustModalForAdd(){
+  editingAdjustId = null;
+  stockAdjustFormReset();
+  document.getElementById('stockAdjustModalTitle').textContent = 'ปรับปรุงยอดคงเหลือ';
+  document.getElementById('stockAdjustSubmitBtn').textContent = '💾 บันทึกการปรับปรุง';
+  document.getElementById('stockAdjustModal').classList.add('show');
+}
+function openAdjustModalForEdit(id){
+  const a = stockAdjustments.find(x=>x.id===id); if(!a) return;
+  editingAdjustId = id;
+  saPriceSource = null;
+  f('sa_material').value = a.materialId;
+  const mat = getMaterial(a.materialId);
+  f('sa_current').value = mat ? `${fmt(mat.currentStock)} ${mat.unit}` : '-';
+  f('sa_newQty').value = a.newQty;
+  f('sa_date').value = a.date;
+  f('sa_note').value = a.note || '';
+  // The price paid for this specific adjustment isn't stored on the record itself (it becomes a
+  // separate, untraceable stock-in entry), so it's left blank here — entering a new one on save
+  // just logs another price update, same as it would from the add form.
+  f('sa_price').value = ''; f('sa_totalPaid').value = ''; f('sa_supplier').value = '';
+  updateAdjustPreview();
+  document.getElementById('stockAdjustModalTitle').textContent = 'แก้ไขรายการปรับปรุงยอด';
+  document.getElementById('stockAdjustSubmitBtn').textContent = '💾 บันทึกการแก้ไข';
+  document.getElementById('stockAdjustModal').classList.add('show');
+}
+document.getElementById('openAdjustModalBtn').addEventListener('click', openAdjustModalForAdd);
+document.getElementById('stockAdjustResetBtn').addEventListener('click', ()=>{
+  if(editingAdjustId) openAdjustModalForEdit(editingAdjustId);
+  else stockAdjustFormReset();
+});
+document.getElementById('closeStockAdjustModalBtn').addEventListener('click', ()=>{
+  document.getElementById('stockAdjustModal').classList.remove('show');
+});
+document.getElementById('stockAdjustModal').addEventListener('click', e=>{
+  if(e.target.id==='stockAdjustModal') document.getElementById('stockAdjustModal').classList.remove('show');
+});
 document.getElementById('stockAdjustForm').addEventListener('submit', e=>{
   e.preventDefault();
   const mat = getMaterial(f('sa_material').value);
@@ -4856,22 +4914,45 @@ document.getElementById('stockAdjustForm').addEventListener('submit', e=>{
   const note = f('sa_note').value.trim();
   const price = Number(f('sa_price').value)||0;
   const supplier = f('sa_supplier').value.trim();
-  const previousQty = mat.currentStock||0;
-  const delta = newQty - previousQty;
-  if(delta===0 && price<=0){ toast('ไม่มีการเปลี่ยนแปลง กรุณาระบุยอดใหม่ที่ต่างจากเดิม หรือกรอกราคา'); return; }
-  mat.currentStock = newQty;
-  if(delta!==0){
-    stockAdjustments.push({id:uid(), date, materialId:mat.id, previousQty, newQty, delta, note});
-    persistStockAdjustments();
+  if(editingAdjustId){
+    const a = stockAdjustments.find(x=>x.id===editingAdjustId);
+    if(a){
+      const oldMat = getMaterial(a.materialId);
+      // Undo the old delta (from whichever material it was originally applied to) before
+      // recomputing against the current live stock, same reversal approach as stock-in edits.
+      if(oldMat) oldMat.currentStock = Math.round(((oldMat.currentStock||0)-a.delta)*1e6)/1e6;
+      const previousQty = mat.currentStock||0;
+      const delta = newQty - previousQty;
+      mat.currentStock = newQty;
+      Object.assign(a, {date, materialId:mat.id, previousQty, newQty, delta, note});
+      persistStockAdjustments(); persistMaterials();
+      if(price>0){
+        stockins.push({id:uid(), date, materialId:mat.id, qty:0, unit:mat.unit, pricePerUnit:price, totalPrice:0, supplier, note: note||'ราคาจากการปรับปรุงยอด'});
+        persistStockins();
+        recomputeMaterialLatest(mat.id);
+      }
+      toast('แก้ไขรายการแล้ว');
+    }
+  } else {
+    const previousQty = mat.currentStock||0;
+    const delta = newQty - previousQty;
+    if(delta===0 && price<=0){ toast('ไม่มีการเปลี่ยนแปลง กรุณาระบุยอดใหม่ที่ต่างจากเดิม หรือกรอกราคา'); return; }
+    mat.currentStock = newQty;
+    if(delta!==0){
+      stockAdjustments.push({id:uid(), date, materialId:mat.id, previousQty, newQty, delta, note});
+      persistStockAdjustments();
+    }
+    if(price>0){
+      stockins.push({id:uid(), date, materialId:mat.id, qty:0, unit:mat.unit, pricePerUnit:price, totalPrice:0, supplier, note: note||'ราคาจากการปรับปรุงยอด'});
+      persistStockins();
+      recomputeMaterialLatest(mat.id);
+    }
+    persistMaterials();
+    toast('บันทึกการปรับปรุงแล้ว');
   }
-  if(price>0){
-    stockins.push({id:uid(), date, materialId:mat.id, qty:0, unit:mat.unit, pricePerUnit:price, totalPrice:0, supplier, note: note||'ราคาจากการปรับปรุงยอด'});
-    persistStockins();
-    recomputeMaterialLatest(mat.id);
-  }
-  persistMaterials();
-  toast('บันทึกการปรับปรุงแล้ว');
+  editingAdjustId = null;
   stockAdjustFormReset();
+  document.getElementById('stockAdjustModal').classList.remove('show');
   renderStockPage();
 });
 let stockAdjustPage = 1;
@@ -4905,9 +4986,13 @@ function renderStockAdjustTable(){
       <td>${fmt(a.previousQty)}</td><td>${fmt(a.newQty)}</td>
       <td style="color:${color};font-weight:700;">${(a.delta>=0?'+':'')+fmt(a.delta)}</td>
       <td class="wrap">${esc(a.note)}</td>
-      <td><button class="icon-mini danger del-adjust-btn" data-id="${a.id}" title="ลบ/ย้อนกลับ">🗑️</button></td>
+      <td><div class="row-actions">
+        <button type="button" class="icon-mini edit-adjust-btn" data-id="${a.id}" title="แก้ไข">✏️</button>
+        <button type="button" class="icon-mini danger del-adjust-btn" data-id="${a.id}" title="ลบ/ย้อนกลับ">🗑️</button>
+      </div></td>
     </tr>`;
   }).join('');
+  tbody.querySelectorAll('.edit-adjust-btn').forEach(btn=>btn.addEventListener('click', ()=>openAdjustModalForEdit(btn.dataset.id)));
   tbody.querySelectorAll('.del-adjust-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       if(!confirm('ยืนยันลบรายการปรับปรุงนี้? ระบบจะย้อนผลต่างที่เคยปรับกลับคืน')) return;
@@ -4932,7 +5017,41 @@ function stockInFormReset(){
   f('si_qty').value = ''; f('si_price').value = ''; f('si_totalPaid').value = ''; f('si_note').value=''; f('si_supplier').value='';
   f('si_date').value = todayISO(); siPriceSource = null; updateStockInPreview();
 }
-document.getElementById('stockInResetBtn').addEventListener('click', stockInFormReset);
+let editingStockInId = null;
+function openStockInModalForAdd(){
+  editingStockInId = null;
+  stockInFormReset();
+  document.getElementById('stockInModalTitle').textContent = 'รับวัตถุดิบเข้าสต๊อก';
+  document.getElementById('stockInSubmitBtn').textContent = '💾 บันทึกรับเข้าสต๊อก';
+  document.getElementById('stockInModal').classList.add('show');
+}
+function openStockInModalForEdit(id){
+  const s = stockins.find(x=>x.id===id); if(!s) return;
+  editingStockInId = id;
+  siPriceSource = null;
+  f('si_material').value = s.materialId;
+  f('si_date').value = s.date;
+  f('si_supplier').value = s.supplier || '';
+  f('si_qty').value = s.qty;
+  f('si_price').value = s.pricePerUnit;
+  f('si_totalPaid').value = '';
+  f('si_note').value = s.note || '';
+  updateStockInPreview();
+  document.getElementById('stockInModalTitle').textContent = 'แก้ไขรายการรับเข้าสต๊อก';
+  document.getElementById('stockInSubmitBtn').textContent = '💾 บันทึกการแก้ไข';
+  document.getElementById('stockInModal').classList.add('show');
+}
+document.getElementById('openStockInModalBtn').addEventListener('click', openStockInModalForAdd);
+document.getElementById('stockInResetBtn').addEventListener('click', ()=>{
+  if(editingStockInId) openStockInModalForEdit(editingStockInId);
+  else stockInFormReset();
+});
+document.getElementById('closeStockInModalBtn').addEventListener('click', ()=>{
+  document.getElementById('stockInModal').classList.remove('show');
+});
+document.getElementById('stockInModal').addEventListener('click', e=>{
+  if(e.target.id==='stockInModal') document.getElementById('stockInModal').classList.remove('show');
+});
 
 document.getElementById('stockInForm').addEventListener('submit', e=>{
   e.preventDefault();
@@ -4942,12 +5061,30 @@ document.getElementById('stockInForm').addEventListener('submit', e=>{
   if(qty<=0){ toast('กรุณากรอกจำนวนที่ซื้อมากกว่า 0'); return; }
   const date = f('si_date').value || todayISO();
   const supplier = f('si_supplier').value.trim(), note = f('si_note').value.trim();
-  stockins.push({id:uid(), date, materialId:mat.id, qty, unit:mat.unit, pricePerUnit:price, totalPrice:qty*price, supplier, note});
-  mat.currentStock = Math.round(((mat.currentStock||0)+qty)*1e6)/1e6;
-  recomputeMaterialLatest(mat.id);
-  persistStockins(); persistMaterials();
-  toast('บันทึกรับเข้าสต๊อกแล้ว');
+  if(editingStockInId){
+    const s = stockins.find(x=>x.id===editingStockInId);
+    if(s){
+      const oldMat = getMaterial(s.materialId);
+      // Reverse the old entry's effect on stock (from whichever material it was originally on)
+      // before applying the new one — correct whether the material stayed the same or changed.
+      if(oldMat) oldMat.currentStock = Math.round(((oldMat.currentStock||0)-s.qty)*1e6)/1e6;
+      Object.assign(s, {date, materialId:mat.id, qty, unit:mat.unit, pricePerUnit:price, totalPrice:qty*price, supplier, note});
+      mat.currentStock = Math.round(((mat.currentStock||0)+qty)*1e6)/1e6;
+      recomputeMaterialLatest(mat.id);
+      if(oldMat && oldMat.id!==mat.id) recomputeMaterialLatest(oldMat.id);
+      persistStockins(); persistMaterials();
+      toast('แก้ไขรายการแล้ว');
+    }
+  } else {
+    stockins.push({id:uid(), date, materialId:mat.id, qty, unit:mat.unit, pricePerUnit:price, totalPrice:qty*price, supplier, note});
+    mat.currentStock = Math.round(((mat.currentStock||0)+qty)*1e6)/1e6;
+    recomputeMaterialLatest(mat.id);
+    persistStockins(); persistMaterials();
+    toast('บันทึกรับเข้าสต๊อกแล้ว');
+  }
+  editingStockInId = null;
   stockInFormReset();
+  document.getElementById('stockInModal').classList.remove('show');
   renderStockPage();
 });
 
@@ -4985,9 +5122,13 @@ function renderStockInHistory(){
       return `<tr>
         <td>${fmtDate(s.date)}</td><td class="wrap">${esc(mat?mat.name:'(ไม่พบวัตถุดิบ)')}</td><td>${fmt(s.qty)}</td><td>${esc(s.unit)}</td>
         <td>${fmt(s.pricePerUnit)}</td><td class="amount-cell">${fmt(s.totalPrice)}</td><td>${esc(s.supplier||'-')}</td><td class="wrap">${esc(s.note)}</td>
-        <td><button class="icon-mini danger del-stockin-btn" data-id="${s.id}" title="ลบ">🗑️</button></td>
+        <td><div class="row-actions">
+          <button type="button" class="icon-mini edit-stockin-btn" data-id="${s.id}" title="แก้ไข">✏️</button>
+          <button type="button" class="icon-mini danger del-stockin-btn" data-id="${s.id}" title="ลบ">🗑️</button>
+        </div></td>
       </tr>`;
     }).join('');
+    tbody.querySelectorAll('.edit-stockin-btn').forEach(btn=>btn.addEventListener('click', ()=>openStockInModalForEdit(btn.dataset.id)));
     tbody.querySelectorAll('.del-stockin-btn').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         if(!confirm('ยืนยันลบประวัติการซื้อนี้? ระบบจะตัดจำนวนนี้ออกจากสต๊อกคงเหลือด้วย')) return;
