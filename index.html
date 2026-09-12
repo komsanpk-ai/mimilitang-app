@@ -159,7 +159,6 @@ thead th{
 }
 thead th:hover{background:#ffe9b8;}
 thead th .arrow{font-size:10px;margin-left:3px;opacity:.6;}
-thead th .th-icon{font-size:16px;margin-right:3px;vertical-align:-2px;}
 tbody td{padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}
 tbody tr:nth-child(even){background:#f6fbf5;}
 tbody tr:hover{background:#fdf3df;}
@@ -1057,7 +1056,7 @@ p.hint.collapsible-hint.show{display:block;}
     </div>
     <div class="table-scroll">
       <table id="repeatCustomerTable" class="compact-table">
-        <thead><tr><th><span class="th-icon">🔢</span>ลำดับ</th><th>ชื่อลูกค้า</th><th>ถ้วยเล็ก</th><th>ถ้วยใหญ่</th><th>จำนวนครั้งที่ซื้อ</th></tr></thead>
+        <thead><tr><th>ลำดับ</th><th>ชื่อลูกค้า</th><th>ถ้วยเล็ก</th><th>ถ้วยใหญ่</th><th>จำนวนครั้งที่ซื้อ</th></tr></thead>
         <tbody id="repeatCustomerBody"></tbody>
       </table>
     </div>
@@ -4133,12 +4132,13 @@ function renderRepeatCustomerTable(){
   const start = (repeatCustomerPage-1)*pageSize;
   const pageItems = ranked.slice(start, start+pageSize);
 
+  const rankMedal = rank => rank===1 ? '🥇 ' : rank===2 ? '🥈 ' : rank===3 ? '🥉 ' : '';
   const tbody = document.getElementById('repeatCustomerBody');
   if(!ranked.length){
     tbody.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีลูกค้าที่ซื้อซ้ำ</td></tr>';
   } else {
     tbody.innerHTML = pageItems.map((c,i)=>`<tr>
-      <td>${start+i+1}</td>
+      <td>${rankMedal(start+i+1)}${start+i+1}</td>
       <td class="wrap">${esc(c.customerName)||'-'}</td>
       <td>${fmt(c.jarSmall)}</td>
       <td>${fmt(c.jarLarge)}</td>
