@@ -776,7 +776,7 @@ p.hint.collapsible-hint.show{display:block;}
       </div>
       <div class="field"><label id="pageSizeLabel">แสดงกี่แถวต่อหน้า</label>
         <select id="pageSize">
-          <option value="10">10</option><option value="25" selected>25</option>
+          <option value="10" selected>10</option><option value="25">25</option>
           <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
         </select></div>
       <button type="button" class="btn btn-outline btn-small" id="clearFilterBtn">ล้างตัวกรอง</button>
@@ -904,7 +904,7 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="toolbar" style="margin-top:14px;">
         <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
           <select id="sp_pageSize">
-            <option value="10">10</option><option value="25" selected>25</option>
+            <option value="10" selected>10</option><option value="25">25</option>
             <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
           </select></div>
       </div>
@@ -1054,7 +1054,7 @@ p.hint.collapsible-hint.show{display:block;}
       <button type="button" class="btn btn-outline btn-small" id="rcTop_clearSearchBtn">ล้างตัวกรอง</button>
       <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
         <select id="rcTop_pageSize">
-          <option value="10">10</option><option value="25" selected>25</option>
+          <option value="10" selected>10</option><option value="25">25</option>
           <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
         </select></div>
     </div>
@@ -1298,7 +1298,7 @@ p.hint.collapsible-hint.show{display:block;}
       <button type="button" class="btn btn-outline btn-small" id="sid_nextBtn">วันถัดไป ▶</button>
     </div>
     <div class="table-scroll">
-      <table id="stockInDailyTable">
+      <table id="stockInDailyTable" class="compact-table">
         <thead><tr><th>วัตถุดิบ</th><th>จำนวน</th><th>หน่วย</th><th>ราคา/หน่วย</th><th>ราคารวม</th><th>ร้านค้า</th><th>หมายเหตุ</th></tr></thead>
         <tbody id="stockInDailyBody"></tbody>
       </table>
@@ -1349,12 +1349,12 @@ p.hint.collapsible-hint.show{display:block;}
     <div class="toolbar">
       <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
         <select id="sa_pageSize">
-          <option value="10">10</option><option value="25" selected>25</option>
+          <option value="10" selected>10</option><option value="25">25</option>
           <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
         </select></div>
     </div>
     <div class="table-scroll">
-      <table id="stockAdjustTable">
+      <table id="stockAdjustTable" class="compact-table">
         <thead><tr><th>วันที่</th><th>วัตถุดิบ</th><th>ยอดเดิม</th><th>ยอดใหม่</th><th>ผลต่าง</th><th>หมายเหตุ</th><th></th></tr></thead>
         <tbody id="stockAdjustBody"></tbody>
       </table>
@@ -1376,12 +1376,21 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="sh_from"></div>
       <div class="field"><label>ถึงวันที่</label><input type="date" id="sh_to"></div>
       <button type="button" class="btn btn-outline btn-small" id="sh_clearBtn">ล้างตัวกรอง</button>
+      <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
+        <select id="sh_pageSize">
+          <option value="10" selected>10</option><option value="25">25</option>
+          <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
+        </select></div>
     </div>
     <div class="table-scroll">
-      <table id="stockInTable">
+      <table id="stockInTable" class="compact-table">
         <thead><tr><th>วันที่</th><th>วัตถุดิบ</th><th>จำนวน</th><th>หน่วย</th><th>ราคา/หน่วย</th><th>ราคารวม</th><th>ร้านค้า</th><th>หมายเหตุ</th><th></th></tr></thead>
         <tbody id="stockInBody"></tbody>
       </table>
+    </div>
+    <div class="table-footer">
+      <div class="summary-strip" id="shSummary"></div>
+      <div class="pagination" id="shPagination"></div>
     </div>
     <div id="supplierCompareBox"></div>
   </section>
@@ -1498,7 +1507,7 @@ p.hint.collapsible-hint.show{display:block;}
       <button type="button" class="btn btn-outline btn-small" id="opex_clearBtn">ล้างตัวกรอง</button>
       <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
         <select id="opex_pageSize">
-          <option value="10">10</option><option value="25" selected>25</option>
+          <option value="10" selected>10</option><option value="25">25</option>
           <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
         </select>
       </div>
@@ -4821,6 +4830,7 @@ document.getElementById('stockInForm').addEventListener('submit', e=>{
   renderStockPage();
 });
 
+let stockInHistoryPage = 1;
 function renderStockInHistory(){
   const matFilter = f('sh_material').value, from = f('sh_from').value, to = f('sh_to').value;
   const list = stockins.filter(s=>{
@@ -4830,9 +4840,26 @@ function renderStockInHistory(){
     return true;
   }).sort((a,b)=>b.date.localeCompare(a.date));
   const tbody = document.getElementById('stockInBody');
-  if(!list.length){ tbody.innerHTML = `<tr><td colspan="9" class="empty-state">ยังไม่มีประวัติการซื้อ</td></tr>`; }
+  if(!list.length){
+    tbody.innerHTML = `<tr><td colspan="9" class="empty-state">ยังไม่มีประวัติการซื้อ</td></tr>`;
+    document.getElementById('shSummary').innerHTML = '';
+    document.getElementById('shPagination').innerHTML = '';
+  }
   else {
-    tbody.innerHTML = list.map(s=>{
+    const pageSizeSel = document.getElementById('sh_pageSize').value;
+    const pageSize = pageSizeSel==='all' ? list.length : Number(pageSizeSel);
+    const totalPages = Math.max(1, Math.ceil(list.length/pageSize));
+    if(stockInHistoryPage>totalPages) stockInHistoryPage = totalPages;
+    const start = (stockInHistoryPage-1)*pageSize;
+    const pageItems = list.slice(start, start+pageSize);
+    document.getElementById('shSummary').innerHTML = `แสดง <b>${pageItems.length}</b> จาก ${list.length} รายการ`;
+    document.getElementById('shPagination').innerHTML = `
+      <button id="shPrevPageBtn" ${stockInHistoryPage<=1?'disabled':''}>‹</button>
+      <span>หน้า ${stockInHistoryPage}/${totalPages}</span>
+      <button id="shNextPageBtn" ${stockInHistoryPage>=totalPages?'disabled':''}>›</button>`;
+    document.getElementById('shPrevPageBtn').onclick = ()=>{ stockInHistoryPage--; renderStockInHistory(); };
+    document.getElementById('shNextPageBtn').onclick = ()=>{ stockInHistoryPage++; renderStockInHistory(); };
+    tbody.innerHTML = pageItems.map(s=>{
       const mat = getMaterial(s.materialId);
       return `<tr>
         <td>${fmtDate(s.date)}</td><td class="wrap">${esc(mat?mat.name:'(ไม่พบวัตถุดิบ)')}</td><td>${fmt(s.qty)}</td><td>${esc(s.unit)}</td>
@@ -4873,9 +4900,10 @@ function renderSupplierCompare(matFilter){
     <div class="table-scroll"><table><thead><tr><th>ร้านค้า</th><th>ราคาล่าสุด/หน่วย</th><th>ราคาเฉลี่ย/หน่วย</th><th>ซื้อล่าสุดวันที่</th><th></th></tr></thead>
     <tbody>${rows.map(r=>`<tr><td>${esc(r.supplier)}</td><td>${fmt(r.lastPrice)} บ.</td><td>${fmt(r.avg)} บ.</td><td>${fmtDate(r.lastDate)}</td><td>${r.supplier===cheapest?'<span class="badge green">ถูกที่สุด</span>':''}</td></tr>`).join('')}</tbody></table></div>`;
 }
-['sh_material','sh_from','sh_to'].forEach(id=>document.getElementById(id).addEventListener('input', renderStockInHistory));
+['sh_material','sh_from','sh_to'].forEach(id=>document.getElementById(id).addEventListener('input', ()=>{ stockInHistoryPage=1; renderStockInHistory(); }));
+document.getElementById('sh_pageSize').addEventListener('change', ()=>{ stockInHistoryPage=1; renderStockInHistory(); });
 document.getElementById('sh_clearBtn').addEventListener('click', ()=>{
-  f('sh_material').value=''; f('sh_from').value=''; f('sh_to').value=''; renderStockInHistory();
+  f('sh_material').value=''; f('sh_from').value=''; f('sh_to').value=''; stockInHistoryPage=1; renderStockInHistory();
 });
 
 /* ============ Recipe / cost builder ============ */
