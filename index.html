@@ -140,13 +140,19 @@ main{max-width:1180px;margin:0 auto;padding:18px 16px 0;display:flex;flex-direct
 .toolbar .field.grow{flex:1;min-width:180px;}
 /* Every control on a toolbar row — input, select, small button — is pinned to the same
    explicit height so mixed rows (e.g. a "ล้างตัวกรอง" button next to a page-size select)
-   line up exactly instead of drifting a few px apart from mismatched padding/font metrics. */
-.toolbar input,.toolbar select{padding:8px 10px;font-size:13px;height:34px;}
+   line up exactly instead of drifting a few px apart from mismatched padding/font metrics.
+   Border/background is spelled out here too (not just inherited from .field) because a select
+   or input can now sit directly inside .toolbar-row-half without a .field wrapper. */
+.toolbar input,.toolbar select{
+  padding:8px 10px;font-size:13px;height:34px;
+  border:1.5px solid var(--border);border-radius:10px;background:#fffefb;color:var(--ink);
+}
 .toolbar .btn-small{padding:6px 14px;font-size:13px;height:34px;}
-/* "ล้างตัวกรอง" + page-size select share one row and split it evenly instead of the select
-   sitting narrow with dead space trailing it. */
+/* Paired controls (date range, ล้างตัวกรอง+page-size) share one row and split it evenly —
+   same flex mechanism as .month-nav-row — so every row's column edges land in the same place. */
 .toolbar-row-half{display:flex;gap:8px;flex:1 1 100%;}
 .toolbar-row-half>*{flex:1;min-width:0;}
+.toolbar-row-half>.field{flex:1;min-width:0;}
 /* Month quick-picker (e.g. ค่าใช้จ่ายดำเนินงาน) — the "◀ เดือนก่อน"/"เดือนถัดไป ▶" pair reliably
    fits full-width Thai labels only if each gets half the row; stacking the <input type=month>
    above them (instead of squeezing all three across one row) keeps every label on one line and
@@ -1544,8 +1550,10 @@ p.hint.collapsible-hint.show{display:block;}
       </div>
     </div>
     <div class="toolbar">
-      <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="opex_from"></div>
-      <div class="field"><label>ถึงวันที่</label><input type="date" id="opex_to"></div>
+      <div class="toolbar-row-half">
+        <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="opex_from"></div>
+        <div class="field"><label>ถึงวันที่</label><input type="date" id="opex_to"></div>
+      </div>
       <div class="toolbar-row-half">
         <button type="button" class="btn btn-outline btn-small" id="opex_clearBtn">ล้างตัวกรอง</button>
         <select id="opex_pageSize">
