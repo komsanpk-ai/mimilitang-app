@@ -774,10 +774,6 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-report" class="page-view">
   <div class="home-list">
-    <button type="button" class="home-tile home-tile-row" data-page="report-sales">
-      <span class="home-tile-icon">🍧</span>
-      <span class="home-tile-label">รายงานการขายสินค้า</span>
-    </button>
     <button type="button" class="home-tile home-tile-row" data-page="report-revenue">
       <span class="home-tile-icon">💰</span>
       <span class="home-tile-label">รายงานรายได้</span>
@@ -811,7 +807,7 @@ p.hint.collapsible-hint.show{display:block;}
   <section class="card" id="reportSection">
     <div class="card-head"><h2><span class="emoji">📊</span>ภาพรวมยอดขาย</h2></div>
     <p class="hint">นับยอดขาย/ต้นทุน/กำไรตาม "วันที่จัดส่ง" ของออเดอร์ (ไม่ใช่วันที่ลูกค้าสั่ง) เพื่อให้ตรงกับหน้าจัดส่งและ P&amp;L เสมอ</p>
-    <div class="tabs">
+    <div class="tabs" id="ov-tabs">
       <button type="button" data-tab="daily" class="active">รายงานประจำวัน</button>
       <button type="button" data-tab="weekly">รายงานประจำสัปดาห์</button>
       <button type="button" data-tab="monthly">รายงานประจำเดือน</button>
@@ -840,71 +836,63 @@ p.hint.collapsible-hint.show{display:block;}
     </div>
     <div id="salesReportBody">
       <div class="stat-grid" id="statGrid"></div>
+    </div>
 
+    <hr class="section-divider">
+
+    <div id="rs-section">
+      <div class="mini-title">ยอดขายตามสินค้า</div>
+      <p class="hint">แนวโน้มการขายแยกตามสินค้า ไล่ระดับจากรายเดือน (12 เดือนของปีที่เลือก) → รายสัปดาห์ (ของเดือนที่เลือก) → รายวัน (ของสัปดาห์ที่เลือก) ไม่นับออเดอร์ที่ยกเลิก — ตารางด้านล่างสรุปรวมทั้งช่วงที่กำลังดูอยู่บนกราฟโดยอัตโนมัติ</p>
       <div class="field" style="max-width:260px;margin-bottom:12px;">
-        <label>แบ่งสัดส่วนสินค้าตาม (แยกถ้วยเล็ก/ใหญ่)</label>
-        <select id="breakdownMode">
-          <option value="qty">จำนวนถ้วยที่ขาย</option>
-          <option value="sales">ยอดขาย (บาท)</option>
+        <label>แสดงกราฟตาม</label>
+        <select id="rs-mode">
+          <option value="baht">ยอดขาย (บาท)</option>
+          <option value="qty">จำนวนถ้วย</option>
         </select>
       </div>
-
+      <div class="tabs">
+        <button type="button" data-tab="month" class="active">รายเดือน</button>
+        <button type="button" data-tab="week">รายสัปดาห์</button>
+        <button type="button" data-tab="day">รายวัน</button>
+      </div>
+      <div class="report-controls" id="rs-ctrl-month">
+        <button type="button" class="btn btn-outline btn-small" id="rs-yprev">◀ ปีก่อน</button>
+        <span class="range-label" id="rs-y-label"></span>
+        <button type="button" class="btn btn-outline btn-small" id="rs-ynext">ปีถัดไป ▶</button>
+      </div>
+      <div class="report-controls" id="rs-ctrl-week" style="display:none">
+        <button type="button" class="btn btn-outline btn-small" id="rs-mprev">◀ เดือนก่อน</button>
+        <input type="month" id="rs-m-pick">
+        <button type="button" class="btn btn-outline btn-small" id="rs-mnext">เดือนถัดไป ▶</button>
+      </div>
+      <div class="report-controls" id="rs-ctrl-day" style="display:none">
+        <button type="button" class="btn btn-outline btn-small" id="rs-wprev">◀ สัปดาห์ก่อน</button>
+        <input type="date" id="rs-w-pick">
+        <button type="button" class="btn btn-outline btn-small" id="rs-wnext">สัปดาห์ถัดไป ▶</button>
+        <span class="range-label" id="rs-w-label"></span>
+      </div>
+      <div class="stat-grid" id="rs-stat-grid"></div>
       <div class="chart-section">
-        <div class="chart-col">
-          <div class="mini-title">กราฟแท่ง</div>
+        <div class="chart-col chart-col-wide">
           <div class="chart-box-row">
-            <div class="chart-axis" id="chartAxisBar"></div>
-            <div class="chart-box" id="chartBoxBar"></div>
+            <div class="chart-axis" id="rs-chart-axis"></div>
+            <div class="chart-box" id="rs-chart-box"></div>
           </div>
         </div>
-        <div class="chart-col">
-          <div class="mini-title">กราฟวงกลม</div>
-          <div class="chart-box" id="chartBoxPie"></div>
-        </div>
-        <div class="legend" id="chartLegend"></div>
+        <div class="legend" id="rs-legend"></div>
+      </div>
+      <div class="mini-title" id="rs-detail-label" style="margin-top:14px;">รายละเอียด</div>
+      <div class="table-scroll">
+        <table class="compact-table">
+          <thead><tr><th>สินค้า</th><th>เล็ก</th><th>ใหญ่</th><th>รวมถ้วย</th><th>ยอดขาย</th><th>%</th></tr></thead>
+          <tbody id="rs-detail-body"></tbody>
+          <tfoot id="rs-detail-foot"></tfoot>
+        </table>
       </div>
     </div>
 
   </section>
 
-</main>
-
-<main id="page-report-sales" class="page-view">
-  <section class="card">
-    <div class="card-head"><h2><span class="emoji">🍧</span>รายงานการขายสินค้า</h2></div>
-    <p class="hint">เปรียบเทียบจำนวนถ้วยเล็ก/ถ้วยใหญ่ที่ขายได้ ไล่ระดับจากรายเดือน (12 เดือนของปีที่เลือก) → รายสัปดาห์ (ของเดือนที่เลือก) → รายวัน (ของสัปดาห์ที่เลือก) ไม่นับออเดอร์ที่ยกเลิก</p>
-    <div class="tabs">
-      <button type="button" data-tab="month" class="active">รายเดือน</button>
-      <button type="button" data-tab="week">รายสัปดาห์</button>
-      <button type="button" data-tab="day">รายวัน</button>
-    </div>
-    <div class="report-controls" id="rs-ctrl-month">
-      <button type="button" class="btn btn-outline btn-small" id="rs-yprev">◀ ปีก่อน</button>
-      <span class="range-label" id="rs-y-label"></span>
-      <button type="button" class="btn btn-outline btn-small" id="rs-ynext">ปีถัดไป ▶</button>
-    </div>
-    <div class="report-controls" id="rs-ctrl-week" style="display:none">
-      <button type="button" class="btn btn-outline btn-small" id="rs-mprev">◀ เดือนก่อน</button>
-      <input type="month" id="rs-m-pick">
-      <button type="button" class="btn btn-outline btn-small" id="rs-mnext">เดือนถัดไป ▶</button>
-    </div>
-    <div class="report-controls" id="rs-ctrl-day" style="display:none">
-      <button type="button" class="btn btn-outline btn-small" id="rs-wprev">◀ สัปดาห์ก่อน</button>
-      <input type="date" id="rs-w-pick">
-      <button type="button" class="btn btn-outline btn-small" id="rs-wnext">สัปดาห์ถัดไป ▶</button>
-      <span class="range-label" id="rs-w-label"></span>
-    </div>
-    <div class="chart-section">
-      <div class="chart-col chart-col-wide">
-        <div class="chart-box-row">
-          <div class="chart-axis" id="rs-chart-axis"></div>
-          <div class="chart-box" id="rs-chart-box"></div>
-        </div>
-      </div>
-      <div class="legend" id="rs-legend"></div>
-    </div>
-    <div class="total-box" id="rs-total-box"></div>
-  </section>
 </main>
 
 <main id="page-report-revenue" class="page-view">
@@ -3218,15 +3206,14 @@ document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
 /* ============ Reports ============ */
 let activeTab = 'daily';
 
-document.querySelectorAll('#page-report-overview .tabs button').forEach(btn=>{
+document.querySelectorAll('#ov-tabs button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('#page-report-overview .tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('#ov-tabs button').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active'); activeTab = btn.dataset.tab;
     ['daily','weekly','monthly'].forEach(t=>document.getElementById('ctrl-'+t).style.display = t===activeTab?'flex':'none');
     renderReport();
   });
 });
-document.getElementById('breakdownMode').addEventListener('change', renderReport);
 
 /* ============ Delivery report ============ */
 document.getElementById('dl_date').value = addDaysISO(todayISO(), 1);
@@ -3740,33 +3727,8 @@ function renderReport(){
     ].join('');
   }
   document.getElementById('statGrid').innerHTML = statsHtml;
-
-  const mode = document.getElementById('breakdownMode').value;
-  const byProductSize = {};
-  list.forEach(o=>{
-    const prod = getProduct(o.product);
-    const small = Number(o.jarSmall)||0, large = Number(o.jarLarge)||0;
-    const name = o.product || 'อื่นๆ';
-    if(small>0){
-      const key = `${name} (เล็ก)`;
-      const val = mode==='sales' ? small*prod.priceSmall : small;
-      byProductSize[key] = (byProductSize[key]||0) + val;
-    }
-    if(large>0){
-      const key = `${name} (ใหญ่)`;
-      const val = mode==='sales' ? large*prod.priceLarge : large;
-      byProductSize[key] = (byProductSize[key]||0) + val;
-    }
-  });
-  const data = Object.keys(byProductSize).map((k,i)=>({label:k, value:byProductSize[k], color:PALETTE[i%PALETTE.length]}))
-    .sort((a,b)=>b.value-a.value);
-
-  renderChart(data);
 }
 
-function renderChart(data){
-  renderChartInto(data, 'chartBoxBar', 'chartBoxPie', 'chartLegend', 'chartAxisBar');
-}
 function renderChartInto(data, barBoxId, pieBoxId, legendId, axisBoxId){
   const boxBar = document.getElementById(barBoxId), boxPie = document.getElementById(pieBoxId), legend = document.getElementById(legendId);
   const axisBox = axisBoxId ? document.getElementById(axisBoxId) : null;
@@ -4112,6 +4074,11 @@ function renderGroupedChartInto(buckets, series, barBoxId, legendId, totalBoxId,
    granularity or picked period changes. */
 function initReportModule(cfg){
   const P = cfg.prefix;
+  // Defaults to scoping tab clicks to the whole page, as every other caller wants — but a module
+  // embedded alongside another .tabs group on the SAME page (e.g. the product-sales trend section
+  // living on page-report-overview next to that page's own daily/weekly/monthly tabs) needs a
+  // narrower container so the two tab groups don't both react to every click.
+  const container = cfg.container || `#page-${cfg.page}`;
   let gran = 'month';
   let year = Number(todayISO().slice(0,4));
   let monthPick = todayISO().slice(0,7);
@@ -4149,9 +4116,9 @@ function initReportModule(cfg){
     if(center) centerChartOnToday(`${P}-chart-box`, buckets);
   }
 
-  document.querySelectorAll(`#page-${cfg.page} .tabs button`).forEach(btn=>{
+  document.querySelectorAll(`${container} .tabs button`).forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      document.querySelectorAll(`#page-${cfg.page} .tabs button`).forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll(`${container} .tabs button`).forEach(b=>b.classList.remove('active'));
       btn.classList.add('active'); gran = btn.dataset.tab; render(true);
     });
   });
@@ -4177,22 +4144,74 @@ function initReportModule(cfg){
   return {render};
 }
 
-/* ---- Report 1: product sales — qty of เล็ก/ใหญ่ per bucket ---- */
-function reportSalesSeries(buckets){
-  const small = buckets.map(()=>0), large = buckets.map(()=>0);
+/* ---- Report 1: product sales, per-product trend + detail (lives on page-report-overview,
+   below that page's own daily/weekly/monthly summary — merged in from the old standalone
+   "รายงานการขายสินค้า" page, upgraded to split by product name instead of just size). ---- */
+let rsMode = 'baht';
+function reportSalesByProductSeries(buckets){
+  const seriesMap = {};
+  products.forEach(p=>{ seriesMap[p.name] = buckets.map(()=>0); });
   orders.forEach(o=>{
     if(o.shippingStatus==='ยกเลิก' || o.isReserve) return;
     const idx = buckets.findIndex(b=>o.deliveryDate>=b.from && o.deliveryDate<=b.to);
     if(idx===-1) return;
-    small[idx] += Number(o.jarSmall)||0;
-    large[idx] += Number(o.jarLarge)||0;
+    const name = o.product || 'อื่นๆ';
+    if(!seriesMap[name]) seriesMap[name] = buckets.map(()=>0);
+    const prod = getProduct(name);
+    const small = Number(o.jarSmall)||0, large = Number(o.jarLarge)||0;
+    seriesMap[name][idx] += rsMode==='qty' ? (small+large) : (small*prod.priceSmall + large*prod.priceLarge);
   });
-  return {series:[
-    {name:'ถ้วยเล็ก', color:PALETTE[0], values:small},
-    {name:'ถ้วยใหญ่', color:PALETTE[1], values:large}
-  ]};
+  // Products with zero activity across the whole visible range are dropped so the chart legend
+  // isn't cluttered with all-zero entries for items that just weren't sold that year/month/week.
+  const series = Object.keys(seriesMap)
+    .filter(name=>seriesMap[name].some(v=>v>0))
+    .map((name,i)=>({name, color:PALETTE[i%PALETTE.length], values:seriesMap[name]}));
+  return {series};
 }
-const reportSalesModule = initReportModule({page:'report-sales', prefix:'rs', computeSeries:reportSalesSeries});
+function renderSalesByProductDetail(buckets){
+  const range = {from:buckets[0].from, to:buckets[buckets.length-1].to};
+  const byProduct = {};
+  orders.forEach(o=>{
+    if(o.shippingStatus==='ยกเลิก' || o.isReserve) return;
+    if(!(o.deliveryDate>=range.from && o.deliveryDate<=range.to)) return;
+    const name = o.product || 'อื่นๆ';
+    const prod = getProduct(name);
+    const small = Number(o.jarSmall)||0, large = Number(o.jarLarge)||0;
+    if(!byProduct[name]) byProduct[name] = {small:0, large:0, sales:0};
+    byProduct[name].small += small;
+    byProduct[name].large += large;
+    byProduct[name].sales += small*prod.priceSmall + large*prod.priceLarge;
+  });
+  const rows = Object.keys(byProduct).map(name=>{
+    const r = byProduct[name]; return {name, small:r.small, large:r.large, totalQty:r.small+r.large, sales:r.sales};
+  }).filter(r=>r.totalQty>0).sort((a,b)=>b.sales-a.sales);
+  const grandSales = rows.reduce((s,r)=>s+r.sales,0);
+  const grandSmall = rows.reduce((s,r)=>s+r.small,0);
+  const grandLarge = rows.reduce((s,r)=>s+r.large,0);
+  const grandQty = grandSmall+grandLarge;
+
+  document.getElementById('rs-detail-label').textContent = `รายละเอียด: ${fmtDate(range.from)} – ${fmtDate(range.to)}`;
+  document.getElementById('rs-detail-body').innerHTML = rows.length
+    ? rows.map(r=>`<tr><td class="wrap">${esc(r.name)}</td><td>${fmt(r.small)}</td><td>${fmt(r.large)}</td><td>${fmt(r.totalQty)}</td><td class="amount-cell">${fmt(r.sales)} บ.</td><td>${grandSales?(r.sales/grandSales*100).toFixed(1):'0.0'}%</td></tr>`).join('')
+    : `<tr><td colspan="6" class="empty-state">ไม่มีข้อมูลในช่วงที่เลือก</td></tr>`;
+  document.getElementById('rs-detail-foot').innerHTML = rows.length
+    ? `<tr><td>รวมทั้งหมด</td><td>${fmt(grandSmall)}</td><td>${fmt(grandLarge)}</td><td>${fmt(grandQty)}</td><td class="amount-cell">${fmt(grandSales)} บ.</td><td>100%</td></tr>`
+    : '';
+
+  // Order-count/average cards sit above the chart and share the same range as the detail table
+  // below the chart — a distinct range from the page's own daily/weekly/monthly summary up top.
+  const orderCount = buildOrderUnits(orders.filter(o=>!o.isReserve && o.shippingStatus!=='ยกเลิก' && o.deliveryDate>=range.from && o.deliveryDate<=range.to)).length;
+  const avgPerOrder = orderCount ? grandSales/orderCount : 0;
+  document.getElementById('rs-stat-grid').innerHTML = [
+    statCard('จำนวนออเดอร์', orderCount+' ออเดอร์'),
+    statCard('เฉลี่ยต่อออเดอร์', fmt(avgPerOrder)+' บ.')
+  ].join('');
+}
+const reportSalesByProductModule = initReportModule({
+  page:'report-overview', prefix:'rs', container:'#rs-section', computeSeries:reportSalesByProductSeries,
+  onRender: (result, buckets) => renderSalesByProductDetail(buckets)
+});
+document.getElementById('rs-mode').addEventListener('change', ()=>{ rsMode = document.getElementById('rs-mode').value; reportSalesByProductModule.render(); });
 
 /* ---- Report 2: revenue / cost / profit (or qty sold) per bucket ---- */
 let rrMode = 'baht';
@@ -4518,7 +4537,7 @@ function renderPaymentReportPage(){
    matching the existing convention (e.g. renderStockPage() is likewise called unconditionally). */
 function renderAllReports(){
   renderReport();
-  reportSalesModule.render();
+  reportSalesByProductModule.render();
   reportRevenueModule.render();
   reportCustomerModule.render();
   renderRepeatCustomerTable();
@@ -4680,11 +4699,11 @@ document.getElementById('restoreInput').addEventListener('change', e=>{
 let activeSubview = 'overview';
 
 const ALL_PAGES = ['home','order','prep','delivery','stock','report',
-  'report-overview','report-sales','report-revenue','report-customers','report-stock','report-payment','report-pnl',
+  'report-overview','report-revenue','report-customers','report-stock','report-payment','report-pnl',
   'settings','settings-products','settings-channels','settings-payment','settings-materials','settings-units','settings-backup','settings-account'];
 const PAGE_PARENT = {
   order:'home', prep:'home', delivery:'home', stock:'home', report:'home', settings:'home',
-  'report-overview':'report', 'report-sales':'report', 'report-revenue':'report',
+  'report-overview':'report', 'report-revenue':'report',
   'report-customers':'report', 'report-stock':'report', 'report-payment':'report', 'report-pnl':'report',
   'settings-products':'settings', 'settings-channels':'settings', 'settings-payment':'settings',
   'settings-materials':'settings', 'settings-units':'settings', 'settings-backup':'settings', 'settings-account':'settings'
@@ -4701,8 +4720,7 @@ function applyPage(pageName){
   if(pageName==='stock') renderStockPage();
   if(pageName==='prep') renderPrepPage();
   if(pageName==='delivery') renderDeliveryReport();
-  if(pageName==='report-overview') renderReport();
-  if(pageName==='report-sales') reportSalesModule.render(true);
+  if(pageName==='report-overview'){ renderReport(); reportSalesByProductModule.render(true); }
   if(pageName==='report-revenue') reportRevenueModule.render(true);
   if(pageName==='report-customers'){ reportCustomerModule.render(true); renderRepeatCustomerTable(); }
   if(pageName==='report-stock'){ renderRovReport(); reportStockModule.render(true); }
