@@ -163,7 +163,9 @@ main{max-width:1180px;margin:0 auto;padding:18px 16px 0;display:flex;flex-direct
 .month-nav-row{display:flex;gap:8px;}
 .month-nav-row .btn{flex:1;height:34px;}
 .pill-toggle{display:flex;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;}
-.pill-toggle button{flex:1;border:none;background:#fff;padding:8px 14px;font-size:13px;color:var(--muted);}
+.pill-toggle button{flex:1;border:none;background:#fff;padding:8px 14px;font-size:13px;color:var(--muted);white-space:nowrap;}
+.toolbar .pill-toggle{height:34px;}
+.toolbar .pill-toggle button{padding:0 14px;height:100%;}
 .pill-toggle button.active{background:var(--maroon);color:#fff;}
 
 /* ---------- Table ---------- */
@@ -716,19 +718,23 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="field grow"><label>ค้นหา (ชื่อ / เบอร์โทร)</label><input type="text" id="searchBox" placeholder="พิมพ์เพื่อค้นหา..."></div>
       <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="filterFrom"></div>
       <div class="field"><label>ถึงวันที่</label><input type="date" id="filterTo"></div>
-      <div class="field"><label>มุมมอง</label>
-        <div class="pill-toggle">
-          <button type="button" data-mode="flat" class="active" id="modeFlatBtn">รวมทั้งหมด</button>
-          <button type="button" data-mode="byDay" id="modeByDayBtn">แยกตามวัน</button>
+      <div class="toolbar-row-half">
+        <div class="field" style="flex:none;"><label>มุมมอง</label>
+          <div class="pill-toggle">
+            <button type="button" data-mode="flat" class="active" id="modeFlatBtn">รวมทั้งหมด</button>
+            <button type="button" data-mode="byDay" id="modeByDayBtn">แยกตามวัน</button>
+          </div>
         </div>
+        <div class="field">
+          <select id="pageSize">
+            <option value="10" selected>10</option><option value="25">25</option>
+            <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
+          </select></div>
       </div>
-      <div class="field">
-        <select id="pageSize">
-          <option value="10" selected>10</option><option value="25">25</option>
-          <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
-        </select></div>
-      <button type="button" class="btn btn-outline btn-small" id="clearFilterBtn">ล้างตัวกรอง</button>
-      <button type="button" class="btn btn-outline btn-small" id="exportCsvBtn">📤 ส่งออก CSV</button>
+      <div class="toolbar-row-half">
+        <button type="button" class="btn btn-outline btn-small" id="clearFilterBtn">ล้างตัวกรอง</button>
+        <button type="button" class="btn btn-outline btn-small" id="exportCsvBtn">📤 ส่งออก CSV</button>
+      </div>
     </div>
     <div class="table-scroll">
       <table id="ordersTable">
