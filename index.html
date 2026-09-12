@@ -324,6 +324,18 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
 }
 .range-label{font-size:13px;font-weight:600;color:var(--maroon-dark);background:var(--cream);padding:8px 14px;border-radius:10px;border:1px solid var(--border);}
 
+/* ---------- Material spend ranking (report-stock overview) ---------- */
+.rank-row{display:flex;align-items:center;gap:9px;margin-bottom:10px;}
+.rank-num{
+  width:20px;height:20px;border-radius:50%;background:var(--cream);border:1.5px solid var(--gold-light);
+  color:var(--maroon-dark);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.rank-label{width:92px;font-size:12.5px;color:var(--ink);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rank-track{flex:1;height:22px;background:var(--cream);border-radius:6px;border:1px solid var(--border);overflow:hidden;}
+.rank-fill{height:100%;background:linear-gradient(90deg,var(--maroon-light),var(--maroon));border-radius:5px;}
+.rank-val{width:64px;text-align:right;font-size:12px;font-weight:700;color:var(--maroon-dark);flex-shrink:0;font-variant-numeric:tabular-nums;}
+.rank-more{font-size:11.5px;color:var(--muted);text-align:center;margin-top:2px;}
+
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;}
 .stat-card{background:var(--cream);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
 .stat-card .stat-label{font-size:12px;color:var(--muted);margin-bottom:6px;}
@@ -1005,7 +1017,43 @@ p.hint.collapsible-hint.show{display:block;}
 <main id="page-report-stock" class="page-view">
   <section class="card">
     <div class="card-head"><h2><span class="emoji">📦</span>รายงานสต๊อกที่ซื้อเข้า</h2></div>
-    <p class="hint">ยอดรวมที่ซื้อเข้าของวัตถุดิบที่เลือก ไล่ระดับจากรายเดือน → รายสัปดาห์ → รายวัน</p>
+
+    <div class="mini-title" style="margin-top:0;">ภาพรวมทุกวัตถุดิบ</div>
+    <p class="hint">ยอดซื้อวัตถุดิบรวมทุกตัว จัดอันดับตามยอดเงินที่จ่ายในช่วงที่เลือก — ใช้ดูภาพรวมว่าวันนี้/สัปดาห์นี้/เดือนนี้ซื้ออะไรไปบ้าง รวมเท่าไร</p>
+    <div class="tabs" id="rov-tabs">
+      <button type="button" data-tab="month" class="active">รายเดือน</button>
+      <button type="button" data-tab="week">รายสัปดาห์</button>
+      <button type="button" data-tab="day">รายวัน</button>
+    </div>
+    <div class="report-controls" id="rov-ctrl-month">
+      <button type="button" class="btn btn-outline btn-small" id="rov-mprev">◀ เดือนก่อน</button>
+      <input type="month" id="rov-m-pick">
+      <button type="button" class="btn btn-outline btn-small" id="rov-mnext">เดือนถัดไป ▶</button>
+    </div>
+    <div class="report-controls" id="rov-ctrl-week" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="rov-wprev">◀ สัปดาห์ก่อน</button>
+      <input type="date" id="rov-w-pick">
+      <button type="button" class="btn btn-outline btn-small" id="rov-wnext">สัปดาห์ถัดไป ▶</button>
+      <span class="range-label" id="rov-w-label"></span>
+    </div>
+    <div class="report-controls" id="rov-ctrl-day" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="rov-dprev">◀ วันก่อนหน้า</button>
+      <input type="date" id="rov-d-pick">
+      <button type="button" class="btn btn-outline btn-small" id="rov-dnext">วันถัดไป ▶</button>
+    </div>
+    <div class="total-box" id="rov-total-box"></div>
+    <div id="rov-rank-chart"></div>
+    <div class="table-scroll" style="margin-top:14px;">
+      <table class="compact-table">
+        <thead><tr><th>#</th><th>วัตถุดิบ</th><th>จำนวน</th><th>ยอดรวม</th></tr></thead>
+        <tbody id="rov-rank-body"></tbody>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="mini-title">ดูแยกตามวัตถุดิบ</div>
+    <p class="hint">เลือกวัตถุดิบทีละตัวเพื่อดูแนวโน้มการซื้อย้อนหลัง ไล่ระดับจากรายเดือน → รายสัปดาห์ → รายวัน</p>
     <div class="field" style="max-width:320px;margin-bottom:12px;">
       <label>เลือกวัตถุดิบ</label>
       <select id="rk-material-pick"></select>
@@ -4280,6 +4328,116 @@ document.getElementById('rcTop_clearSearchBtn').addEventListener('click', ()=>{
   renderRepeatCustomerTable();
 });
 
+/* ---- Report 4a: purchase overview across ALL materials for one selected period ----
+   Deliberately separate from initReportModule below: that helper wires up EVERY ".tabs button"
+   under the page by a shared class selector, which would collide with this section's own tabs
+   sitting on the same page. Also the two report a genuinely different shape of data — a whole
+   YEAR/MONTH of per-bucket trend for one material there, vs one single day/week/month's ranking
+   across every material here — so "รายเดือน" etc. means "pick which month" here, not "show all
+   12 months," and needs its own simpler prev/next-within-one-period navigation. */
+let rovGran = 'month';
+let rovMonthPick = todayISO().slice(0,7);
+let rovWeekPick = todayISO();
+let rovDayPick = todayISO();
+function rovCurrentRange(){
+  if(rovGran==='month'){
+    const [y,m] = rovMonthPick.split('-').map(Number);
+    const from = `${y}-${String(m).padStart(2,'0')}-01`;
+    const lastDay = new Date(y, m, 0).getDate();
+    const to = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+    return {from, to};
+  }
+  if(rovGran==='week'){
+    const from = toISODate(startOfWeek(rovWeekPick+'T00:00:00'));
+    return {from, to: addDaysISO(from, 6)};
+  }
+  return {from: rovDayPick, to: rovDayPick};
+}
+function renderRovReport(){
+  const {from, to} = rovCurrentRange();
+  const byMat = {};
+  let itemCount = 0;
+  // qty<=0 entries are price-only updates logged from the adjustment form (see stockAdjustForm's
+  // submit handler), not real purchases — excluded here so they don't inflate "รายการซื้อ".
+  stockins.forEach(si=>{
+    if(!(si.date>=from && si.date<=to)) return;
+    const qty = Number(si.qty)||0;
+    if(qty<=0) return;
+    const mat = getMaterial(si.materialId);
+    const key = si.materialId;
+    if(!byMat[key]) byMat[key] = {name: mat?mat.name:'(ไม่พบวัตถุดิบ)', unit: mat?mat.unit:si.unit, qty:0, total:0};
+    byMat[key].qty += qty;
+    byMat[key].total += Number(si.totalPrice)||0;
+    itemCount++;
+  });
+  const rows = Object.values(byMat).sort((a,b)=>b.total-a.total);
+  const grandTotal = rows.reduce((s,r)=>s+r.total,0);
+  document.getElementById('rov-total-box').innerHTML = `
+    <div class="label">ยอดซื้อวัตถุดิบรวม</div>
+    <div class="amount">${fmt(grandTotal)} บาท</div>
+    <div class="sub">${fmtDate(from)} – ${fmtDate(to)} · ${rows.length} วัตถุดิบ · ${itemCount} รายการซื้อ</div>`;
+  const maxVal = rows.length ? rows[0].total : 0;
+  const TOP_N = 8;
+  let chartHtml;
+  if(!rows.length){
+    chartHtml = `<p class="empty-state">ไม่มีข้อมูลในช่วงที่เลือก</p>`;
+  } else {
+    const topRows = rows.slice(0, TOP_N), restRows = rows.slice(TOP_N);
+    chartHtml = topRows.map((r,i)=>`
+      <div class="rank-row">
+        <div class="rank-num">${i+1}</div>
+        <div class="rank-label" title="${esc(r.name)}">${esc(r.name)}</div>
+        <div class="rank-track"><div class="rank-fill" style="width:${maxVal>0?Math.max(4,(r.total/maxVal)*100):0}%;"></div></div>
+        <div class="rank-val">${fmt(r.total)}</div>
+      </div>`).join('');
+    if(restRows.length){
+      const restTotal = restRows.reduce((s,r)=>s+r.total,0);
+      chartHtml += `<div class="rank-more">และอีก ${restRows.length} วัตถุดิบ รวม ${fmt(restTotal)} บาท (ดูครบในตารางด้านล่าง)</div>`;
+    }
+  }
+  document.getElementById('rov-rank-chart').innerHTML = chartHtml;
+  document.getElementById('rov-rank-body').innerHTML = rows.length
+    ? rows.map((r,i)=>`<tr><td>${i+1}</td><td class="wrap">${esc(r.name)}</td><td>${fmt(r.qty)} ${esc(r.unit)}</td><td class="amount-cell">${fmt(r.total)}</td></tr>`).join('')
+    : `<tr><td colspan="4" class="empty-state">ไม่มีข้อมูลในช่วงที่เลือก</td></tr>`;
+}
+function rovUpdateVisibility(){
+  ['month','week','day'].forEach(g=>{
+    document.getElementById(`rov-ctrl-${g}`).style.display = g===rovGran ? 'flex' : 'none';
+  });
+}
+function rovRefreshLabels(){
+  const from = toISODate(startOfWeek(rovWeekPick+'T00:00:00'));
+  document.getElementById('rov-w-label').textContent = `สัปดาห์: ${fmtDate(from)} – ${fmtDate(addDaysISO(from,6))}`;
+}
+document.querySelectorAll('#rov-tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#rov-tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    rovGran = btn.dataset.tab;
+    rovUpdateVisibility(); rovRefreshLabels(); renderRovReport();
+  });
+});
+document.getElementById('rov-m-pick').value = rovMonthPick;
+document.getElementById('rov-m-pick').addEventListener('change', ()=>{ rovMonthPick = document.getElementById('rov-m-pick').value || rovMonthPick; renderRovReport(); });
+document.getElementById('rov-mprev').addEventListener('click', ()=>{
+  let [y,m] = rovMonthPick.split('-').map(Number); m--; if(m<1){m=12;y--;}
+  rovMonthPick = `${y}-${String(m).padStart(2,'0')}`; document.getElementById('rov-m-pick').value = rovMonthPick; renderRovReport();
+});
+document.getElementById('rov-mnext').addEventListener('click', ()=>{
+  let [y,m] = rovMonthPick.split('-').map(Number); m++; if(m>12){m=1;y++;}
+  rovMonthPick = `${y}-${String(m).padStart(2,'0')}`; document.getElementById('rov-m-pick').value = rovMonthPick; renderRovReport();
+});
+document.getElementById('rov-w-pick').value = rovWeekPick;
+document.getElementById('rov-w-pick').addEventListener('change', ()=>{ rovWeekPick = document.getElementById('rov-w-pick').value || rovWeekPick; rovRefreshLabels(); renderRovReport(); });
+document.getElementById('rov-wprev').addEventListener('click', ()=>{ rovWeekPick = addDaysISO(rovWeekPick,-7); document.getElementById('rov-w-pick').value = rovWeekPick; rovRefreshLabels(); renderRovReport(); });
+document.getElementById('rov-wnext').addEventListener('click', ()=>{ rovWeekPick = addDaysISO(rovWeekPick,7); document.getElementById('rov-w-pick').value = rovWeekPick; rovRefreshLabels(); renderRovReport(); });
+document.getElementById('rov-d-pick').value = rovDayPick;
+document.getElementById('rov-d-pick').addEventListener('change', ()=>{ rovDayPick = document.getElementById('rov-d-pick').value || rovDayPick; renderRovReport(); });
+document.getElementById('rov-dprev').addEventListener('click', ()=>{ rovDayPick = addDaysISO(rovDayPick,-1); document.getElementById('rov-d-pick').value = rovDayPick; renderRovReport(); });
+document.getElementById('rov-dnext').addEventListener('click', ()=>{ rovDayPick = addDaysISO(rovDayPick,1); document.getElementById('rov-d-pick').value = rovDayPick; renderRovReport(); });
+rovRefreshLabels();
+renderRovReport();
+
 /* ---- Report 4: stock purchased per bucket, for one selected material ---- */
 function reportStockSeries(buckets){
   const matId = document.getElementById('rk-material-pick').value;
@@ -4545,7 +4703,7 @@ function applyPage(pageName){
   if(pageName==='report-sales') reportSalesModule.render(true);
   if(pageName==='report-revenue') reportRevenueModule.render(true);
   if(pageName==='report-customers'){ reportCustomerModule.render(true); renderRepeatCustomerTable(); }
-  if(pageName==='report-stock') reportStockModule.render(true);
+  if(pageName==='report-stock'){ renderRovReport(); reportStockModule.render(true); }
   if(pageName==='report-payment') renderPaymentReportPage();
   if(pageName==='report-pnl') renderPnL();
   if(pageName==='settings' || pageName.indexOf('settings-')===0){ renderSettingsLists(); renderMaterialSettingsList(); renderUnitSettingsList(); }
