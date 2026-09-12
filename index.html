@@ -149,7 +149,13 @@ main{max-width:1180px;margin:0 auto;padding:18px 16px 0;display:flex;flex-direct
    above them (instead of squeezing all three across one row) keeps every label on one line and
    reads as a clear, centered unit on a narrow phone screen. */
 .month-nav{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
-.month-nav input[type=month]{width:100%;}
+.month-nav input[type=month]{
+  width:100%;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;
+  background:#fffefb;color:var(--ink);transition:.15s;
+}
+.month-nav input[type=month]:focus{
+  outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,150,30,.15);
+}
 .month-nav-row{display:flex;gap:8px;}
 .month-nav-row .btn{flex:1;}
 .pill-toggle{display:flex;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;}
