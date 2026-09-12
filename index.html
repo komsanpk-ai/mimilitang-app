@@ -1043,6 +1043,16 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="legend" id="rc-legend"></div>
     </div>
     <div class="total-box" id="rc-total-box"></div>
+
+    <hr class="section-divider">
+    <div class="mini-title">สรุปอันดับลูกค้าประจำ (ซื้อซ้ำตั้งแต่ 2 ครั้งขึ้นไป)</div>
+    <p class="hint" style="margin-top:-6px;">เรียงจากจำนวนครั้งที่ซื้อมากสุดไปน้อยสุด นับจากประวัติออเดอร์ทั้งหมด (ไม่จำกัดตามช่วงเวลาที่เลือกด้านบน) ไม่นับออเดอร์ที่ยกเลิกหรือของสำรอง — ลูกค้าหลายสินค้าในครั้งเดียวนับเป็น 1 ครั้ง</p>
+    <div class="table-scroll">
+      <table id="repeatCustomerTable" class="compact-table">
+        <thead><tr><th>อันดับ</th><th>ชื่อลูกค้า</th><th>เบอร์โทร</th><th>จำนวนครั้งที่ซื้อ</th></tr></thead>
+        <tbody id="repeatCustomerBody"></tbody>
+      </table>
+    </div>
   </section>
 </main>
 
@@ -4082,6 +4092,29 @@ function reportCustomerSeries(buckets){
 }
 const reportCustomerModule = initReportModule({page:'report-customers', prefix:'rc', computeSeries:reportCustomerSeries});
 
+/* All-time leaderboard of repeat customers, independent of the chart's month/week/day picker
+   above — a customer who's bought 2+ times rarely lands twice in the same narrow bucket, so this
+   only makes sense as a running total across the whole order history. */
+function renderRepeatCustomerTable(){
+  const visits = distinctVisits(orders.filter(o=>o.phone && !o.isReserve && o.shippingStatus!=='ยกเลิก'));
+  const byPhone = {};
+  visits.forEach(o=>{
+    if(!byPhone[o.phone]) byPhone[o.phone] = {phone:o.phone, count:0, customerName:o.customerName, lastDate:o.deliveryDate};
+    const c = byPhone[o.phone];
+    c.count++;
+    if(o.deliveryDate>=c.lastDate){ c.lastDate=o.deliveryDate; c.customerName=o.customerName; }
+  });
+  const ranked = Object.values(byPhone).filter(c=>c.count>=2).sort((a,b)=>b.count-a.count || a.customerName.localeCompare(b.customerName));
+  const tbody = document.getElementById('repeatCustomerBody');
+  if(!ranked.length){ tbody.innerHTML = '<tr><td colspan="4" class="empty-state">ยังไม่มีลูกค้าที่ซื้อซ้ำ</td></tr>'; return; }
+  tbody.innerHTML = ranked.map((c,i)=>`<tr>
+    <td>${i+1}</td>
+    <td class="wrap">${esc(c.customerName)||'-'}</td>
+    <td>${telLink(c.phone)}</td>
+    <td class="amount-cell">${c.count} ครั้ง</td>
+  </tr>`).join('');
+}
+
 /* ---- Report 4: stock purchased per bucket, for one selected material ---- */
 function reportStockSeries(buckets){
   const matId = document.getElementById('rk-material-pick').value;
@@ -4124,6 +4157,7 @@ function renderAllReports(){
   reportSalesModule.render();
   reportRevenueModule.render();
   reportCustomerModule.render();
+  renderRepeatCustomerTable();
   reportStockModule.render();
   reportPaymentModule.render();
 }
@@ -4305,7 +4339,7 @@ function applyPage(pageName){
   if(pageName==='report-overview') renderReport();
   if(pageName==='report-sales') reportSalesModule.render(true);
   if(pageName==='report-revenue') reportRevenueModule.render(true);
-  if(pageName==='report-customers') reportCustomerModule.render(true);
+  if(pageName==='report-customers'){ reportCustomerModule.render(true); renderRepeatCustomerTable(); }
   if(pageName==='report-stock') reportStockModule.render(true);
   if(pageName==='report-payment') reportPaymentModule.render(true);
   if(pageName==='settings' || pageName.indexOf('settings-')===0){ renderSettingsLists(); renderMaterialSettingsList(); renderUnitSettingsList(); }
