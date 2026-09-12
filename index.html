@@ -188,6 +188,11 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowr
 tbody tr:nth-child(even){background:#f6fbf5;}
 tbody tr:hover{background:#fdf3df;}
 tbody td.wrap{white-space:normal;max-width:180px;}
+/* Delivery address needs more room than the shared .wrap width — bumped by roughly 25 characters
+   so a full address doesn't cram down into a narrow, hard-to-read column of its own. min-width
+   (not just max-width) is needed here because the table's auto layout otherwise still shrinks a
+   wrappable column well below its max-width cap. */
+tbody td.addr-col{min-width:500px;max-width:500px;}
 /* Pin the "ชื่อลูกค้า" column of the main orders table so it stays visible while scrolling right
    through its many columns — otherwise it's easy to lose track of whose row you're
    editing/deleting once it's scrolled off-screen. Customer name was picked over the row number
@@ -304,6 +309,9 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
 .pagination span{font-size:13px;color:var(--muted);}
 .summary-strip{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);}
 .summary-strip b{color:var(--maroon-dark);}
+#tableSummary{flex-direction:column;gap:4px;}
+#tableSummary .summary-row{display:flex;justify-content:space-between;gap:14px;}
+#tableSummary .summary-row span{white-space:nowrap;}
 
 /* ---------- Reports ---------- */
 .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
@@ -3039,8 +3047,14 @@ function renderTable(){
 
   tbody.innerHTML = rowsHtml;
   const grandSum = list.reduce((s,u)=>s+unitTotal(u),0);
-  document.getElementById('tableSummary').innerHTML =
-    `แสดง <b>${shownCount}</b> รายการ (ทั้งหมด ${list.length} รายการตรงเงื่อนไข) &nbsp;·&nbsp; ยอดรวมที่แสดง <b>${fmt(totalSum)}</b> บาท &nbsp;·&nbsp; ยอดรวมทั้งหมดตามเงื่อนไข <b>${fmt(grandSum)}</b> บาท`;
+  // Thai text has no spaces to hint safe line-break points, so a browser's own word-segmenter can
+  // (and did) split a phrase like "ยอดรวมที่แสดง" mid-word onto two lines. Each stat gets its own
+  // row instead of running together as one wrapping string, with its label kept unbreakable so the
+  // number always lands on the same line, right-aligned against it.
+  document.getElementById('tableSummary').innerHTML = `
+    <div>แสดง <b>${shownCount}</b> รายการ (ทั้งหมด ${list.length} รายการตรงเงื่อนไข)</div>
+    <div class="summary-row"><span>ยอดรวมที่แสดง</span><b>${fmt(totalSum)} บาท</b></div>
+    <div class="summary-row"><span>ยอดรวมทั้งหมดตามเงื่อนไข</span><b>${fmt(grandSum)} บาท</b></div>`;
 
   // A shared badge-select's data-id may hold several comma-joined ids (every product in a
   // multi-item order) — split unconditionally works the same for a lone id too.
@@ -3108,7 +3122,7 @@ function unitRowHtml(u, no){
     <td>${esc(p.phone)}</td>
     <td>${fmtDate(p.orderDate)}</td>
     <td>${fmtDate(p.deliveryDate)}</td>
-    <td class="wrap">${esc(p.address)}</td>
+    <td class="wrap addr-col">${esc(p.address)}</td>
     <td>${shippingStatusCell}</td>
     <td>${members.map(o=>`<div class="stacked-line">${badgeSelectHTML(o.id, o.product, products.map(pp=>pp.name), 'product')}</div>`).join('')}</td>
     <td>${members.map(o=>`<div class="stacked-line">${o.jarSmall}</div>`).join('')}</td>
