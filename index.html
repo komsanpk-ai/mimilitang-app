@@ -637,8 +637,8 @@ p.hint.collapsible-hint.show{display:block;}
       <button type="button" class="drawer-sublink" data-subview="adjust">🔧 ปรับปรุงยอด</button>
       <button type="button" class="drawer-sublink" data-subview="history">📜 ประวัติซื้อ &amp; เทียบราคา</button>
       <button type="button" class="drawer-sublink" data-subview="recipe">🧮 สูตร &amp; ต้นทุนสินค้า</button>
+      <button type="button" class="drawer-sublink" data-subview="opex">💸 บันทึกค่าใช้จ่ายดำเนินงาน</button>
       <button type="button" class="drawer-sublink" data-subview="startup">📈 ต้นทุนเริ่มต้น &amp; จุดคุ้มทุน</button>
-      <button type="button" class="drawer-sublink" data-subview="pnl">📑 งบกำไรขาดทุน (P&amp;L)</button>
       <button type="button" class="drawer-sublink" id="settingsDrawerBtn">⚙️ ตั้งค่า</button>
     </div>
     <div class="drawer-divider"></div>
@@ -822,6 +822,10 @@ p.hint.collapsible-hint.show{display:block;}
       <span class="home-tile-icon">📊</span>
       <span class="home-tile-label">ภาพรวมยอดขาย</span>
     </button>
+    <button type="button" class="home-tile home-tile-row" data-page="report-pnl">
+      <span class="home-tile-icon">📑</span>
+      <span class="home-tile-label">งบกำไรขาดทุน (P&amp;L)</span>
+    </button>
   </div>
 </main>
 
@@ -882,41 +886,6 @@ p.hint.collapsible-hint.show{display:block;}
           <div class="chart-box" id="chartBoxPie"></div>
         </div>
         <div class="legend" id="chartLegend"></div>
-      </div>
-
-      <hr class="section-divider">
-      <div class="mini-title">แยกตามประเภทการจ่ายเงิน (เงินสด / เงินโอน ฯลฯ)</div>
-      <p class="subtle-note" style="margin-top:0;margin-bottom:14px;">นับเฉพาะยอดที่ได้รับเงินแล้วหรือมัดจำแล้วในช่วงเวลาที่เลือก แยกตามประเภทการจ่ายเงินที่บันทึกไว้ในแต่ละออเดอร์ — เงินโอนแนบรูปสลิปเก็บไว้เป็นหลักฐานได้</p>
-      <div class="chart-section">
-        <div class="chart-col">
-          <div class="mini-title">กราฟแท่ง</div>
-          <div class="chart-box-row">
-            <div class="chart-axis" id="pmChartAxisBar"></div>
-            <div class="chart-box" id="pmChartBoxBar"></div>
-          </div>
-        </div>
-        <div class="chart-col">
-          <div class="mini-title">กราฟวงกลม</div>
-          <div class="chart-box" id="pmChartBoxPie"></div>
-        </div>
-        <div class="legend" id="pmChartLegend"></div>
-      </div>
-      <div class="toolbar" style="margin-top:14px;">
-        <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
-          <select id="sp_pageSize">
-            <option value="10" selected>10</option><option value="25">25</option>
-            <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
-          </select></div>
-      </div>
-      <div class="table-scroll">
-        <table id="slipTable" class="compact-table">
-          <thead><tr><th>วันที่สั่ง</th><th>ชื่อลูกค้า</th><th id="sp_paymentFilterHead"></th><th>ยอดที่ได้รับ</th><th>สลิปการโอน</th></tr></thead>
-          <tbody id="slipBody"></tbody>
-        </table>
-      </div>
-      <div class="table-footer">
-        <div class="summary-strip" id="spSummary"></div>
-        <div class="pagination" id="spPagination"></div>
       </div>
     </div>
 
@@ -1116,38 +1085,101 @@ p.hint.collapsible-hint.show{display:block;}
 <main id="page-report-payment" class="page-view">
   <section class="card">
     <div class="card-head"><h2><span class="emoji">💳</span>รายงานประเภทการจ่ายเงิน</h2></div>
-    <p class="hint">เปรียบเทียบยอดที่ได้รับเงินจริงแยกตามประเภทการจ่ายเงิน ไล่ระดับจากรายเดือน → รายสัปดาห์ → รายวัน ไม่นับออเดอร์ที่ยกเลิก</p>
+    <p class="hint">นับเฉพาะยอดที่ได้รับเงินแล้วหรือมัดจำแล้วในช่วงเวลาที่เลือก แยกตามประเภทการจ่ายเงินที่บันทึกไว้ในแต่ละออเดอร์ ไม่นับออเดอร์ที่ยกเลิก — เงินโอนแนบรูปสลิปเก็บไว้เป็นหลักฐานได้</p>
     <div class="tabs">
-      <button type="button" data-tab="month" class="active">รายเดือน</button>
-      <button type="button" data-tab="week">รายสัปดาห์</button>
-      <button type="button" data-tab="day">รายวัน</button>
+      <button type="button" data-tab="daily" class="active">รายงานประจำวัน</button>
+      <button type="button" data-tab="weekly">รายงานประจำสัปดาห์</button>
+      <button type="button" data-tab="monthly">รายงานประจำเดือน</button>
     </div>
-    <div class="report-controls" id="rp-ctrl-month">
-      <button type="button" class="btn btn-outline btn-small" id="rp-yprev">◀ ปีก่อน</button>
-      <span class="range-label" id="rp-y-label"></span>
-      <button type="button" class="btn btn-outline btn-small" id="rp-ynext">ปีถัดไป ▶</button>
+
+    <!-- daily controls -->
+    <div class="report-controls" id="pay-ctrl-daily">
+      <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="pay_d_from"></div>
+      <div class="field"><label>ถึงวันที่</label><input type="date" id="pay_d_to"></div>
+      <button type="button" class="btn btn-outline btn-small" data-payquick="today">วันนี้</button>
+      <button type="button" class="btn btn-outline btn-small" data-payquick="7days">7 วันล่าสุด</button>
+      <button type="button" class="btn btn-outline btn-small" data-payquick="thismonth">เดือนนี้</button>
     </div>
-    <div class="report-controls" id="rp-ctrl-week" style="display:none">
-      <button type="button" class="btn btn-outline btn-small" id="rp-mprev">◀ เดือนก่อน</button>
-      <input type="month" id="rp-m-pick">
-      <button type="button" class="btn btn-outline btn-small" id="rp-mnext">เดือนถัดไป ▶</button>
+    <!-- weekly controls -->
+    <div class="report-controls" id="pay-ctrl-weekly" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="pay_w_prev">◀ สัปดาห์ก่อน</button>
+      <input type="date" id="pay_w_pick">
+      <button type="button" class="btn btn-outline btn-small" id="pay_w_next">สัปดาห์ถัดไป ▶</button>
+      <span class="range-label" id="pay_w_label"></span>
     </div>
-    <div class="report-controls" id="rp-ctrl-day" style="display:none">
-      <button type="button" class="btn btn-outline btn-small" id="rp-wprev">◀ สัปดาห์ก่อน</button>
-      <input type="date" id="rp-w-pick">
-      <button type="button" class="btn btn-outline btn-small" id="rp-wnext">สัปดาห์ถัดไป ▶</button>
-      <span class="range-label" id="rp-w-label"></span>
+    <!-- monthly controls -->
+    <div class="report-controls" id="pay-ctrl-monthly" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="pay_m_prev">◀ เดือนก่อน</button>
+      <input type="month" id="pay_m_pick">
+      <button type="button" class="btn btn-outline btn-small" id="pay_m_next">เดือนถัดไป ▶</button>
     </div>
+
     <div class="chart-section">
-      <div class="chart-col chart-col-wide">
+      <div class="chart-col">
+        <div class="mini-title">กราฟแท่ง</div>
         <div class="chart-box-row">
-          <div class="chart-axis" id="rp-chart-axis"></div>
-          <div class="chart-box" id="rp-chart-box"></div>
+          <div class="chart-axis" id="pmChartAxisBar"></div>
+          <div class="chart-box" id="pmChartBoxBar"></div>
         </div>
       </div>
-      <div class="legend" id="rp-legend"></div>
+      <div class="chart-col">
+        <div class="mini-title">กราฟวงกลม</div>
+        <div class="chart-box" id="pmChartBoxPie"></div>
+      </div>
+      <div class="legend" id="pmChartLegend"></div>
     </div>
-    <div class="total-box" id="rp-total-box"></div>
+    <div class="toolbar" style="margin-top:14px;">
+      <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
+        <select id="sp_pageSize">
+          <option value="10" selected>10</option><option value="25">25</option>
+          <option value="50">50</option><option value="100">100</option><option value="all">ทั้งหมด</option>
+        </select></div>
+    </div>
+    <div class="table-scroll">
+      <table id="slipTable" class="compact-table">
+        <thead><tr><th>วันที่สั่ง</th><th>ชื่อลูกค้า</th><th id="sp_paymentFilterHead"></th><th>ยอดที่ได้รับ</th><th>สลิปการโอน</th></tr></thead>
+        <tbody id="slipBody"></tbody>
+      </table>
+    </div>
+    <div class="table-footer">
+      <div class="summary-strip" id="spSummary"></div>
+      <div class="pagination" id="spPagination"></div>
+    </div>
+  </section>
+</main>
+
+<main id="page-report-pnl" class="page-view">
+  <!-- ===== PROFIT & LOSS STATEMENT ===== -->
+  <section class="card" id="pnlSection">
+    <div class="card-head no-print"><h2><span class="emoji">📑</span>งบกำไรขาดทุน (Profit &amp; Loss Statement)</h2></div>
+    <p class="hint no-print">สรุปรายได้ ต้นทุน และค่าใช้จ่าย ในรูปแบบงบกำไรขาดทุนมาตรฐาน สำหรับดูภาพรวมหรือส่งให้นักบัญชี — ต้นทุนขายคำนวณแบบสูตรต้นทุน (accrual) ตามหลักบัญชี จึงต้องตั้ง "สูตร &amp; ต้นทุนสินค้า" ให้ครบทุกสินค้าเพื่อความแม่นยำ ส่วนต้นทุนเริ่มต้น (สินทรัพย์ถาวร) ไม่รวมในงบนี้เพราะไม่ใช่ค่าใช้จ่ายประจำงวด (ดูได้ที่หัวข้อจุดคุ้มทุน) — "กำไรขั้นต้น" คิดจากยอดขายสินค้าล้วนๆ เท่านั้น ค่าจัดส่งแยกไปเป็นหมวดของตัวเองด้านล่าง (เทียบรายรับค่าส่งกับค่าใช้จ่ายที่บันทึกในหมวด "ค่าจัดส่ง") เพื่อไม่ให้ปนกับกำไรจากตัวสินค้า</p>
+
+    <div class="report-controls no-print">
+      <button type="button" class="btn btn-outline btn-small" id="pnl_prev">◀ เดือนก่อน</button>
+      <input type="month" id="pnl_pick">
+      <button type="button" class="btn btn-outline btn-small" id="pnl_next">เดือนถัดไป ▶</button>
+      <button type="button" class="btn btn-primary btn-small" id="pnl_printBtn">🖨️ พิมพ์ / บันทึกเป็น PDF</button>
+    </div>
+
+    <div id="pnlDoc" class="pnl-doc">
+      <div class="pnl-letterhead">
+        <div class="pnl-letterhead-logo"><img id="pnlLogoImg" alt="โลโก้"><span id="pnlLogoFallback">🍐</span></div>
+        <div class="pnl-letterhead-text">
+          <div class="pnl-biz-name">มีมี่ ลี่ถัง</div>
+          <div class="pnl-doc-title">งบกำไรขาดทุน (Profit &amp; Loss Statement)</div>
+          <div class="pnl-period" id="pnlPeriodLabel">สำหรับเดือน -</div>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table class="pnl-table" id="pnlTable"></table>
+      </div>
+
+      <div class="pnl-footer">
+        <div id="pnlCaveat" class="pnl-caveat"></div>
+        <div class="pnl-generated">ออกรายงานเมื่อ <span id="pnlGeneratedAt"></span> — ระบบบันทึกคำสั่งซื้อ มีมี่ ลี่ถัง</div>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -1472,31 +1504,11 @@ p.hint.collapsible-hint.show{display:block;}
 
   </div>
 
-  <div class="stock-subview" id="sv-startup">
-  <!-- ===== STARTUP / FIXED CAPITAL COST ===== -->
-  <section class="card" id="startupCostSection">
-    <div class="card-head"><h2><span class="emoji">🏗️</span>ต้นทุนเริ่มต้น (เงินลงทุนเริ่มแรก)</h2></div>
-    <p class="hint">หมวด: ต้นทุนเริ่มต้น — ค่าใช้จ่ายครั้งเดียวตอนเริ่มกิจการ เช่น อุปกรณ์เครื่องครัว ค่าโต๊ะ ค่าภาชนะ หม้อ เตาไฟฟ้า (ไม่ใช่ต้นทุนต่อถ้วย) ใช้คำนวณจุดคุ้มทุนด้านล่าง</p>
-    <button type="button" class="btn btn-primary btn-small" id="addStartupCostBtn" style="align-self:flex-start;margin-bottom:14px;">➕ เพิ่มต้นทุนเริ่มต้น</button>
-    <div class="table-scroll">
-      <table id="startupCostTable" class="compact-table">
-        <thead><tr><th>ต้นทุน</th><th>ราคา (บาท)</th><th></th></tr></thead>
-        <tbody id="startupCostRows"></tbody>
-      </table>
-    </div>
-    <datalist id="startupLabelList">
-      <option value="อุปกรณ์เครื่องครัว"><option value="ค่าโต๊ะ"><option value="ค่าภาชนะ"><option value="หม้อ"><option value="เตาไฟฟ้า">
-    </datalist>
-    <div class="total-box" style="margin-top:16px;">
-      <div class="label">รวมต้นทุนเริ่มต้นทั้งหมด</div>
-      <div class="amount" id="startupCostTotal">0 บาท</div>
-    </div>
-  </section>
-
+  <div class="stock-subview" id="sv-opex">
   <!-- ===== OPERATING EXPENSES ===== -->
   <section class="card" id="opexSection">
     <div class="card-head"><h2><span class="emoji">💸</span>ค่าใช้จ่ายดำเนินงาน</h2></div>
-    <p class="hint">หมวด: ค่าใช้จ่ายที่เกิดขึ้นซ้ำๆ ระหว่างดำเนินกิจการ (ไม่ใช่ต้นทุนเริ่มต้นที่จ่ายครั้งเดียว และไม่ใช่ต้นทุนต่อถ้วยในสูตร) เช่น ค่าน้ำมันส่งของ ค่าเช่า ค่าจ้าง ค่าไฟ ค่าน้ำ ค่าอินเทอร์เน็ต — <b>ค่าใช้จ่ายในการส่งของ (ค่าน้ำมัน/ค่าคอมมิชชั่นไรเดอร์) ให้ตั้งหมวดเป็น "ค่าจัดส่ง" เป๊ะๆ</b> เพื่อให้หน้า P&L ดึงไปเทียบกับ "ค่าจัดส่งที่เก็บจากลูกค้า" ให้อัตโนมัติว่าค่าส่งที่เก็บมาคุ้มกับที่จ่ายจริงหรือไม่ (ยังรวมอยู่ในจุดคุ้มทุนแบบเงินสดด้านล่างเหมือนเดิมไม่ว่าจะตั้งหมวดว่าอะไร)</p>
+    <p class="hint">หมวด: ค่าใช้จ่ายที่เกิดขึ้นซ้ำๆ ระหว่างดำเนินกิจการ (ไม่ใช่ต้นทุนเริ่มต้นที่จ่ายครั้งเดียว และไม่ใช่ต้นทุนต่อถ้วยในสูตร) เช่น ค่าน้ำมันส่งของ ค่าเช่า ค่าจ้าง ค่าไฟ ค่าน้ำ ค่าอินเทอร์เน็ต — <b>ค่าใช้จ่ายในการส่งของ (ค่าน้ำมัน/ค่าคอมมิชชั่นไรเดอร์) ให้ตั้งหมวดเป็น "ค่าจัดส่ง" เป๊ะๆ</b> เพื่อให้หน้า P&amp;L ดึงไปเทียบกับ "ค่าจัดส่งที่เก็บจากลูกค้า" ให้อัตโนมัติว่าค่าส่งที่เก็บมาคุ้มกับที่จ่ายจริงหรือไม่ (ยังรวมอยู่ในจุดคุ้มทุนแบบเงินสดด้านล่างเหมือนเดิมไม่ว่าจะตั้งหมวดว่าอะไร)</p>
     <datalist id="opexCategoryList">
       <option value="ค่าจัดส่ง"><option value="ค่าน้ำมัน"><option value="ค่าเช่า"><option value="ค่าจ้าง/เงินเดือน"><option value="ค่าไฟ"><option value="ค่าน้ำ"><option value="ค่าอินเทอร์เน็ต/โทรศัพท์">
     </datalist>
@@ -1526,6 +1538,28 @@ p.hint.collapsible-hint.show{display:block;}
       <div class="amount" id="opexTotal">0 บาท</div>
     </div>
   </section>
+  </div>
+
+  <div class="stock-subview" id="sv-startup">
+  <!-- ===== STARTUP / FIXED CAPITAL COST ===== -->
+  <section class="card" id="startupCostSection">
+    <div class="card-head"><h2><span class="emoji">🏗️</span>ต้นทุนเริ่มต้น (เงินลงทุนเริ่มแรก)</h2></div>
+    <p class="hint">หมวด: ต้นทุนเริ่มต้น — ค่าใช้จ่ายครั้งเดียวตอนเริ่มกิจการ เช่น อุปกรณ์เครื่องครัว ค่าโต๊ะ ค่าภาชนะ หม้อ เตาไฟฟ้า (ไม่ใช่ต้นทุนต่อถ้วย) ใช้คำนวณจุดคุ้มทุนด้านล่าง</p>
+    <button type="button" class="btn btn-primary btn-small" id="addStartupCostBtn" style="align-self:flex-start;margin-bottom:14px;">➕ เพิ่มต้นทุนเริ่มต้น</button>
+    <div class="table-scroll">
+      <table id="startupCostTable" class="compact-table">
+        <thead><tr><th>ต้นทุน</th><th>ราคา (บาท)</th><th></th></tr></thead>
+        <tbody id="startupCostRows"></tbody>
+      </table>
+    </div>
+    <datalist id="startupLabelList">
+      <option value="อุปกรณ์เครื่องครัว"><option value="ค่าโต๊ะ"><option value="ค่าภาชนะ"><option value="หม้อ"><option value="เตาไฟฟ้า">
+    </datalist>
+    <div class="total-box" style="margin-top:16px;">
+      <div class="label">รวมต้นทุนเริ่มต้นทั้งหมด</div>
+      <div class="amount" id="startupCostTotal">0 บาท</div>
+    </div>
+  </section>
 
   <!-- ===== BREAK EVEN POINT (RECIPE-BASED) ===== -->
   <section class="card" id="breakEvenSection">
@@ -1552,41 +1586,6 @@ p.hint.collapsible-hint.show{display:block;}
         <thead><tr><th>เดือน</th><th>ยอดขาย</th><th>เงินจ่ายซื้อวัตถุดิบ</th><th>ค่าใช้จ่ายดำเนินงาน</th><th>กระแสเงินสดสุทธิ</th><th>สะสม (เทียบต้นทุนเริ่มต้น)</th><th>สถานะ</th></tr></thead>
         <tbody id="cashFlowBody"></tbody>
       </table>
-    </div>
-  </section>
-  </div>
-
-  <div class="stock-subview" id="sv-pnl">
-  <!-- ===== PROFIT & LOSS STATEMENT ===== -->
-  <section class="card" id="pnlSection">
-    <div class="card-head no-print"><h2><span class="emoji">📑</span>งบกำไรขาดทุน (Profit &amp; Loss Statement)</h2></div>
-    <p class="hint no-print">สรุปรายได้ ต้นทุน และค่าใช้จ่าย ในรูปแบบงบกำไรขาดทุนมาตรฐาน สำหรับดูภาพรวมหรือส่งให้นักบัญชี — ต้นทุนขายคำนวณแบบสูตรต้นทุน (accrual) ตามหลักบัญชี จึงต้องตั้ง "สูตร &amp; ต้นทุนสินค้า" ให้ครบทุกสินค้าเพื่อความแม่นยำ ส่วนต้นทุนเริ่มต้น (สินทรัพย์ถาวร) ไม่รวมในงบนี้เพราะไม่ใช่ค่าใช้จ่ายประจำงวด (ดูได้ที่หัวข้อจุดคุ้มทุน) — "กำไรขั้นต้น" คิดจากยอดขายสินค้าล้วนๆ เท่านั้น ค่าจัดส่งแยกไปเป็นหมวดของตัวเองด้านล่าง (เทียบรายรับค่าส่งกับค่าใช้จ่ายที่บันทึกในหมวด "ค่าจัดส่ง") เพื่อไม่ให้ปนกับกำไรจากตัวสินค้า</p>
-
-    <div class="report-controls no-print">
-      <button type="button" class="btn btn-outline btn-small" id="pnl_prev">◀ เดือนก่อน</button>
-      <input type="month" id="pnl_pick">
-      <button type="button" class="btn btn-outline btn-small" id="pnl_next">เดือนถัดไป ▶</button>
-      <button type="button" class="btn btn-primary btn-small" id="pnl_printBtn">🖨️ พิมพ์ / บันทึกเป็น PDF</button>
-    </div>
-
-    <div id="pnlDoc" class="pnl-doc">
-      <div class="pnl-letterhead">
-        <div class="pnl-letterhead-logo"><img id="pnlLogoImg" alt="โลโก้"><span id="pnlLogoFallback">🍐</span></div>
-        <div class="pnl-letterhead-text">
-          <div class="pnl-biz-name">มีมี่ ลี่ถัง</div>
-          <div class="pnl-doc-title">งบกำไรขาดทุน (Profit &amp; Loss Statement)</div>
-          <div class="pnl-period" id="pnlPeriodLabel">สำหรับเดือน -</div>
-        </div>
-      </div>
-
-      <div class="table-scroll">
-        <table class="pnl-table" id="pnlTable"></table>
-      </div>
-
-      <div class="pnl-footer">
-        <div id="pnlCaveat" class="pnl-caveat"></div>
-        <div class="pnl-generated">ออกรายงานเมื่อ <span id="pnlGeneratedAt"></span> — ระบบบันทึกคำสั่งซื้อ มีมี่ ลี่ถัง</div>
-      </div>
     </div>
   </section>
   </div>
@@ -3622,7 +3621,6 @@ function renderReport(){
     .sort((a,b)=>b.value-a.value);
 
   renderChart(data);
-  renderPaymentBreakdown(list);
 }
 
 function renderChart(data){
@@ -4207,23 +4205,62 @@ function reportStockSeries(buckets){
 const reportStockModule = initReportModule({page:'report-stock', prefix:'rk', computeSeries:reportStockSeries});
 document.getElementById('rk-material-pick').addEventListener('change', ()=>reportStockModule.render());
 
-/* ---- Report 5: payment method breakdown per bucket ---- */
-function reportPaymentSeries(buckets){
-  const seriesMap = {};
-  paymentMethods.forEach((m,i)=>{ seriesMap[m] = {name:m, color:PALETTE[(i+2)%PALETTE.length], values:buckets.map(()=>0)}; });
-  orders.forEach(o=>{
-    if(o.shippingStatus==='ยกเลิก' || o.isReserve) return;
-    const amt = computeAmounts(o);
-    if(amt.amountReceived<=0) return;
-    const idx = buckets.findIndex(b=>o.deliveryDate>=b.from && o.deliveryDate<=b.to);
-    if(idx===-1) return;
-    const key = o.paymentMethod || paymentMethods[0] || 'ไม่ระบุ';
-    if(!seriesMap[key]) seriesMap[key] = {name:key, color:PALETTE[Object.keys(seriesMap).length%PALETTE.length], values:buckets.map(()=>0)};
-    seriesMap[key].values[idx] += amt.amountReceived;
+/* ---- Report 5: payment method breakdown (moved here from the Overview page, which used to show
+   an identical chart+table — this page now owns it, with its own daily/weekly/monthly picker
+   mirroring Overview's exact mechanism (see activeTab/getRangeForTab above) so the "selection"
+   behavior is unchanged, just relocated. ---- */
+let paymentActiveTab = 'daily';
+document.querySelectorAll('#page-report-payment .tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#page-report-payment .tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); paymentActiveTab = btn.dataset.tab;
+    ['daily','weekly','monthly'].forEach(t=>document.getElementById('pay-ctrl-'+t).style.display = t===paymentActiveTab?'flex':'none');
+    renderPaymentReportPage();
   });
-  return {series:Object.values(seriesMap)};
+});
+document.getElementById('pay_d_from').value = todayISO();
+document.getElementById('pay_d_to').value = todayISO();
+document.getElementById('pay_d_from').addEventListener('change', renderPaymentReportPage);
+document.getElementById('pay_d_to').addEventListener('change', renderPaymentReportPage);
+document.querySelectorAll('[data-payquick]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const t = todayISO();
+    if(btn.dataset.payquick==='today'){ document.getElementById('pay_d_from').value=t; document.getElementById('pay_d_to').value=t; }
+    if(btn.dataset.payquick==='7days'){ document.getElementById('pay_d_from').value=addDaysISO(t,-6); document.getElementById('pay_d_to').value=t; }
+    if(btn.dataset.payquick==='thismonth'){ const d=new Date(); document.getElementById('pay_d_from').value=toISODate(new Date(d.getFullYear(),d.getMonth(),1)); document.getElementById('pay_d_to').value=t; }
+    renderPaymentReportPage();
+  });
+});
+document.getElementById('pay_w_pick').value = todayISO();
+document.getElementById('pay_w_pick').addEventListener('change', renderPaymentReportPage);
+document.getElementById('pay_w_prev').addEventListener('click', ()=>{ document.getElementById('pay_w_pick').value=addDaysISO(document.getElementById('pay_w_pick').value,-7); renderPaymentReportPage(); });
+document.getElementById('pay_w_next').addEventListener('click', ()=>{ document.getElementById('pay_w_pick').value=addDaysISO(document.getElementById('pay_w_pick').value,7); renderPaymentReportPage(); });
+document.getElementById('pay_m_pick').value = todayISO().slice(0,7);
+document.getElementById('pay_m_pick').addEventListener('change', renderPaymentReportPage);
+document.getElementById('pay_m_prev').addEventListener('click', ()=>{ let [y,m]=document.getElementById('pay_m_pick').value.split('-').map(Number); m--; if(m<1){m=12;y--;} document.getElementById('pay_m_pick').value=`${y}-${String(m).padStart(2,'0')}`; renderPaymentReportPage(); });
+document.getElementById('pay_m_next').addEventListener('click', ()=>{ let [y,m]=document.getElementById('pay_m_pick').value.split('-').map(Number); m++; if(m>12){m=1;y++;} document.getElementById('pay_m_pick').value=`${y}-${String(m).padStart(2,'0')}`; renderPaymentReportPage(); });
+function getRangeForTabPayment(){
+  if(paymentActiveTab==='daily'){
+    return {from:document.getElementById('pay_d_from').value||todayISO(), to:document.getElementById('pay_d_to').value||todayISO()};
+  }
+  if(paymentActiveTab==='weekly'){
+    const pick = document.getElementById('pay_w_pick').value || todayISO();
+    const s = startOfWeek(pick+'T00:00:00'); const e = new Date(s); e.setDate(s.getDate()+6);
+    const from = toISODate(s), to = toISODate(e);
+    document.getElementById('pay_w_label').textContent = `สัปดาห์: ${fmtDate(from)} – ${fmtDate(to)}`;
+    return {from, to};
+  }
+  const [y,m] = (document.getElementById('pay_m_pick').value||todayISO().slice(0,7)).split('-').map(Number);
+  const from = `${y}-${String(m).padStart(2,'0')}-01`;
+  const lastDay = new Date(y, m, 0).getDate();
+  const to = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  return {from, to};
 }
-const reportPaymentModule = initReportModule({page:'report-payment', prefix:'rp', computeSeries:reportPaymentSeries});
+function renderPaymentReportPage(){
+  const {from, to} = getRangeForTabPayment();
+  const list = orders.filter(o=>!o.isReserve && o.deliveryDate>=from && o.deliveryDate<=to).map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
+  renderPaymentBreakdown(list);
+}
 
 /* Called wherever an order/product/recipe/material change previously only refreshed the old
    flat report — keeps all 5 detailed reports live even when they aren't the visible page,
@@ -4235,7 +4272,8 @@ function renderAllReports(){
   reportCustomerModule.render();
   renderRepeatCustomerTable();
   reportStockModule.render();
-  reportPaymentModule.render();
+  renderPaymentReportPage();
+  renderPnL();
 }
 
 /* ============ Settings pages ============ */
@@ -4391,12 +4429,12 @@ document.getElementById('restoreInput').addEventListener('change', e=>{
 let activeSubview = 'overview';
 
 const ALL_PAGES = ['home','order','prep','delivery','stock','report',
-  'report-overview','report-sales','report-revenue','report-customers','report-stock','report-payment',
+  'report-overview','report-sales','report-revenue','report-customers','report-stock','report-payment','report-pnl',
   'settings','settings-products','settings-channels','settings-payment','settings-materials','settings-units','settings-backup','settings-account'];
 const PAGE_PARENT = {
   order:'home', prep:'home', delivery:'home', stock:'home', report:'home', settings:'home',
   'report-overview':'report', 'report-sales':'report', 'report-revenue':'report',
-  'report-customers':'report', 'report-stock':'report', 'report-payment':'report',
+  'report-customers':'report', 'report-stock':'report', 'report-payment':'report', 'report-pnl':'report',
   'settings-products':'settings', 'settings-channels':'settings', 'settings-payment':'settings',
   'settings-materials':'settings', 'settings-units':'settings', 'settings-backup':'settings', 'settings-account':'settings'
 };
@@ -4417,7 +4455,8 @@ function applyPage(pageName){
   if(pageName==='report-revenue') reportRevenueModule.render(true);
   if(pageName==='report-customers'){ reportCustomerModule.render(true); renderRepeatCustomerTable(); }
   if(pageName==='report-stock') reportStockModule.render(true);
-  if(pageName==='report-payment') reportPaymentModule.render(true);
+  if(pageName==='report-payment') renderPaymentReportPage();
+  if(pageName==='report-pnl') renderPnL();
   if(pageName==='settings' || pageName.indexOf('settings-')===0){ renderSettingsLists(); renderMaterialSettingsList(); renderUnitSettingsList(); }
   if(pageName==='settings-account') updateAccountEmailDisplay();
   window.scrollTo({top:0, behavior:'smooth'});
@@ -4557,7 +4596,6 @@ function renderStockPage(){
   renderInventoryValueStats();
   renderStockInDaily();
   renderOpex();
-  renderPnL();
 }
 ['catAllBtn','catFoodBtn','catSupplyBtn'].forEach(id=>{
   document.getElementById(id).addEventListener('click', ()=>{
