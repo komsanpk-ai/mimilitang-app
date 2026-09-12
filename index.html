@@ -1048,6 +1048,10 @@ p.hint.collapsible-hint.show{display:block;}
     <div class="mini-title">สรุปอันดับลูกค้าประจำ (ซื้อซ้ำตั้งแต่ 2 ครั้งขึ้นไป)</div>
     <p class="hint" style="margin-top:-6px;">เรียงจากจำนวนครั้งที่ซื้อมากสุดไปน้อยสุด นับจากประวัติออเดอร์ทั้งหมด (ไม่จำกัดตามช่วงเวลาที่เลือกด้านบน) ไม่นับออเดอร์ที่ยกเลิกหรือของสำรอง — ลูกค้าหลายสินค้าในครั้งเดียวนับเป็น 1 ครั้ง</p>
     <div class="toolbar">
+      <div class="field"><label>ค้นหาลูกค้าที่ซื้อซ้ำกี่ครั้ง</label>
+        <input type="number" min="2" id="rcTop_countSearch" placeholder="เช่น 4"></div>
+      <button type="button" class="btn btn-primary btn-small" id="rcTop_searchBtn">🔍 ค้นหา</button>
+      <button type="button" class="btn btn-outline btn-small" id="rcTop_clearSearchBtn">ล้างตัวกรอง</button>
       <div class="field"><label>แสดงกี่แถวต่อหน้า</label>
         <select id="rcTop_pageSize">
           <option value="10">10</option><option value="25" selected>25</option>
@@ -1061,6 +1065,7 @@ p.hint.collapsible-hint.show{display:block;}
       </table>
     </div>
     <div class="table-footer">
+      <div class="summary-strip" id="repeatCustomerSummary"></div>
       <div class="pagination" id="repeatCustomerPagination"></div>
     </div>
   </section>
@@ -4108,6 +4113,7 @@ const reportCustomerModule = initReportModule({page:'report-customers', prefix:'
    above — a customer who's bought 2+ times rarely lands twice in the same narrow bucket, so this
    only makes sense as a running total across the whole order history. */
 let repeatCustomerPage = 1;
+let repeatCustomerCountFilter = null; // null = no filter; a number = show only that exact repeat count
 function renderRepeatCustomerTable(){
   const validOrders = orders.filter(o=>o.phone && !o.isReserve && o.shippingStatus!=='ยกเลิก');
   const visits = distinctVisits(validOrders);
@@ -4125,7 +4131,8 @@ function renderRepeatCustomerTable(){
     c.jarSmall += Number(o.jarSmall)||0;
     c.jarLarge += Number(o.jarLarge)||0;
   });
-  const ranked = Object.values(byPhone).filter(c=>c.count>=2).sort((a,b)=>b.count-a.count || a.customerName.localeCompare(b.customerName));
+  let ranked = Object.values(byPhone).filter(c=>c.count>=2).sort((a,b)=>b.count-a.count || a.customerName.localeCompare(b.customerName));
+  if(repeatCustomerCountFilter!==null) ranked = ranked.filter(c=>c.count===repeatCustomerCountFilter);
 
   const pageSizeSel = document.getElementById('rcTop_pageSize').value;
   const pageSize = pageSizeSel==='all' ? Math.max(ranked.length,1) : Number(pageSizeSel);
@@ -4136,7 +4143,7 @@ function renderRepeatCustomerTable(){
 
   const tbody = document.getElementById('repeatCustomerBody');
   if(!ranked.length){
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีลูกค้าที่ซื้อซ้ำ</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">${repeatCustomerCountFilter!==null ? `ไม่พบลูกค้าที่ซื้อซ้ำ ${repeatCustomerCountFilter} ครั้ง` : 'ยังไม่มีลูกค้าที่ซื้อซ้ำ'}</td></tr>`;
   } else {
     tbody.innerHTML = pageItems.map((c,i)=>`<tr>
       <td>${start+i+1} ${repeatBadgeForCount(c.count)}</td>
@@ -4147,6 +4154,9 @@ function renderRepeatCustomerTable(){
     </tr>`).join('');
   }
 
+  document.getElementById('repeatCustomerSummary').innerHTML = repeatCustomerCountFilter!==null
+    ? `พบลูกค้าที่ซื้อซ้ำ <b>${repeatCustomerCountFilter}</b> ครั้ง ทั้งหมด <b>${ranked.length}</b> คน`
+    : '';
   document.getElementById('repeatCustomerPagination').innerHTML = ranked.length ? `
     <button id="rcTopPrevBtn" ${repeatCustomerPage<=1?'disabled':''}>‹</button>
     <span>หน้า ${repeatCustomerPage}/${totalPages}</span>
@@ -4156,6 +4166,21 @@ function renderRepeatCustomerTable(){
   if(nextBtn) nextBtn.onclick = ()=>{ repeatCustomerPage++; renderRepeatCustomerTable(); };
 }
 document.getElementById('rcTop_pageSize').addEventListener('change', ()=>{ repeatCustomerPage=1; renderRepeatCustomerTable(); });
+document.getElementById('rcTop_searchBtn').addEventListener('click', ()=>{
+  const val = document.getElementById('rcTop_countSearch').value;
+  repeatCustomerCountFilter = val==='' ? null : Number(val);
+  repeatCustomerPage = 1;
+  renderRepeatCustomerTable();
+});
+document.getElementById('rcTop_countSearch').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); document.getElementById('rcTop_searchBtn').click(); }
+});
+document.getElementById('rcTop_clearSearchBtn').addEventListener('click', ()=>{
+  document.getElementById('rcTop_countSearch').value = '';
+  repeatCustomerCountFilter = null;
+  repeatCustomerPage = 1;
+  renderRepeatCustomerTable();
+});
 
 /* ---- Report 4: stock purchased per bucket, for one selected material ---- */
 function reportStockSeries(buckets){
