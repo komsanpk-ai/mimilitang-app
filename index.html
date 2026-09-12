@@ -333,7 +333,7 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
 .rank-label{width:92px;font-size:12.5px;color:var(--ink);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rank-track{flex:1;height:22px;background:var(--cream);border-radius:6px;border:1px solid var(--border);overflow:hidden;}
 .rank-fill{height:100%;background:linear-gradient(90deg,var(--maroon-light),var(--maroon));border-radius:5px;}
-.rank-val{width:64px;text-align:right;font-size:12px;font-weight:700;color:var(--maroon-dark);flex-shrink:0;font-variant-numeric:tabular-nums;}
+.rank-val{width:82px;text-align:right;font-size:12px;font-weight:700;color:var(--maroon-dark);flex-shrink:0;font-variant-numeric:tabular-nums;}
 .rank-more{font-size:11.5px;color:var(--muted);text-align:center;margin-top:2px;}
 #rov-total-box{margin-bottom:16px;}
 #rov-rank-chart{margin-bottom:4px;}
@@ -4390,7 +4390,7 @@ function renderRovReport(){
         <div class="rank-num">${i+1}</div>
         <div class="rank-label" title="${esc(r.name)}">${esc(r.name)}</div>
         <div class="rank-track"><div class="rank-fill" style="width:${maxVal>0?Math.max(4,(r.total/maxVal)*100):0}%;"></div></div>
-        <div class="rank-val">${fmt(r.total)}</div>
+        <div class="rank-val">${fmt(r.total)} บ.</div>
       </div>`).join('');
     if(restRows.length){
       const restTotal = restRows.reduce((s,r)=>s+r.total,0);
@@ -4399,7 +4399,7 @@ function renderRovReport(){
   }
   document.getElementById('rov-rank-chart').innerHTML = chartHtml;
   document.getElementById('rov-rank-body').innerHTML = rows.length
-    ? rows.map((r,i)=>`<tr><td>${i+1}</td><td class="wrap">${esc(r.name)}</td><td>${fmt(r.qty)} ${esc(r.unit)}</td><td class="amount-cell">${fmt(r.total)}</td></tr>`).join('')
+    ? rows.map((r,i)=>`<tr><td>${i+1}</td><td class="wrap">${esc(r.name)}</td><td>${fmt(r.qty)} ${esc(r.unit)}</td><td class="amount-cell">${fmt(r.total)} บ.</td></tr>`).join('')
     : `<tr><td colspan="4" class="empty-state">ไม่มีข้อมูลในช่วงที่เลือก</td></tr>`;
 }
 function rovUpdateVisibility(){
