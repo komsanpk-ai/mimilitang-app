@@ -1336,6 +1336,7 @@ p.hint.collapsible-hint.show{display:block;}
         <div class="field"><label>หน่วย</label><input type="text" id="si_unit" disabled></div>
         <div class="field"><label>ราคาต่อหน่วย (บาท)</label><input type="number" min="0" step="any" id="si_price" value="" placeholder="0"></div>
       </div>
+      <div class="field"><label>หรือกรอกราคารวมที่จ่ายทั้งหมด (ถ้าทราบ)</label><input type="number" min="0" step="any" id="si_totalPaid" placeholder="ระบบจะคำนวณ &quot;ราคาต่อหน่วย&quot; ด้านบนให้อัตโนมัติ"></div>
       <div class="field"><label>หมายเหตุ</label><input type="text" id="si_note" placeholder="หมายเหตุ (ถ้ามี)"></div>
       <div class="total-box">
         <div><div class="label">ราคารวมที่จ่าย</div><div class="sub" id="si_stockAfter">คงเหลือหลังรับเข้า: -</div></div>
@@ -1393,6 +1394,7 @@ p.hint.collapsible-hint.show{display:block;}
       </div>
       <div class="row cols-3">
         <div class="field"><label>ราคาต่อหน่วย (ถ้าทราบ)</label><input type="number" min="0" step="any" id="sa_price" placeholder="เว้นว่างได้ถ้าไม่ทราบ"></div>
+        <div class="field"><label>หรือราคารวมของยอดนี้ (ถ้าทราบ)</label><input type="number" min="0" step="any" id="sa_totalPaid" placeholder="ระบบคำนวณราคาต่อหน่วยให้อัตโนมัติ"></div>
         <div class="field"><label>ร้านค้า/แหล่งที่มา (ถ้ามี)</label><input type="text" id="sa_supplier" list="supplierList" placeholder="เว้นว่างได้"></div>
       </div>
       <div class="total-box">
@@ -4749,6 +4751,18 @@ document.getElementById('si_date').value = todayISO();
 ['si_material','si_qty','si_price'].forEach(id=>{
   f(id).addEventListener('input', updateStockInPreview); f(id).addEventListener('change', updateStockInPreview);
 });
+/* Buying in bulk usually comes with a receipt total, not a pre-calculated per-unit price —
+   filling this in backs out "ราคาต่อหน่วย" above automatically instead of making the user do
+   the division themselves. */
+function updateSiPriceFromTotal(){
+  const totalPaid = f('si_totalPaid').value; if(totalPaid==='') return;
+  const qty = Number(f('si_qty').value)||0;
+  f('si_price').value = qty>0 ? Math.round((Number(totalPaid)/qty)*1e6)/1e6 : '';
+  updateStockInPreview();
+}
+['si_totalPaid','si_qty'].forEach(id=>{
+  f(id).addEventListener('input', updateSiPriceFromTotal); f(id).addEventListener('change', updateSiPriceFromTotal);
+});
 
 /* ============ Daily stock-in summary ============ */
 document.getElementById('sid_date').value = todayISO();
@@ -4794,11 +4808,24 @@ f('sa_material').addEventListener('change', ()=>{
   f('sa_newQty').value = mat ? mat.currentStock||0 : '';
   updateAdjustPreview();
 });
+/* "ราคาต้นทุนของยอดนี้" in the hint above means the cost of the amount being ADDED (the delta),
+   not the full new on-hand quantity — so a known receipt total divides by the delta to back out
+   the per-unit price, same convenience as the stock-in form's total-price field. */
+function updateSaPriceFromTotal(){
+  const totalPaid = f('sa_totalPaid').value; if(totalPaid==='') return;
+  const mat = getMaterial(f('sa_material').value);
+  const newQty = Number(f('sa_newQty').value)||0;
+  const delta = mat ? newQty - (mat.currentStock||0) : 0;
+  f('sa_price').value = delta>0 ? Math.round((Number(totalPaid)/delta)*1e6)/1e6 : '';
+}
+['sa_totalPaid','sa_newQty','sa_material'].forEach(id=>{
+  f(id).addEventListener('input', updateSaPriceFromTotal); f(id).addEventListener('change', updateSaPriceFromTotal);
+});
 function stockAdjustFormReset(){
   const mat = getMaterial(f('sa_material').value);
   f('sa_newQty').value = mat ? mat.currentStock||0 : '';
   f('sa_note').value=''; f('sa_date').value = todayISO();
-  f('sa_price').value=''; f('sa_supplier').value=''; updateAdjustPreview();
+  f('sa_price').value=''; f('sa_totalPaid').value=''; f('sa_supplier').value=''; updateAdjustPreview();
 }
 document.getElementById('stockAdjustResetBtn').addEventListener('click', stockAdjustFormReset);
 document.getElementById('stockAdjustForm').addEventListener('submit', e=>{
@@ -4883,7 +4910,7 @@ function recomputeMaterialLatest(materialId){
 }
 
 function stockInFormReset(){
-  f('si_qty').value = ''; f('si_price').value = ''; f('si_note').value=''; f('si_supplier').value='';
+  f('si_qty').value = ''; f('si_price').value = ''; f('si_totalPaid').value = ''; f('si_note').value=''; f('si_supplier').value='';
   f('si_date').value = todayISO(); updateStockInPreview();
 }
 document.getElementById('stockInResetBtn').addEventListener('click', stockInFormReset);
