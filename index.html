@@ -516,6 +516,10 @@ footer.appfoot{text-align:center;color:var(--muted);font-size:11.5px;padding:26p
 .icon-chip svg{display:block;}
 .home-tile-icon .icon-chip{width:46px;height:46px;border-radius:14px;}
 .home-tile-icon .icon-chip svg{width:25px;height:25px;}
+.home-tile-row .icon-chip{width:30px;height:30px;border-radius:9px;}
+.home-tile-row .icon-chip svg{width:17px;height:17px;}
+.card-head h2 .icon-chip{width:27px;height:27px;border-radius:9px;vertical-align:-7px;}
+.card-head h2 .icon-chip svg{width:15px;height:15px;}
 .drawer-link .icon-chip,.drawer-sublink .icon-chip{width:27px;height:27px;border-radius:9px;}
 .drawer-link .icon-chip svg,.drawer-sublink .icon-chip svg{width:16px;height:16px;}
 .icon-line{fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
@@ -727,6 +731,18 @@ p.hint.collapsible-hint.show{display:block;}
   <path class="idetail" d="M3 8h2M9 8h12M3 13h12M19 13h2M3 18h5M12 18h9"/>
   <circle class="ibase" cx="7" cy="8" r="2.1"/><circle class="ibase" cx="17" cy="13" r="2.1"/><circle class="ibase" cx="10" cy="18" r="2.1"/>
 </symbol>
+<symbol id="ic-history" viewBox="0 0 24 24"><circle class="ibase" cx="12" cy="13" r="8"/><path class="idetail" d="M12 9v4l3 2"/></symbol>
+<symbol id="ic-calculator" viewBox="0 0 24 24"><rect class="ibase" x="5" y="3" width="14" height="18" rx="2"/><rect class="idetail" x="7.3" y="5.5" width="9.4" height="3.5" rx="0.5"/><path class="idetail" d="M8 13h1M11.5 13h1M15 13h1M8 16.5h1M11.5 16.5h1M15 16.5h1"/></symbol>
+<symbol id="ic-cash" viewBox="0 0 24 24"><rect class="ibase" x="3" y="6" width="18" height="12" rx="2"/><circle class="idetail" cx="12" cy="12" r="3"/></symbol>
+<symbol id="ic-trending" viewBox="0 0 24 24"><circle class="ibase" cx="12" cy="12" r="8.5"/><path class="idetail" d="M7.5 14.5l3-4 2.5 2L17.5 8M17.5 8h-3.3M17.5 8v3.3"/></symbol>
+<symbol id="ic-cart" viewBox="0 0 24 24"><path class="ibase" d="M6 8h12l-1 12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 8Z"/><path class="idetail" d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+<symbol id="ic-salt" viewBox="0 0 24 24"><path class="ibase" d="M8 9h8l-1 11a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2L8 9Z"/><rect class="ibase" x="8.5" y="4" width="7" height="4" rx="1.5"/><path class="idetail" d="M10.5 5.7h.01M12 5.7h.01M13.5 5.7h.01"/></symbol>
+<symbol id="ic-ruler" viewBox="0 0 24 24"><rect class="ibase" x="3" y="9" width="18" height="6" rx="1.5"/><path class="idetail" d="M7 9v2M11 9v3M15 9v2M19 9v3"/></symbol>
+<symbol id="ic-save" viewBox="0 0 24 24"><path class="ibase" d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><rect class="idetail" x="8" y="4.5" width="6" height="4"/><rect class="idetail" x="7" y="14" width="10" height="6"/></symbol>
+<symbol id="ic-person" viewBox="0 0 24 24"><circle class="ibase" cx="12" cy="8" r="3.5"/><path class="ibase" d="M5 20a7 7 0 0 1 14 0Z"/></symbol>
+<symbol id="ic-people" viewBox="0 0 24 24"><circle class="ibase" cx="9" cy="8" r="3"/><circle class="ibase" cx="16" cy="9" r="2.6"/><path class="ibase" d="M2.5 19c0-4.5 3-7 8-7s8 2.5 8 7Z"/></symbol>
+<symbol id="ic-payment" viewBox="0 0 24 24"><rect class="ibase" x="3" y="6" width="18" height="13" rx="2.5"/><path class="idetail" d="M3 10.5h18"/></symbol>
+<symbol id="ic-tag" viewBox="0 0 24 24"><path class="ibase" d="M12 3 L21 12 L12 21 L3 12 Z"/><circle class="idetail" cx="9" cy="9" r="1.4"/></symbol>
 </defs>
 </svg>
 
@@ -760,10 +776,10 @@ p.hint.collapsible-hint.show{display:block;}
       <button type="button" class="drawer-sublink" data-subview="overview"><span class="icon-chip" data-icon="stock">📦</span> สต๊อกคงเหลือ</button>
       <button type="button" class="drawer-sublink" data-subview="stockin"><span class="icon-chip" data-icon="receipt">🧾</span> รับเข้าสต๊อก</button>
       <button type="button" class="drawer-sublink" data-subview="adjust"><span class="icon-chip" data-icon="adjust">🔧</span> ปรับปรุงยอด</button>
-      <button type="button" class="drawer-sublink" data-subview="history">📜 ประวัติซื้อ &amp; เทียบราคา</button>
-      <button type="button" class="drawer-sublink" data-subview="recipe">🧮 สูตร &amp; ต้นทุนสินค้า</button>
-      <button type="button" class="drawer-sublink" data-subview="opex">💸 บันทึกค่าใช้จ่ายดำเนินงาน</button>
-      <button type="button" class="drawer-sublink" data-subview="startup">📈 ต้นทุนเริ่มต้น &amp; จุดคุ้มทุน</button>
+      <button type="button" class="drawer-sublink" data-subview="history"><span class="icon-chip" data-icon="history">📜</span> ประวัติซื้อ &amp; เทียบราคา</button>
+      <button type="button" class="drawer-sublink" data-subview="recipe"><span class="icon-chip" data-icon="calculator">🧮</span> สูตร &amp; ต้นทุนสินค้า</button>
+      <button type="button" class="drawer-sublink" data-subview="opex"><span class="icon-chip" data-icon="cash">💸</span> บันทึกค่าใช้จ่ายดำเนินงาน</button>
+      <button type="button" class="drawer-sublink" data-subview="startup"><span class="icon-chip" data-icon="trending">📈</span> ต้นทุนเริ่มต้น &amp; จุดคุ้มทุน</button>
       <button type="button" class="drawer-sublink" id="settingsDrawerBtn"><span class="icon-chip" data-icon="settings">⚙️</span> ตั้งค่า</button>
     </div>
     <div class="drawer-divider"></div>
@@ -807,13 +823,13 @@ p.hint.collapsible-hint.show{display:block;}
 
   <!-- ===== FORM ===== -->
   <section class="card" id="formSection">
-    <div class="card-head"><h2><span class="emoji">📝</span>บันทึกข้อมูลลูกค้า</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="order">📝</span>บันทึกข้อมูลลูกค้า</h2></div>
     <button type="button" class="btn btn-primary btn-small" id="openOrderModalBtn">➕ บันทึกข้อมูลลูกค้า</button>
   </section>
 
   <!-- ===== TABLE ===== -->
   <section class="card" id="tableSection">
-    <div class="card-head"><h2><span class="emoji">📋</span>รายการคำสั่งซื้อ</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="order">📋</span>รายการคำสั่งซื้อ</h2></div>
     <div class="toolbar">
       <div class="field grow"><label>ค้นหา (ชื่อ / เบอร์โทร)</label><input type="text" id="searchBox" placeholder="พิมพ์เพื่อค้นหา..."></div>
       <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="filterFrom"></div>
@@ -854,27 +870,27 @@ p.hint.collapsible-hint.show{display:block;}
 <main id="page-report" class="page-view">
   <div class="home-list">
     <button type="button" class="home-tile home-tile-row" data-page="report-revenue">
-      <span class="home-tile-icon">💰</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="cash">💰</span></span>
       <span class="home-tile-label">รายงานรายได้</span>
     </button>
     <button type="button" class="home-tile home-tile-row" data-page="report-customers">
-      <span class="home-tile-icon">👥</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="people">👥</span></span>
       <span class="home-tile-label">รายงานลูกค้าใหม่/ซื้อซ้ำ</span>
     </button>
     <button type="button" class="home-tile home-tile-row" data-page="report-stock">
-      <span class="home-tile-icon">📦</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="stock">📦</span></span>
       <span class="home-tile-label">รายงานสต๊อกที่ซื้อเข้า</span>
     </button>
     <button type="button" class="home-tile home-tile-row" data-page="report-payment">
-      <span class="home-tile-icon">💳</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="payment">💳</span></span>
       <span class="home-tile-label">รายงานประเภทการจ่ายเงิน</span>
     </button>
     <button type="button" class="home-tile home-tile-row" data-page="report-overview">
-      <span class="home-tile-icon">📊</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="report">📊</span></span>
       <span class="home-tile-label">ภาพรวมยอดขาย</span>
     </button>
     <button type="button" class="home-tile home-tile-row" data-page="report-pnl">
-      <span class="home-tile-icon">📑</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="order">📑</span></span>
       <span class="home-tile-label">งบกำไรขาดทุน (P&amp;L)</span>
     </button>
   </div>
@@ -884,7 +900,7 @@ p.hint.collapsible-hint.show{display:block;}
 
   <!-- ===== REPORTS: OVERVIEW ===== -->
   <section class="card" id="reportSection">
-    <div class="card-head"><h2><span class="emoji">📊</span>ภาพรวมยอดขาย</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="report">📊</span>ภาพรวมยอดขาย</h2></div>
     <p class="hint">นับยอดขาย/ต้นทุน/กำไรตาม "วันที่จัดส่ง" ของออเดอร์ (ไม่ใช่วันที่ลูกค้าสั่ง) เพื่อให้ตรงกับหน้าจัดส่งและ P&amp;L เสมอ</p>
     <div class="tabs" id="ov-tabs">
       <button type="button" data-tab="daily" class="active">รายงานประจำวัน</button>
@@ -976,7 +992,7 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-report-revenue" class="page-view">
   <section class="card">
-    <div class="card-head"><h2><span class="emoji">💰</span>รายงานรายได้</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="cash">💰</span>รายงานรายได้</h2></div>
     <p class="hint">เปรียบเทียบรายได้ / ต้นทุนตามสูตร / กำไร ไล่ระดับจากรายเดือน → รายสัปดาห์ → รายวัน ไม่นับออเดอร์ที่ยกเลิก — "รายได้" ที่นี่คือยอดขายสินค้าล้วนๆ (หักส่วนลดแล้ว) ไม่รวมค่าจัดส่งที่เก็บจากลูกค้า ดูค่าจัดส่งแยกได้ที่หน้าภาพรวมยอดขายหรือ P&L</p>
     <div class="field" style="max-width:320px;margin-bottom:12px;">
       <label>แสดงกราฟตาม</label>
@@ -1022,7 +1038,7 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-report-customers" class="page-view">
   <section class="card">
-    <div class="card-head"><h2><span class="emoji">👥</span>รายงานอัตราส่วนลูกค้าใหม่/ซื้อซ้ำ</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="people">👥</span>รายงานอัตราส่วนลูกค้าใหม่/ซื้อซ้ำ</h2></div>
     <p class="hint">นับออเดอร์แยกเป็นลูกค้าใหม่ (สั่งครั้งแรกในประวัติ) กับลูกค้าประจำที่ซื้อซ้ำ ไล่ระดับจากรายเดือน → รายสัปดาห์ → รายวัน ไม่นับออเดอร์ที่ยกเลิก</p>
     <div class="tabs">
       <button type="button" data-tab="month" class="active">รายเดือน</button>
@@ -1085,7 +1101,7 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-report-stock" class="page-view">
   <section class="card">
-    <div class="card-head"><h2><span class="emoji">📦</span>รายงานสต๊อกที่ซื้อเข้า</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="stock">📦</span>รายงานสต๊อกที่ซื้อเข้า</h2></div>
 
     <div class="mini-title" style="margin-top:0;">ภาพรวมทุกวัตถุดิบ</div>
     <p class="hint">ยอดซื้อวัตถุดิบรวมทุกตัว จัดอันดับตามยอดเงินที่จ่ายในช่วงที่เลือก — ใช้ดูภาพรวมว่าวันนี้/สัปดาห์นี้/เดือนนี้ซื้ออะไรไปบ้าง รวมเท่าไร</p>
@@ -1163,7 +1179,7 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-report-payment" class="page-view">
   <section class="card">
-    <div class="card-head"><h2><span class="emoji">💳</span>รายงานประเภทการจ่ายเงิน</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="payment">💳</span>รายงานประเภทการจ่ายเงิน</h2></div>
     <p class="hint">นับเฉพาะยอดที่ได้รับเงินแล้วหรือมัดจำแล้วในช่วงเวลาที่เลือก แยกตามประเภทการจ่ายเงินที่บันทึกไว้ในแต่ละออเดอร์ ไม่นับออเดอร์ที่ยกเลิก — เงินโอนแนบรูปสลิปเก็บไว้เป็นหลักฐานได้</p>
     <div class="tabs">
       <button type="button" data-tab="daily" class="active">รายงานประจำวัน</button>
@@ -1264,7 +1280,7 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-prep" class="page-view">
   <section class="card" id="prepSection">
-    <div class="card-head"><h2><span class="emoji">✅</span>เช็คลิสต์เตรียมของ</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="checklist">✅</span>เช็คลิสต์เตรียมของ</h2></div>
     <p class="hint">เช็คลิสต์สิ่งที่ต้องทำและวัตถุดิบที่ต้องเตรียมล่วงหน้า คำนวณจากออเดอร์ที่มี "วันที่จัดส่ง" ตรงกับวันที่เลือกด้านล่าง โดยดึงสูตรจากหน้า "สูตร &amp; ต้นทุนสินค้า" มาคูณกับจำนวนที่สั่ง — ติ๊กถูกเพื่อบันทึกว่าเตรียม/ทำแล้ว สถานะติ๊กจะจำแยกตามวันที่ไว้ให้</p>
     <div class="report-controls">
       <div class="field"><label>วันที่ต้องเตรียม (สำหรับส่งวันที่)</label><input type="date" id="prep_date"></div>
@@ -1307,7 +1323,7 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-delivery" class="page-view">
   <section class="card" id="deliverySection">
-    <div class="card-head"><h2><span class="emoji">📋</span>สรุปสินค้าเตรียมส่ง</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="delivery">📋</span>สรุปสินค้าเตรียมส่ง</h2></div>
     <p class="hint">ดูตามวันที่จัดส่งจริง (ไม่ใช่วันที่สั่ง) เพื่อรู้ว่าวันนั้นต้องเตรียมสินค้ากี่ถ้วย ส่งใคร ที่ไหนบ้าง เปิดหน้านี้ระหว่างเดินทางส่งของได้เลย — ลากที่ปุ่ม ⠿ หน้าแต่ละแถวเพื่อจัดลำดับเส้นทางส่งของได้ตามต้องการ ลำดับจะถูกจำไว้แยกตามวันที่</p>
     <div class="report-controls">
       <div class="field"><label>วันที่จัดส่ง</label><input type="date" id="dl_date"></div>
@@ -1347,7 +1363,7 @@ p.hint.collapsible-hint.show{display:block;}
 
   <!-- ===== STOCK OVERVIEW ===== -->
   <section class="card" id="stockOverviewSection">
-    <div class="card-head"><h2><span class="emoji">📦</span>สต๊อกวัตถุดิบคงเหลือ</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="stock">📦</span>สต๊อกวัตถุดิบคงเหลือ</h2></div>
     <p class="hint">"คงเหลือ" คำนวณอัตโนมัติจากประวัติการรับเข้าสต๊อกและออเดอร์ที่ตัดไป — แก้ไขเองไม่ได้ตรงนี้<br>
     "จุดสั่งซื้อ" เป็นคนละค่ากับ "คงเหลือ" คือตัวเลขที่<b>คุณกำหนดเอง</b>ว่าเมื่อคงเหลือน้อยกว่านี้ให้แจ้งเตือน แก้ไขได้โดยตรงในช่องด้านล่าง (เว้นว่าง หรือ 0 = ปิดการแจ้งเตือนของวัตถุดิบนั้น)<br>
     "ราคาล่าสุด/กก." แปลงให้อัตโนมัติเป็นราคาต่อกิโลกรัมเฉพาะวัตถุดิบที่มีหน่วยเป็นกรัม/กิโลกรัม ส่วนวัตถุดิบที่นับเป็นชิ้น/ถุง/ลูก ฯลฯ จะแสดงราคาต่อหน่วยของมันตามเดิม — "ราคารวม" คือมูลค่าคงเหลือของวัตถุดิบแต่ละรายการ (คงเหลือ × ราคาล่าสุดต่อหน่วย) จัดการรายชื่อวัตถุดิบ/หน่วยนับเพิ่มเติมได้ที่ ⚙️ ตั้งค่า</p>
@@ -1373,7 +1389,7 @@ p.hint.collapsible-hint.show{display:block;}
   <div class="stock-subview" id="sv-stockin">
   <!-- ===== STOCK-IN FORM ===== -->
   <section class="card" id="stockInSection">
-    <div class="card-head"><h2><span class="emoji">🧾</span>รับวัตถุดิบเข้าสต๊อก</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="receipt">🧾</span>รับวัตถุดิบเข้าสต๊อก</h2></div>
     <p class="hint">บันทึกทุกครั้งที่ซื้อวัตถุดิบเข้าคลัง ระบบจะบวกเข้าสต๊อกคงเหลือและอัปเดต "ราคาล่าสุด" ที่ใช้คำนวณต้นทุนสูตรให้อัตโนมัติ</p>
     <button type="button" class="btn btn-primary btn-small" id="openStockInModalBtn">➕ รับวัตถุดิบเข้าสต๊อก</button>
   </section>
@@ -1382,7 +1398,7 @@ p.hint.collapsible-hint.show{display:block;}
 
   <!-- ===== DAILY STOCK-IN SUMMARY ===== -->
   <section class="card" id="stockInDailySection">
-    <div class="card-head"><h2><span class="emoji">📅</span>สรุปการรับเข้าสต๊อกรายวัน</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="receipt">📅</span>สรุปการรับเข้าสต๊อกรายวัน</h2></div>
     <p class="hint">ดูรายการที่บันทึกรับเข้าสต๊อกของวันที่เลือก พร้อมยอดรวมเงินที่ใช้ซื้อของวันนั้นด้านล่างตาราง — เลือกวันอื่นดูย้อนหลังได้</p>
     <div class="toolbar">
       <div class="field"><label>วันที่</label><input type="date" id="sid_date"></div>
@@ -1407,7 +1423,7 @@ p.hint.collapsible-hint.show{display:block;}
   <div class="stock-subview" id="sv-adjust">
   <!-- ===== STOCK ADJUSTMENT ===== -->
   <section class="card" id="stockAdjustSection">
-    <div class="card-head"><h2><span class="emoji">🔧</span>ปรับปรุงยอดคงเหลือ</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="adjust">🔧</span>ปรับปรุงยอดคงเหลือ</h2></div>
     <p class="hint">ใช้เมื่อยอดในระบบไม่ตรงกับของจริง เช่น ยอดยกมาก่อนเริ่มใช้ระบบ หรือของทดสอบที่ไม่ได้อ้างอิงสต๊อกจริง — ปรับยอดคงเหลือได้ตรงๆ โดยไม่ต้องผ่าน "รับเข้าสต๊อก" เลือกวันที่ย้อนหลังได้ (ใช้บันทึกประวัติเท่านั้น ยอดคงเหลือจะถูกอัปเดตทันทีที่บันทึก)<br>
     ถ้าทราบราคาต้นทุนของยอดนี้ (เช่น ของเดิมที่มีอยู่ก่อนเริ่มใช้ระบบ) กรอกราคาด้านล่างได้เลย ระบบจะอัปเดต "ราคาล่าสุด" ให้ที่หน้าสต๊อกคงเหลือ โดยไม่นับเป็นการซื้อใหม่ (ไม่บวกเพิ่มเข้าคงเหลืออีกรอบ) — หากไม่ทราบราคา เว้นว่างไว้ได้ แล้วค่อยไปอัปเดตทีหลังผ่านฟอร์มนี้ หรือตอน "รับเข้าสต๊อก" ครั้งถัดไป</p>
     <button type="button" class="btn btn-primary btn-small" id="openAdjustModalBtn">➕ ปรับปรุงยอดคงเหลือ</button>
@@ -1442,7 +1458,7 @@ p.hint.collapsible-hint.show{display:block;}
   <div class="stock-subview" id="sv-history">
   <!-- ===== STOCK-IN HISTORY / PRICE COMPARISON ===== -->
   <section class="card" id="stockHistorySection">
-    <div class="card-head"><h2><span class="emoji">📜</span>ประวัติการซื้อ &amp; เปรียบเทียบราคา</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="history">📜</span>ประวัติการซื้อ &amp; เปรียบเทียบราคา</h2></div>
     <div class="toolbar">
       <div class="field"><label>กรองตามวัตถุดิบ</label><select id="sh_material"><option value="">— ทั้งหมด —</option></select></div>
       <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="sh_from"></div>
@@ -1472,7 +1488,7 @@ p.hint.collapsible-hint.show{display:block;}
   <div class="stock-subview" id="sv-recipe">
   <!-- ===== RECIPE / COST CALCULATOR ===== -->
   <section class="card" id="recipeSection">
-    <div class="card-head"><h2><span class="emoji">🧮</span>สูตร &amp; ต้นทุนสินค้า</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="calculator">🧮</span>สูตร &amp; ต้นทุนสินค้า</h2></div>
     <p class="hint">เลือกสินค้าและขนาดถ้วย เพื่อกำหนดว่าใช้วัตถุดิบอะไรบ้าง อย่างละเท่าไร ระบบจะคำนวณต้นทุนต่อถ้วย และตัดสต๊อกอัตโนมัติทุกครั้งที่มีการบันทึก/แก้ไข/ลบคำสั่งซื้อในหน้าแรก (เฉพาะออเดอร์ที่บันทึกหลังตั้งสูตรแล้ว)</p>
     <div class="recipe-picker">
       <div class="field"><label>สินค้า</label><select id="rc_product"></select></div>
@@ -1547,7 +1563,7 @@ p.hint.collapsible-hint.show{display:block;}
   <div class="stock-subview" id="sv-opex">
   <!-- ===== OPERATING EXPENSES ===== -->
   <section class="card" id="opexSection">
-    <div class="card-head"><h2><span class="emoji">💸</span>ค่าใช้จ่ายดำเนินงาน</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="cash">💸</span>ค่าใช้จ่ายดำเนินงาน</h2></div>
     <p class="hint">หมวด: ค่าใช้จ่ายที่เกิดขึ้นซ้ำๆ ระหว่างดำเนินกิจการ (ไม่ใช่ต้นทุนเริ่มต้นที่จ่ายครั้งเดียว และไม่ใช่ต้นทุนต่อถ้วยในสูตร) เช่น ค่าน้ำมันส่งของ ค่าเช่า ค่าจ้าง ค่าไฟ ค่าน้ำ ค่าอินเทอร์เน็ต — <b>ค่าใช้จ่ายในการส่งของ (ค่าน้ำมัน/ค่าคอมมิชชั่นไรเดอร์) ให้ตั้งหมวดเป็น "ค่าจัดส่ง" เป๊ะๆ</b> เพื่อให้หน้า P&amp;L ดึงไปเทียบกับ "ค่าจัดส่งที่เก็บจากลูกค้า" ให้อัตโนมัติว่าค่าส่งที่เก็บมาคุ้มกับที่จ่ายจริงหรือไม่ (ยังรวมอยู่ในจุดคุ้มทุนแบบเงินสดด้านล่างเหมือนเดิมไม่ว่าจะตั้งหมวดว่าอะไร)</p>
     <datalist id="opexCategoryList">
       <option value="ค่าจัดส่ง"><option value="ค่าน้ำมัน"><option value="ค่าเช่า"><option value="ค่าจ้าง/เงินเดือน"><option value="ค่าไฟ"><option value="ค่าน้ำ"><option value="ค่าอินเทอร์เน็ต/โทรศัพท์">
@@ -1592,7 +1608,7 @@ p.hint.collapsible-hint.show{display:block;}
   <div class="stock-subview" id="sv-startup">
   <!-- ===== STARTUP / FIXED CAPITAL COST ===== -->
   <section class="card" id="startupCostSection">
-    <div class="card-head"><h2><span class="emoji">🏗️</span>ต้นทุนเริ่มต้น (เงินลงทุนเริ่มแรก)</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="save">🏗️</span>ต้นทุนเริ่มต้น (เงินลงทุนเริ่มแรก)</h2></div>
     <p class="hint">หมวด: ต้นทุนเริ่มต้น — ค่าใช้จ่ายครั้งเดียวตอนเริ่มกิจการ เช่น อุปกรณ์เครื่องครัว ค่าโต๊ะ ค่าภาชนะ หม้อ เตาไฟฟ้า (ไม่ใช่ต้นทุนต่อถ้วย) ใช้คำนวณจุดคุ้มทุนด้านล่าง</p>
     <button type="button" class="btn btn-primary btn-small" id="addStartupCostBtn" style="align-self:flex-start;margin-bottom:14px;">➕ เพิ่มต้นทุนเริ่มต้น</button>
     <div class="table-scroll">
@@ -1612,7 +1628,7 @@ p.hint.collapsible-hint.show{display:block;}
 
   <!-- ===== BREAK EVEN POINT (RECIPE-BASED) ===== -->
   <section class="card" id="breakEvenSection">
-    <div class="card-head"><h2><span class="emoji">📈</span>จุดคุ้มทุน — ตามสูตรต้นทุน (Break Even Point)</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="trending">📈</span>จุดคุ้มทุน — ตามสูตรต้นทุน (Break Even Point)</h2></div>
     <p class="hint">คำนวณจากกำไรขั้นต้นสะสมของทุกออเดอร์ (ยอดขาย − ต้นทุนผันแปรตามสูตรที่ตั้งไว้) เทียบกับต้นทุนเริ่มต้นรวมด้านบน — "ยอดขาย" ที่นี่คือสินค้าล้วนๆ ไม่รวมค่าจัดส่งที่เก็บจากลูกค้า (ไม่มีต้นทุนค่าส่งจริงมาหักเทียบในนี้) — ความแม่นยำขึ้นอยู่กับว่าตั้ง "สูตร & ต้นทุนสินค้า" ครบทุกสินค้าหรือยัง ออเดอร์ของสินค้า/ขนาดที่ยังไม่ได้ตั้งสูตรต้นทุนจะไม่ถูกนับต้นทุนผันแปร (อาจทำให้กำไรที่แสดงสูงกว่าความจริง) — ถ้าต้องการมุมมองที่ไม่ต้องพึ่งสูตร ดูหัวข้อ "จุดคุ้มทุน — ตามเงินสดจริง" ด้านล่าง (มุมมองนั้นรวมค่าจัดส่งจริงด้วย เพราะเป็นเงินสดที่เข้า-ออกจริง)</p>
     <div class="stat-grid" id="breakEvenStats"></div>
     <div class="chart-box" id="breakEvenChartBox" style="max-width:100%;"></div>
@@ -1626,7 +1642,7 @@ p.hint.collapsible-hint.show{display:block;}
 
   <!-- ===== BREAK EVEN POINT (CASH FLOW) ===== -->
   <section class="card" id="cashFlowSection">
-    <div class="card-head"><h2><span class="emoji">💵</span>จุดคุ้มทุน — ตามเงินสดจริง (Cash Flow)</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="cash">💵</span>จุดคุ้มทุน — ตามเงินสดจริง (Cash Flow)</h2></div>
     <p class="hint">คำนวณจาก<b>เงินที่จ่ายซื้อวัตถุดิบจริง</b> (จากประวัติ "รับเข้าสต๊อก") บวก<b>ค่าใช้จ่ายดำเนินงาน</b> (เช่น ค่าน้ำมัน ค่าเช่า ด้านบน) รวมกับต้นทุนเริ่มต้น เทียบกับ<b>ยอดขายสะสมจริง</b> (รวมค่าจัดส่งที่เก็บจากลูกค้าด้วย) — ไม่ต้องพึ่งการตั้งสูตรต้นทุนให้ครบ จึงแม่นยำกว่าเมื่อยังตั้งสูตรไม่ครบทุกสินค้า แต่จะไม่แยกว่าวัตถุดิบที่ซื้อมาถูกใช้ไปแล้วหรือยังค้างอยู่ในสต๊อก (มูลค่าสต๊อกคงเหลือดูได้ที่หัวข้อ "สต๊อกคงเหลือ")</p>
     <div class="stat-grid" id="cashFlowStats"></div>
     <div class="chart-box" id="cashFlowChartBox" style="max-width:100%;"></div>
@@ -1645,35 +1661,35 @@ p.hint.collapsible-hint.show{display:block;}
 <main id="page-settings" class="page-view">
   <div class="home-list">
     <button type="button" class="home-tile home-tile-row" data-page="settings-products">
-      <span class="home-tile-icon">🍐</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="tag">🍐</span></span>
       <span class="home-tile-label">สินค้า &amp; ราคา</span>
     </button>
     <button type="button" class="home-tile home-tile-row" data-page="settings-channels">
-      <span class="home-tile-icon">🛒</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="cart">🛒</span></span>
       <span class="home-tile-label">ช่องทางการขาย</span>
     </button>
     <button type="button" class="home-tile home-tile-row" data-page="settings-payment">
-      <span class="home-tile-icon">💵</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="payment">💵</span></span>
       <span class="home-tile-label">ประเภทการจ่ายเงิน</span>
     </button>
     <button type="button" class="home-tile home-tile-row" data-page="settings-materials">
-      <span class="home-tile-icon">🧂</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="salt">🧂</span></span>
       <span class="home-tile-label">วัตถุดิบ</span>
     </button>
     <button type="button" class="home-tile home-tile-row" data-page="settings-units">
-      <span class="home-tile-icon">📏</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="ruler">📏</span></span>
       <span class="home-tile-label">หน่วยนับ</span>
     </button>
     <button type="button" class="home-tile home-tile-row" data-page="settings-backup">
-      <span class="home-tile-icon">💾</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="save">💾</span></span>
       <span class="home-tile-label">สำรอง/กู้ข้อมูล</span>
     </button>
     <button type="button" class="home-tile home-tile-row" data-page="settings-account">
-      <span class="home-tile-icon">👤</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="person">👤</span></span>
       <span class="home-tile-label">บัญชีผู้ใช้</span>
     </button>
     <button type="button" class="home-tile home-tile-row" data-page="settings-theme">
-      <span class="home-tile-icon">🎨</span>
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="settings">🎨</span></span>
       <span class="home-tile-label">ธีม &amp; ไอคอน</span>
     </button>
   </div>
@@ -1681,7 +1697,7 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-settings-theme" class="page-view">
   <section class="card">
-    <div class="card-head"><h2><span class="emoji">🎨</span>ธีม &amp; ไอคอน</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="settings">🎨</span>ธีม &amp; ไอคอน</h2></div>
     <div class="mini-title">ธีมไอคอน</div>
     <p class="hint">เลือกสไตล์ไอคอนของเมนูหลัก เมนูลิ้นชัก และปุ่มตั้งค่า</p>
     <div class="icon-theme-picker" id="iconThemePicker">
@@ -1722,7 +1738,7 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-settings-channels" class="page-view">
   <section class="card">
-    <div class="card-head"><h2><span class="emoji">🛒</span>ช่องทางการขาย</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="cart">🛒</span>ช่องทางการขาย</h2></div>
     <div class="settings-list" id="channelList"></div>
     <button type="button" class="btn btn-outline btn-small" id="addChannelBtn">+ เพิ่มช่องทาง</button>
   </section>
@@ -1730,7 +1746,7 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-settings-payment" class="page-view">
   <section class="card">
-    <div class="card-head"><h2><span class="emoji">💵</span>ประเภทการจ่ายเงิน</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="payment">💵</span>ประเภทการจ่ายเงิน</h2></div>
     <div class="settings-list" id="paymentMethodList"></div>
     <button type="button" class="btn btn-outline btn-small" id="addPaymentMethodBtn">+ เพิ่มประเภทการจ่ายเงิน</button>
   </section>
@@ -1738,7 +1754,7 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-settings-materials" class="page-view">
   <section class="card">
-    <div class="card-head"><h2><span class="emoji">🧂</span>วัตถุดิบ</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="salt">🧂</span>วัตถุดิบ</h2></div>
     <p class="hint">ชื่อวัตถุดิบ, หน่วยนับ และจุดสั่งซื้อ (ใช้แจ้งเตือนเมื่อของใกล้หมด)<br>
     "หมวด" แยกระหว่าง <b>วัตถุดิบอาหาร</b> (ใช้เลือกในช่อง "วัตถุดิบที่ใช้" ของสูตร) กับ <b>อุปกรณ์/บรรจุภัณฑ์</b> เช่น ถ้วย ฝา สติ๊กเกอร์ (ใช้เลือกในช่อง "ต้นทุนผันแปรอื่นๆ" ของสูตรแทน) จะได้ไม่ปนกัน<br>
     "หน่วยย่อย" ใช้เมื่อซื้อเป็นหน่วยใหญ่แต่ใช้ในสูตรเป็นหน่วยเล็ก เช่น ซื้อสาลี่เป็น "ลูก" แต่หั่นได้ 8 "ชิ้น" ต่อลูก หรือซื้อสติ๊กเกอร์เป็น "ม้วน" แต่ใช้ทีละ "ดวง" — ใส่หน่วยย่อยแล้วในหน้าสูตรจะเลือกกรอกเป็นหน่วยย่อยได้ ระบบคำนวณต้นทุนและตัดสต๊อกให้ถูกต้องอัตโนมัติ (เว้นว่างได้ถ้าไม่มีหน่วยย่อย) — ช่องนี้ใช้ไม่ได้กับวัตถุดิบที่ซื้อเป็นกรัม/กิโลกรัม (ดูช่องถัดไปแทน)<br>
@@ -1759,7 +1775,7 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-settings-units" class="page-view">
   <section class="card">
-    <div class="card-head"><h2><span class="emoji">📏</span>หน่วยนับ</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="ruler">📏</span>หน่วยนับ</h2></div>
     <p class="hint">หน่วยนับสำหรับวัตถุดิบ (เช่น ถุง กล่อง แพ็ค ชิ้น ลูก กรัม กิโลกรัม) — "กรัม" และ "กิโลกรัม" จะแปลงหน่วยให้อัตโนมัติในสูตรต้นทุน</p>
     <div class="settings-list" id="unitList"></div>
     <button type="button" class="btn btn-outline btn-small" id="addUnitBtn">+ เพิ่มหน่วยนับ</button>
@@ -1768,7 +1784,7 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-settings-backup" class="page-view">
   <section class="card">
-    <div class="card-head"><h2><span class="emoji">💾</span>สำรอง/กู้ข้อมูล</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="save">💾</span>สำรอง/กู้ข้อมูล</h2></div>
     <p class="hint">ข้อมูลทั้งหมดเก็บไว้ในเบราว์เซอร์นี้เท่านั้น หากล้างข้อมูลเบราว์เซอร์หรือเปลี่ยนเครื่อง ข้อมูลจะหาย — ควรสำรองไฟล์ JSON เก็บไว้เป็นระยะ</p>
     <div class="backup-row">
       <button type="button" class="btn btn-outline btn-small" id="downloadBackupBtn">⬇️ ดาวน์โหลดไฟล์สำรองข้อมูล</button>
@@ -1780,7 +1796,7 @@ p.hint.collapsible-hint.show{display:block;}
 
 <main id="page-settings-account" class="page-view">
   <section class="card">
-    <div class="card-head"><h2><span class="emoji">👤</span>บัญชีผู้ใช้</h2></div>
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="person">👤</span>บัญชีผู้ใช้</h2></div>
     <p class="hint">เปลี่ยนชื่อผู้ใช้/รหัสผ่านที่ใช้เข้าสู่ระบบ — ต้องกรอกรหัสผ่านปัจจุบันเพื่อยืนยันตัวตนก่อนทุกครั้ง (ข้อกำหนดด้านความปลอดภัยของระบบล็อกอิน) ไม่ต้องใช้อีเมลจริง ตั้งเป็นชื่อสั้นๆ ได้เลย ระบบจะแปลงเก็บเป็นอีเมลภายในให้เอง — หลังเปลี่ยนแล้ว ให้ใช้ชื่อผู้ใช้ใหม่เข้าสู่ระบบในครั้งถัดไป</p>
     <p style="margin:0 0 18px;">ชื่อผู้ใช้ปัจจุบัน: <b id="acctCurrentEmail">-</b></p>
 
@@ -2385,11 +2401,14 @@ function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 const ICON_PALETTE = {
   gold:['#c9954f','#e8b96e'], green:['#1e7d32','#4caf6a'], orange:['#d97706','#f5a742'],
   teal:['#0f766e','#2dd4bf'], maroon:['#7a1f1f','#a83232'], slate:['#475569','#94a3b8'],
-  brandgold:['#a97a2e','#c9954f']
+  brandgold:['#a97a2e','#c9954f'], blue:['#1565c0','#5b9bd9'], purple:['#7c3aed','#a78bfa'],
+  brown:['#78350f','#b45309']
 };
 const ICON_COLOR_KEY = {
   home:'maroon', order:'gold', checklist:'green', delivery:'orange', stock:'teal',
-  report:'brandgold', settings:'slate', receipt:'gold', adjust:'teal'
+  report:'brandgold', settings:'slate', receipt:'gold', adjust:'teal',
+  history:'gold', calculator:'maroon', cash:'green', trending:'blue', cart:'orange',
+  salt:'brown', ruler:'slate', save:'slate', person:'blue', people:'purple', payment:'green', tag:'gold'
 };
 let iconTheme = load(LS.iconTheme, 'b');
 function iconChipMarkup(key, theme){
@@ -4063,17 +4082,25 @@ function svgBar(data, targetWidth){
     const y = h-padB-(t/niceMax)*(h-padT-padB);
     grid += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="#f0e6d8" stroke-width="1"/>`;
   });
-  let bars='';
+  let bars='', barDefs='';
   data.forEach((d,i)=>{
     const x = padL + i*gap + (gap-barW)/2;
     const barH = (h-padT-padB) * (d.value/niceMax);
     const y = h-padB-barH;
-    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="6" fill="${d.color}"><title>${esc(d.label)}: ${fmt(d.value)}</title></rect>`;
+    let fillAttr = `fill="${d.color}"`;
+    if(iconTheme==='a'){
+      fillAttr = `fill="none" stroke="${d.color}" stroke-width="2"`;
+    } else if(iconTheme!=='c'){
+      const gid = `barg-${i}`;
+      barDefs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${d.color}"/><stop offset="1" stop-color="${d.color}" stop-opacity=".55"/></linearGradient>`;
+      fillAttr = `fill="url(#${gid})"`;
+    }
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="6" ${fillAttr}><title>${esc(d.label)}: ${fmt(d.value)}</title></rect>`;
     bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="12" text-anchor="middle" fill="#5c4530">${fmt(d.value)}</text>`;
     const short = d.label.length>10 ? d.label.slice(0,9)+'…' : d.label;
     bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+24}" font-size="13" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
   });
-  const barsSvg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar">${grid}<line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
+  const barsSvg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar">${barDefs?`<defs>${barDefs}</defs>`:''}${grid}<line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
   return {axis: svgYAxis(niceMax, ticks), bars: barsSvg};
 }
 function svgPie(data,total){
@@ -4152,7 +4179,7 @@ function svgGroupedBar(categories, series){
     const y = h-padB-(t/niceMax)*(h-padT-padB);
     grid += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="#f0e6d8" stroke-width="1"/>`;
   });
-  let bars='';
+  let bars='', barDefs='';
   categories.forEach((cat,ci)=>{
     const groupX = padL + ci*groupGap + (groupGap-groupW)/2;
     series.forEach((s,si)=>{
@@ -4161,7 +4188,17 @@ function svgGroupedBar(categories, series){
       const x = groupX + si*barW;
       const y = h-padB-barH;
       const bw = barW*0.82;
-      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${barH.toFixed(1)}" rx="6" fill="${s.color}"><title>${esc(s.name)} · ${esc(cat.label)}: ${fmt(val)}</title></rect>`;
+      // Bars pick up the current icon theme's treatment (outline / gradient / flat) while
+      // keeping each series' own base color, so different metrics stay distinguishable.
+      let fillAttr = `fill="${s.color}"`;
+      if(iconTheme==='a'){
+        fillAttr = `fill="none" stroke="${s.color}" stroke-width="2"`;
+      } else if(iconTheme!=='c'){
+        const gid = `barg-${si}-${ci}`;
+        barDefs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.color}"/><stop offset="1" stop-color="${s.color}" stop-opacity=".55"/></linearGradient>`;
+        fillAttr = `fill="url(#${gid})"`;
+      }
+      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${barH.toFixed(1)}" rx="6" ${fillAttr}><title>${esc(s.name)} · ${esc(cat.label)}: ${fmt(val)}</title></rect>`;
       if(val>0 && barH>20){
         // Adjacent series' bars sit close together within a group, so a label placed directly
         // above each one can crowd into its neighbor's — stagger each series' label a bit higher
@@ -4177,7 +4214,7 @@ function svgGroupedBar(categories, series){
     const short = cat.label.length>9 ? cat.label.slice(0,8)+'…' : cat.label;
     bars += `<text x="${(groupX+groupW/2).toFixed(1)}" y="${h-padB+24}" font-size="13" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
   });
-  const barsSvg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar">${grid}<line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
+  const barsSvg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar">${barDefs?`<defs>${barDefs}</defs>`:''}${grid}<line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
   return {axis: svgYAxis(niceMax, ticks), bars: barsSvg};
 }
 
