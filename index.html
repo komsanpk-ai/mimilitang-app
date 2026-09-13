@@ -770,6 +770,7 @@ p.hint.collapsible-hint.show{display:block;}
       <table id="ordersTable">
         <thead><tr id="tableHeadRow"></tr></thead>
         <tbody id="tableBody"></tbody>
+        <tfoot id="tableFoot"></tfoot>
       </table>
     </div>
     <div class="table-footer">
@@ -3052,12 +3053,14 @@ function renderTable(){
     tbody.innerHTML = `<tr><td colspan="${COLUMNS.length}" class="empty-state">ยังไม่มีรายการ — เริ่มบันทึกคำสั่งซื้อแรกของคุณด้านบน 🍐</td></tr>`;
     document.getElementById('pagination').innerHTML='';
     document.getElementById('tableSummary').innerHTML='';
+    document.getElementById('tableFoot').innerHTML='';
     return;
   }
   const unitTotal = u=>u.members.reduce((s,o)=>s+o._amt.displayTotal,0);
 
   let rowsHtml = '';
   let shownCount = 0, totalSum = 0;
+  const visibleUnits = []; // whichever units actually end up in tbody — drives the <tfoot> totals below
 
   if(groupMode==='byDay'){
     const byDate = {};
@@ -3072,6 +3075,7 @@ function renderTable(){
       rowsHtml += `<tr class="day-group-row"><td colspan="${COLUMNS.length}">📅 ${fmtDate(date)} — ${items.length} รายการ — รวม ${fmt(daySum)} บาท</td></tr>`;
       items.forEach(u=>{ rowsHtml += unitRowHtml(u, no++); });
       shownCount += items.length; totalSum += daySum;
+      visibleUnits.push(...items);
     });
     document.getElementById('pagination').innerHTML='';
   } else {
@@ -3083,6 +3087,7 @@ function renderTable(){
     pageItems.forEach((u,i)=>{ rowsHtml += unitRowHtml(u, start+i+1); });
     shownCount = pageItems.length;
     totalSum = list.reduce((s,u)=>s+unitTotal(u),0);
+    visibleUnits.push(...pageItems);
     document.getElementById('pagination').innerHTML = `
       <button id="prevPageBtn" ${currentPage<=1?'disabled':''}>‹</button>
       <span>หน้า ${currentPage}/${totalPages}</span>
@@ -3092,6 +3097,36 @@ function renderTable(){
   }
 
   tbody.innerHTML = rowsHtml;
+
+  // One total row per numeric column, aligned under the same COLUMNS positions as the header —
+  // colspan absorbs every non-numeric column before ถ้วยเล็ก. ส่วนลด is skipped: some rows are
+  // บาท and others % (see f_discountType), so summing the raw values would be meaningless.
+  // All columns here — including ยอดรวม — sum only visibleUnits (what's actually in tbody above),
+  // deliberately not reusing the page's own totalSum, which (in flat/paginated mode) already means
+  // the grand total across every page matching the filter, not just this one.
+  const footMembers = visibleUnits.flatMap(u=>u.members);
+  const footSmall = footMembers.reduce((s,o)=>s+(Number(o.jarSmall)||0),0);
+  const footLarge = footMembers.reduce((s,o)=>s+(Number(o.jarLarge)||0),0);
+  const footShipping = footMembers.reduce((s,o)=>s+(Number(o.shippingFee)||0),0);
+  const footDeposit = footMembers.reduce((s,o)=>s+(Number(o.deposit)||0),0);
+  const footTotal = visibleUnits.reduce((s,u)=>s+unitTotal(u),0);
+  document.getElementById('tableFoot').innerHTML = `<tr class="table-total-row">
+    <td colspan="8">รวมทั้งหมด (ที่แสดง ${shownCount} รายการ)</td>
+    <td>${fmt(footSmall)}</td>
+    <td>${fmt(footLarge)}</td>
+    <td>${fmt(footShipping)} บ.</td>
+    <td></td>
+    <td></td>
+    <td>${fmt(footDeposit)} บ.</td>
+    <td class="amount-cell">${fmt(footTotal)} บ.</td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>`;
+
   const grandSum = list.reduce((s,u)=>s+unitTotal(u),0);
   // Thai text has no spaces to hint safe line-break points, so a browser's own word-segmenter can
   // (and did) split a phrase like "ยอดรวมที่แสดง" mid-word onto two lines. Each stat gets its own
