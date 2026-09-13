@@ -4973,7 +4973,7 @@ function applyPage(pageName){
   backBtn.textContent = parent==='home' ? '🏠 กลับหน้าแรก' : `◀ กลับไป${HUB_LABEL[parent]||parent}`;
   backBtn.dataset.target = parent;
   document.querySelector('.page-switch').style.display = pageName==='home' ? 'none' : 'flex';
-  if(pageName==='stock'){ switchSubview('overview'); renderStockPage(); }
+  if(pageName==='stock'){ switchSubview((history.state && history.state.subview) || 'overview'); renderStockPage(); }
   if(pageName==='prep') renderPrepPage();
   if(pageName==='delivery') renderDeliveryReport();
   if(pageName==='report-overview'){ renderReport(); reportSalesByProductModule.render(true); }
@@ -5011,10 +5011,12 @@ function landOnPage(pageName){
     fsDebugLog('back-nav: armed exit-guard #'+navSeq+' (history.length='+history.length+')');
   }
 }
-function switchPage(pageName){
+function switchPage(pageName, subview){
   if(!history.state || history.state.page!==pageName){
     navSeq++;
-    history.pushState({page:pageName}, '', '#nav'+navSeq);
+    const state = {page:pageName};
+    if(pageName==='stock') state.subview = subview||'overview';
+    history.pushState(state, '', '#nav'+navSeq);
   }
   landOnPage(pageName);
 }
@@ -5089,6 +5091,13 @@ function switchSubview(name){
   activeSubview = name;
   document.querySelectorAll('.stock-subview').forEach(el=>el.classList.toggle('active', el.id==='sv-'+name));
   document.querySelectorAll('.drawer-sublink').forEach(b=>b.classList.toggle('active', b.dataset.subview===name));
+  // Keep the current history entry's remembered subview in sync with whatever is actually on
+  // screen, so a later back-press (which restores whichever subview that entry recorded, see
+  // applyPage above) never snaps back to the stale/default "overview" subview instead of
+  // wherever the user had actually navigated within this stock-page visit.
+  if(currentDisplayedPage==='stock' && history.state && history.state.page==='stock' && history.state.subview!==name){
+    history.replaceState(Object.assign({}, history.state, {subview:name}), '');
+  }
   window.scrollTo({top:0, behavior:'smooth'});
 }
 document.getElementById('backHomeBtn').addEventListener('click', ()=>{
@@ -5104,6 +5113,15 @@ document.querySelectorAll('.home-tile').forEach(btn=>{
 
 /* ============ Hamburger drawer ============ */
 const drawerOverlay = document.getElementById('drawerOverlay');
+// Base state for a history entry that represents "still on the current page" (used when
+// stacking a drawer/modal entry on top, or cleaning one back off) — carries the current stock
+// subview along too, so opening/closing the drawer or a modal while on a stock subview other
+// than the default never silently drops that subview from the entry (see switchSubview above).
+function pageState(extra){
+  const state = {page:currentDisplayedPage};
+  if(currentDisplayedPage==='stock') state.subview = activeSubview;
+  return Object.assign(state, extra);
+}
 // Opening the drawer pushes its own history entry so a phone back-press while it's open
 // closes the drawer first (see popstate below) instead of falling through to page-level
 // back navigation or the home exit-guard. Closing it any other way (X, tapping the dark
@@ -5113,13 +5131,13 @@ function openDrawer(){
   if(drawerOverlay.classList.contains('show')) return;
   drawerOverlay.classList.add('show');
   navSeq++;
-  history.pushState({page:currentDisplayedPage, drawerOpen:true}, '', '#nav'+navSeq);
+  history.pushState(pageState({drawerOpen:true}), '', '#nav'+navSeq);
 }
 function closeDrawer(){
   if(!drawerOverlay.classList.contains('show')) return;
   drawerOverlay.classList.remove('show');
   if(history.state && history.state.drawerOpen){
-    history.replaceState({page:currentDisplayedPage}, '');
+    history.replaceState(pageState(), '');
   }
 }
 document.getElementById('hamburgerBtn').addEventListener('click', openDrawer);
@@ -5135,7 +5153,7 @@ document.querySelectorAll('.drawer-link').forEach(btn=>{
 document.querySelectorAll('.drawer-sublink:not(#settingsDrawerBtn)').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     closeDrawer();
-    switchPage('stock');
+    switchPage('stock', btn.dataset.subview);
     switchSubview(btn.dataset.subview);
   });
 });
@@ -5154,9 +5172,9 @@ document.querySelectorAll('.modal-overlay').forEach(modalEl=>{
     const isShown = modalEl.classList.contains('show');
     if(isShown && !wasShown){
       navSeq++;
-      history.pushState({page:currentDisplayedPage, modalOpen:true}, '', '#nav'+navSeq);
+      history.pushState(pageState({modalOpen:true}), '', '#nav'+navSeq);
     } else if(!isShown && wasShown && history.state && history.state.modalOpen){
-      history.replaceState({page:currentDisplayedPage}, '');
+      history.replaceState(pageState(), '');
     }
     wasShown = isShown;
   }).observe(modalEl, {attributes:true, attributeFilter:['class']});
