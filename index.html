@@ -4837,6 +4837,15 @@ window.addEventListener('popstate', (e)=>{
     switchPage('home');
     return;
   }
+  // Same idea for any open form/modal (add order, add material, view slip, etc.) — a back
+  // press just closes whichever one is on top and leaves the page underneath untouched,
+  // instead of falling through to page-level navigation and landing back at home.
+  const openModalEl = document.querySelector('.modal-overlay.show:not(#loginOverlay)');
+  if(openModalEl){
+    fsDebugLog('back-nav: popstate closed an open modal (#'+openModalEl.id+')');
+    openModalEl.classList.remove('show');
+    return;
+  }
   const pageName = (e.state && e.state.page) || 'home';
   fsDebugLog('back-nav: popstate fired -> page='+pageName+', currentDisplayedPage='+currentDisplayedPage+', history.length='+history.length);
   if(pageName==='home' && currentDisplayedPage==='home'){
@@ -4933,6 +4942,28 @@ document.querySelectorAll('.drawer-sublink:not(#settingsDrawerBtn)').forEach(btn
     switchPage('stock');
     switchSubview(btn.dataset.subview);
   });
+});
+/* Every .modal-overlay in the app (add/edit order, add material, view slip, etc.) is opened
+   by adding the "show" class and closed by removing it, from many different places in the
+   code. Rather than touching every one of those call sites individually, watch for the class
+   change itself: opening ANY modal pushes a history entry (same idea as the drawer above) so
+   a phone back-press closes the topmost open modal and leaves the page underneath untouched
+   (see the popstate handler), instead of falling through to page-level back navigation.
+   Closing a modal through its own UI (X, cancel, submit, tapping the dark backdrop) replaces
+   that entry away again so it doesn't linger for a later back-press to stumble into. */
+document.querySelectorAll('.modal-overlay').forEach(modalEl=>{
+  if(modalEl.id==='loginOverlay') return; // the auth gate isn't a dismissible modal
+  let wasShown = modalEl.classList.contains('show');
+  new MutationObserver(()=>{
+    const isShown = modalEl.classList.contains('show');
+    if(isShown && !wasShown){
+      navSeq++;
+      history.pushState({page:currentDisplayedPage, modalOpen:true}, '', '#nav'+navSeq);
+    } else if(!isShown && wasShown && history.state && history.state.modalOpen){
+      history.replaceState({page:currentDisplayedPage}, '');
+    }
+    wasShown = isShown;
+  }).observe(modalEl, {attributes:true, attributeFilter:['class']});
 });
 switchSubview('overview');
 switchPage('home');
