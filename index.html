@@ -6321,14 +6321,24 @@ function svgBreakEven(rows, startupTotal){
   const n = rows.length, gap=(w-padL-padR)/n, barW=gap*0.55;
   const yFor = v => padT + (h-padT-padB) * (1-(v-minVal)/range);
   const zeroY = yFor(0);
-  let bars='';
+  let bars='', beDefs='';
   rows.forEach((r,i)=>{
     const x = padL + i*gap + (gap-barW)/2;
     const y1 = yFor(r.cum), barH = Math.max(Math.abs(zeroY-y1),1);
     const y = Math.min(zeroY,y1);
     const reached = startupTotal>0 && r.cum>=startupTotal;
     const color = r.cum<0 ? '#c62828' : (reached ? '#1e7d32' : '#c8961e');
-    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="4" fill="${color}"><title>${esc(monthLabel(r.month))}: กำไรสะสม ${fmt(r.cum)} บาท</title></rect>`;
+    // Same per-theme treatment as the other charts (see svgGroupedBar) — the color itself
+    // still carries the loss/in-progress/reached status, only the fill style changes.
+    let fillAttr = `fill="${color}"`;
+    if(iconTheme==='a'){
+      fillAttr = `fill="${color}" fill-opacity="0.18" stroke="${color}" stroke-width="2"`;
+    } else if(iconTheme!=='c'){
+      const gid = `beg-${i}`;
+      beDefs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}"/><stop offset="1" stop-color="${color}" stop-opacity=".55"/></linearGradient>`;
+      fillAttr = `fill="url(#${gid})"`;
+    }
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="4" ${fillAttr}><title>${esc(monthLabel(r.month))}: กำไรสะสม ${fmt(r.cum)} บาท</title></rect>`;
     bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+16}" font-size="10" text-anchor="middle" fill="#8a7566">${esc(monthLabel(r.month))}</text>`;
   });
   let refLine = '';
@@ -6336,7 +6346,7 @@ function svgBreakEven(rows, startupTotal){
     const lineY = yFor(startupTotal);
     refLine = `<line x1="${padL}" y1="${lineY.toFixed(1)}" x2="${w-padR}" y2="${lineY.toFixed(1)}" stroke="#c62828" stroke-width="1.5" stroke-dasharray="5,4"/><text x="${w-padR}" y="${(lineY-5).toFixed(1)}" font-size="10.5" text-anchor="end" fill="#c62828">จุดคุ้มทุน (${fmt(startupTotal)} บ.)</text>`;
   }
-  return `<svg viewBox="0 0 ${w} ${h}" class="chart-svg"><line x1="${padL}" y1="${zeroY.toFixed(1)}" x2="${w-padR}" y2="${zeroY.toFixed(1)}" stroke="#e6d8c6"/>${bars}${refLine}</svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" class="chart-svg">${beDefs?`<defs>${beDefs}</defs>`:''}<line x1="${padL}" y1="${zeroY.toFixed(1)}" x2="${w-padR}" y2="${zeroY.toFixed(1)}" stroke="#e6d8c6"/>${bars}${refLine}</svg>`;
 }
 
 /* ============ Cash-flow break-even (uses real purchase records, not recipes) ============ */
