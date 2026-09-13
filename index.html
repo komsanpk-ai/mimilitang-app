@@ -514,8 +514,8 @@ footer.appfoot{text-align:center;color:var(--muted);font-size:11.5px;padding:26p
    page never shows a blank icon slot even if something above fails to run. */
 .icon-chip{display:inline-flex;align-items:center;justify-content:center;flex:none;border-radius:12px;font-size:inherit;}
 .icon-chip svg{display:block;}
-.home-tile-icon .icon-chip{width:46px;height:46px;border-radius:14px;}
-.home-tile-icon .icon-chip svg{width:25px;height:25px;}
+.home-tile-icon .icon-chip{width:62px;height:62px;border-radius:17px;}
+.home-tile-icon .icon-chip svg{width:34px;height:34px;}
 .home-tile-row .icon-chip{width:30px;height:30px;border-radius:9px;}
 .home-tile-row .icon-chip svg{width:17px;height:17px;}
 .card-head h2 .icon-chip{width:27px;height:27px;border-radius:9px;vertical-align:-7px;}
@@ -743,6 +743,8 @@ p.hint.collapsible-hint.show{display:block;}
 <symbol id="ic-people" viewBox="0 0 24 24"><circle class="ibase" cx="9" cy="8" r="3"/><circle class="ibase" cx="16" cy="9" r="2.6"/><path class="ibase" d="M2.5 19c0-4.5 3-7 8-7s8 2.5 8 7Z"/></symbol>
 <symbol id="ic-payment" viewBox="0 0 24 24"><rect class="ibase" x="3" y="6" width="18" height="13" rx="2.5"/><path class="idetail" d="M3 10.5h18"/></symbol>
 <symbol id="ic-tag" viewBox="0 0 24 24"><path class="ibase" d="M12 3 L21 12 L12 21 L3 12 Z"/><circle class="idetail" cx="9" cy="9" r="1.4"/></symbol>
+<symbol id="ic-refresh" viewBox="0 0 24 24"><circle class="ibase" cx="12" cy="12" r="8.5"/><path class="idetail" d="M16 8a5.5 5.5 0 1 1-5.5-3M16 8h-3.5V4.5"/></symbol>
+<symbol id="ic-logout" viewBox="0 0 24 24"><rect class="ibase" x="4" y="3" width="10" height="18" rx="1.5"/><path class="idetail" d="M16 12h5m0 0-2.5-2.5M21 12l-2.5 2.5"/></symbol>
 </defs>
 </svg>
 
@@ -784,8 +786,8 @@ p.hint.collapsible-hint.show{display:block;}
     </div>
     <div class="drawer-divider"></div>
     <div class="drawer-group">
-      <button type="button" class="drawer-link" id="clearCacheDrawerBtn">🧹 ล้างแคช/อัปเดตแอป</button>
-      <button type="button" class="drawer-link" id="logoutDrawerBtn">🚪 Log Out</button>
+      <button type="button" class="drawer-link" id="clearCacheDrawerBtn"><span class="icon-chip" data-icon="refresh">🧹</span> ล้างแคช/อัปเดตแอป</button>
+      <button type="button" class="drawer-link" id="logoutDrawerBtn"><span class="icon-chip" data-icon="logout">🚪</span> Log Out</button>
     </div>
   </nav>
 </div>
@@ -1246,7 +1248,7 @@ p.hint.collapsible-hint.show{display:block;}
 <main id="page-report-pnl" class="page-view">
   <!-- ===== PROFIT & LOSS STATEMENT ===== -->
   <section class="card" id="pnlSection">
-    <div class="card-head no-print"><h2><span class="emoji">📑</span>งบกำไรขาดทุน (Profit &amp; Loss Statement)</h2></div>
+    <div class="card-head no-print"><h2><span class="emoji icon-chip" data-icon="order">📑</span>งบกำไรขาดทุน (Profit &amp; Loss Statement)</h2></div>
     <p class="hint no-print">สรุปรายได้ ต้นทุน และค่าใช้จ่าย ในรูปแบบงบกำไรขาดทุนมาตรฐาน สำหรับดูภาพรวมหรือส่งให้นักบัญชี — ต้นทุนขายคำนวณแบบสูตรต้นทุน (accrual) ตามหลักบัญชี จึงต้องตั้ง "สูตร &amp; ต้นทุนสินค้า" ให้ครบทุกสินค้าเพื่อความแม่นยำ ส่วนต้นทุนเริ่มต้น (สินทรัพย์ถาวร) ไม่รวมในงบนี้เพราะไม่ใช่ค่าใช้จ่ายประจำงวด (ดูได้ที่หัวข้อจุดคุ้มทุน) — "กำไรขั้นต้น" คิดจากยอดขายสินค้าล้วนๆ เท่านั้น ค่าจัดส่งแยกไปเป็นหมวดของตัวเองด้านล่าง (เทียบรายรับค่าส่งกับค่าใช้จ่ายที่บันทึกในหมวด "ค่าจัดส่ง") เพื่อไม่ให้ปนกับกำไรจากตัวสินค้า</p>
 
     <div class="report-controls no-print">
@@ -2408,7 +2410,8 @@ const ICON_COLOR_KEY = {
   home:'maroon', order:'gold', checklist:'green', delivery:'orange', stock:'teal',
   report:'brandgold', settings:'slate', receipt:'gold', adjust:'teal',
   history:'gold', calculator:'maroon', cash:'green', trending:'blue', cart:'orange',
-  salt:'brown', ruler:'slate', save:'slate', person:'blue', people:'purple', payment:'green', tag:'gold'
+  salt:'brown', ruler:'slate', save:'slate', person:'blue', people:'purple', payment:'green', tag:'gold',
+  refresh:'teal', logout:'maroon'
 };
 let iconTheme = load(LS.iconTheme, 'b');
 function iconChipMarkup(key, theme){
@@ -4089,7 +4092,7 @@ function svgBar(data, targetWidth){
     const y = h-padB-barH;
     let fillAttr = `fill="${d.color}"`;
     if(iconTheme==='a'){
-      fillAttr = `fill="none" stroke="${d.color}" stroke-width="2"`;
+      fillAttr = `fill="${d.color}" fill-opacity="0.16" stroke="${d.color}" stroke-width="2"`;
     } else if(iconTheme!=='c'){
       const gid = `barg-${i}`;
       barDefs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${d.color}"/><stop offset="1" stop-color="${d.color}" stop-opacity=".55"/></linearGradient>`;
@@ -4105,21 +4108,32 @@ function svgBar(data, targetWidth){
 }
 function svgPie(data,total){
   const size=280,r=105,cx=140,cy=140;
-  let angle=-90,paths='';
-  data.forEach(d=>{
+  let angle=-90,paths='',pieDefs='';
+  data.forEach((d,i)=>{
     const frac=d.value/total, sweep=frac*360;
     const x1=cx+r*Math.cos(angle*Math.PI/180), y1=cy+r*Math.sin(angle*Math.PI/180);
     const end=angle+sweep;
     const x2=cx+r*Math.cos(end*Math.PI/180), y2=cy+r*Math.sin(end*Math.PI/180);
     const large = sweep>180?1:0;
+    // Same per-theme treatment as the bar charts (see svgGroupedBar) — outline+tint for line
+    // mode, a gradient fill per slice for gradient mode, flat for flat mode.
+    let fillAttr = `fill="${d.color}"`, strokeAttr = `stroke="#fff" stroke-width="1.5"`;
+    if(iconTheme==='a'){
+      fillAttr = `fill="${d.color}" fill-opacity="0.22"`;
+      strokeAttr = `stroke="${d.color}" stroke-width="2"`;
+    } else if(iconTheme!=='c'){
+      const gid = `pieg-${i}`;
+      pieDefs += `<radialGradient id="${gid}" cx="50%" cy="50%" r="75%"><stop offset="0" stop-color="${d.color}"/><stop offset="1" stop-color="${d.color}" stop-opacity=".6"/></radialGradient>`;
+      fillAttr = `fill="url(#${gid})"`;
+    }
     if(frac>=0.999){
-      paths += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${d.color}"><title>${esc(d.label)}: ${fmt(d.value)} (100%)</title></circle>`;
+      paths += `<circle cx="${cx}" cy="${cy}" r="${r}" ${fillAttr}><title>${esc(d.label)}: ${fmt(d.value)} (100%)</title></circle>`;
     } else {
-      paths += `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${d.color}" stroke="#fff" stroke-width="1.5"><title>${esc(d.label)}: ${fmt(d.value)} (${(frac*100).toFixed(1)}%)</title></path>`;
+      paths += `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" ${fillAttr} ${strokeAttr}><title>${esc(d.label)}: ${fmt(d.value)} (${(frac*100).toFixed(1)}%)</title></path>`;
     }
     angle=end;
   });
-  return `<svg viewBox="0 0 ${size} ${size}" class="chart-svg">${paths}</svg>`;
+  return `<svg viewBox="0 0 ${size} ${size}" class="chart-svg">${pieDefs?`<defs>${pieDefs}</defs>`:''}${paths}</svg>`;
 }
 
 /* ============ Detailed reports: shared grouped-bar engine ============ */
@@ -4192,7 +4206,7 @@ function svgGroupedBar(categories, series){
       // keeping each series' own base color, so different metrics stay distinguishable.
       let fillAttr = `fill="${s.color}"`;
       if(iconTheme==='a'){
-        fillAttr = `fill="none" stroke="${s.color}" stroke-width="2"`;
+        fillAttr = `fill="${s.color}" fill-opacity="0.16" stroke="${s.color}" stroke-width="2"`;
       } else if(iconTheme!=='c'){
         const gid = `barg-${si}-${ci}`;
         barDefs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.color}"/><stop offset="1" stop-color="${s.color}" stop-opacity=".55"/></linearGradient>`;
