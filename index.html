@@ -4175,7 +4175,8 @@ function svgYAxis(niceMax, ticks){
   });
   return `<svg viewBox="0 0 ${aw} ${h}" width="${aw}" height="${h}" class="chart-svg-bar chart-axis-svg">${labels}</svg>`;
 }
-function svgGroupedBar(categories, series){
+function svgGroupedBar(categories, series, ns){
+  ns = ns||'g';
   /* Explicit width/height (not scaled to fit its box — see .chart-svg-bar) so text/bars render
      at a fixed, comfortably-legible size on a phone screen instead of shrinking to fit; .chart-box
      scrolls horizontally to reach categories that don't fit (typically ~4-5 months visible at
@@ -4208,7 +4209,7 @@ function svgGroupedBar(categories, series){
       if(iconTheme==='a'){
         fillAttr = `fill="${s.color}" fill-opacity="0.16" stroke="${s.color}" stroke-width="2"`;
       } else if(iconTheme!=='c'){
-        const gid = `barg-${si}-${ci}`;
+        const gid = `barg-${ns}-${si}-${ci}`;
         barDefs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.color}"/><stop offset="1" stop-color="${s.color}" stop-opacity=".55"/></linearGradient>`;
         fillAttr = `fill="url(#${gid})"`;
       }
@@ -4302,7 +4303,7 @@ function renderGroupedChartInto(buckets, series, barBoxId, legendId, totalBoxId,
     if(axisBox) axisBox.innerHTML = '';
     return;
   }
-  const chart = svgGroupedBar(buckets, series);
+  const chart = svgGroupedBar(buckets, series, barBoxId);
   box.innerHTML = chart.bars;
   if(axisBox) axisBox.innerHTML = chart.axis;
   legend.innerHTML = series.map(s=>{
@@ -6310,10 +6311,11 @@ function renderBreakEven(){
       </tr>`;
     }).join('');
   }
-  document.getElementById('breakEvenChartBox').innerHTML = rows.length ? svgBreakEven(rows, startupTotal) : '<div class="empty-state">ไม่มีข้อมูลสำหรับกราฟ</div>';
+  document.getElementById('breakEvenChartBox').innerHTML = rows.length ? svgBreakEven(rows, startupTotal, 'formula') : '<div class="empty-state">ไม่มีข้อมูลสำหรับกราฟ</div>';
 }
 
-function svgBreakEven(rows, startupTotal){
+function svgBreakEven(rows, startupTotal, ns){
+  ns = ns||'be';
   const w=680,h=300,padL=56,padR=20,padT=24,padB=44;
   const maxVal = Math.max(startupTotal, ...rows.map(r=>r.cum), 1);
   const minVal = Math.min(0, ...rows.map(r=>r.cum));
@@ -6334,7 +6336,7 @@ function svgBreakEven(rows, startupTotal){
     if(iconTheme==='a'){
       fillAttr = `fill="${color}" fill-opacity="0.18" stroke="${color}" stroke-width="2"`;
     } else if(iconTheme!=='c'){
-      const gid = `beg-${i}`;
+      const gid = `beg-${ns}-${i}`;
       beDefs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}"/><stop offset="1" stop-color="${color}" stop-opacity=".55"/></linearGradient>`;
       fillAttr = `fill="url(#${gid})"`;
     }
@@ -6426,7 +6428,7 @@ function renderCashFlow(){
       </tr>`;
     }).join('');
   }
-  document.getElementById('cashFlowChartBox').innerHTML = rows.length ? svgBreakEven(rows, startupTotal) : '<div class="empty-state">ไม่มีข้อมูลสำหรับกราฟ</div>';
+  document.getElementById('cashFlowChartBox').innerHTML = rows.length ? svgBreakEven(rows, startupTotal, 'cashflow') : '<div class="empty-state">ไม่มีข้อมูลสำหรับกราฟ</div>';
 }
 
 /* ============ Profit & Loss statement ============ */
