@@ -4772,7 +4772,7 @@ function applyPage(pageName){
   backBtn.textContent = parent==='home' ? '🏠 กลับหน้าแรก' : `◀ กลับไป${HUB_LABEL[parent]||parent}`;
   backBtn.dataset.target = parent;
   document.querySelector('.page-switch').style.display = pageName==='home' ? 'none' : 'flex';
-  if(pageName==='stock') renderStockPage();
+  if(pageName==='stock'){ switchSubview('overview'); renderStockPage(); }
   if(pageName==='prep') renderPrepPage();
   if(pageName==='delivery') renderDeliveryReport();
   if(pageName==='report-overview'){ renderReport(); reportSalesByProductModule.render(true); }
