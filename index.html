@@ -236,6 +236,18 @@ tbody td.prod-col,tfoot td.prod-col{min-width:130px;max-width:160px;}
 #slipTable tbody td:nth-child(2){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);}
 #slipTable tbody tr:nth-child(even) td:nth-child(2){background:#f6fbf5;}
 #slipTable tbody tr:hover td:nth-child(2){background:#fdf3df;}
+/* Same pin, applied to the 3 stock-purchase history tables' "วัตถุดิบ" column — pinned so it
+   stays visible while scrolling right through the price/qty columns, and given a bit more width
+   than the shared .wrap max-width lets it have naturally (min-width, not just max-width, since
+   compact-table's auto layout otherwise squeezes it down to 2-3 wrapped lines regardless). */
+#stockInDailyTable thead th:nth-child(1){position:sticky;left:0;z-index:3;background:#fff3d6;box-shadow:2px 0 4px rgba(0,0,0,.08);min-width:100px;}
+#stockInDailyTable tbody td:nth-child(1){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);min-width:100px;}
+#stockInDailyTable tbody tr:nth-child(even) td:nth-child(1){background:#f6fbf5;}
+#stockInDailyTable tbody tr:hover td:nth-child(1){background:#fdf3df;}
+#stockAdjustTable thead th:nth-child(2),#stockInTable thead th:nth-child(2){position:sticky;left:0;z-index:3;background:#fff3d6;box-shadow:2px 0 4px rgba(0,0,0,.08);min-width:100px;}
+#stockAdjustTable tbody td:nth-child(2),#stockInTable tbody td:nth-child(2){position:sticky;left:0;z-index:1;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.08);min-width:100px;}
+#stockAdjustTable tbody tr:nth-child(even) td:nth-child(2),#stockInTable tbody tr:nth-child(even) td:nth-child(2){background:#f6fbf5;}
+#stockAdjustTable tbody tr:hover td:nth-child(2),#stockInTable tbody tr:hover td:nth-child(2){background:#fdf3df;}
 /* The "ประเภทการจ่ายเงิน" header cell holds a <select> instead of plain text, so tapping the
    header itself opens a native picker to filter the table by payment method — styled to blend
    into the header (no visible box) so it still reads as a column label at a glance. */
