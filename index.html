@@ -362,6 +362,7 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
 .stat-card{background:var(--cream);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
 .stat-card .stat-label{font-size:12px;color:var(--muted);margin-bottom:6px;}
 .stat-card .stat-value{font-size:21px;font-weight:700;color:var(--green);}
+.stat-card .stat-value.negative{color:var(--red);}
 .stat-card .stat-sub{font-size:11px;color:var(--muted);margin-top:3px;}
 
 .chart-section{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;}
@@ -477,7 +478,7 @@ tr.dragging td{background:#fffdf3;}
 footer.appfoot{text-align:center;color:var(--muted);font-size:11.5px;padding:26px 10px 6px;}
 @media(max-width:640px){
   .card{padding:14px;}
-  .brand-text h1{font-size:17px;}
+  .brand-text h1{font-size:20px;}
   .brand-suffix{display:none;}
   .stat-grid{grid-template-columns:1fr 1fr;}
   .stat-card{padding:12px;}
@@ -552,8 +553,8 @@ button:active,.btn:active,.icon-btn:active,.icon-mini:active,.drawer-link:active
 }
 .drawer-overlay.show{display:block;}
 .drawer-panel{
-  position:fixed;top:0;left:0;bottom:0;width:min(300px,85vw);background:var(--paper);
-  box-shadow:var(--shadow-lg);transform:translateX(-100%);transition:transform .22s ease;
+  position:fixed;top:0;right:0;bottom:0;width:min(300px,85vw);background:var(--paper);
+  box-shadow:var(--shadow-lg);transform:translateX(100%);transition:transform .22s ease;
   display:flex;flex-direction:column;overflow-y:auto;
 }
 .drawer-overlay.show .drawer-panel{transform:translateX(0);}
@@ -2049,7 +2050,7 @@ p.hint.collapsible-hint.show{display:block;}
 <!-- Login gate: shown until Firebase Auth confirms a signed-in user -->
 <div class="modal-overlay show" id="loginOverlay" style="z-index:1000;">
   <div class="modal" style="max-width:360px;text-align:center;">
-    <div style="font-size:40px;margin-bottom:6px;">🍐</div>
+    <img src="./icon-192.png" alt="โลโก้" style="width:72px;height:72px;border-radius:50%;margin-bottom:6px;">
     <h3 style="text-align:center;">มีมี่ ลี่ถัง — เข้าสู่ระบบ</h3>
     <p class="hint" id="loginSessionExpiredMsg" style="display:none;color:var(--red);font-weight:600;text-align:center;">⏰ เซสชันของคุณหมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่อีกครั้ง</p>
     <form id="loginForm">
@@ -3311,7 +3312,7 @@ function renderDeliveryReport(){
     statCard('ถ้วยใหญ่รวม', totalLarge+' ถ้วย'),
     statCard('ยอดรวมของออเดอร์ที่จะส่ง', fmt(totalValue)+' บ.', 'ยอดเต็มทุกออเดอร์วันนี้ (รวมค่าจัดส่ง)'),
     statCard('ค่าจัดส่งที่เก็บจากลูกค้า', fmt(dayProfit.shippingRevenue)+' บ.', 'แยกจากยอดขายสินค้าด้านล่าง'),
-    statCard('ในนั้นยังไม่ได้รับเงิน', fmt(totalOutstanding)+' บ.', 'เผื่อต้องเก็บเงินปลายทาง'),
+    statCard('ในนั้นยังไม่ได้รับเงิน', fmt(totalOutstanding)+' บ.', 'เผื่อต้องเก็บเงินปลายทาง', true),
     statCard('กำไรจากการขายสินค้า', fmt(dayProfit.profit)+' บ.', 'ยอดขายสินค้า (ไม่รวมค่าจัดส่ง) - ต้นทุนตามสูตร')
   ].join('');
 
@@ -3737,8 +3738,8 @@ function syncReportRangeToDate(dateStr){
   if(dateStr.slice(0,7) !== (mPick.value||todayISO().slice(0,7))) mPick.value = dateStr.slice(0,7);
 }
 
-function statCard(label, value, sub){
-  return `<div class="stat-card"><div class="stat-label">${esc(label)}</div><div class="stat-value">${value}</div>${sub?`<div class="stat-sub">${sub}</div>`:''}</div>`;
+function statCard(label, value, sub, negative){
+  return `<div class="stat-card"><div class="stat-label">${esc(label)}</div><div class="stat-value${negative?' negative':''}">${value}</div>${sub?`<div class="stat-sub">${sub}</div>`:''}</div>`;
 }
 
 function renderReport(){
@@ -3765,7 +3766,7 @@ function renderReport(){
   const netProductSales = totalProductSales - totalDiscountGiven;
   const breakdownStats = [
     statCard('ยอดขายสินค้า (ก่อนหักส่วนลด)', fmt(totalProductSales)+' บ.', orderCount+' ออเดอร์'),
-    statCard('หักส่วนลด', '-'+fmt(totalDiscountGiven)+' บ.'),
+    statCard('หักส่วนลด', '-'+fmt(totalDiscountGiven)+' บ.', undefined, true),
     statCard('ยอดขายสินค้าสุทธิ', fmt(netProductSales)+' บ.'),
     statCard('ค่าจัดส่งที่เก็บจากลูกค้า', fmt(totalShippingCollected)+' บ.', 'ดูค่าใช้จ่ายจริง (เช่นค่าน้ำมัน) ที่ "ค่าใช้จ่ายดำเนินงาน"'),
     statCard('ยอดขายรวม (ที่ต้องได้รับ)', fmt(totalSales)+' บ.', 'สุทธิ + ค่าจัดส่ง')
@@ -3776,13 +3777,13 @@ function renderReport(){
     statsHtml = breakdownStats + [
       statCard('จำนวนสินค้าที่ขาย', (totalQtySmall+totalQtyLarge)+' ถ้วย', `เล็ก ${totalQtySmall} · ใหญ่ ${totalQtyLarge}`),
       statCard('ยอดมัดจำ', fmt(totalDeposit)+' บ.'),
-      statCard('ยอดค้างชำระ', fmt(totalOutstanding)+' บ.')
+      statCard('ยอดค้างชำระ', fmt(totalOutstanding)+' บ.', undefined, true)
     ].join('');
   } else {
     statsHtml = breakdownStats + [
       statCard('ยอดขายเฉลี่ย/ออเดอร์', fmt(avgPerOrder)+' บ.'),
       statCard('ยอดมัดจำ', fmt(totalDeposit)+' บ.'),
-      statCard('ยอดค้างชำระ', fmt(totalOutstanding)+' บ.')
+      statCard('ยอดค้างชำระ', fmt(totalOutstanding)+' บ.', undefined, true)
     ].join('');
   }
   document.getElementById('statGrid').innerHTML = statsHtml;
