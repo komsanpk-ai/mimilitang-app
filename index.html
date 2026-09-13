@@ -185,6 +185,10 @@ thead th{
 thead th:hover{background:#ffe9b8;}
 thead th .arrow{font-size:10px;margin-left:3px;opacity:.6;}
 tbody td{padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}
+/* A <tfoot> row (e.g. a table's "รวมทั้งหมด" total row) otherwise gets none of tbody's padding —
+   its cells sit flush against the border, throwing its columns out of alignment with the tbody
+   rows right above it even though both share the same column grid. */
+tfoot td{padding:9px 10px;white-space:nowrap;}
 tbody tr:nth-child(even){background:#f6fbf5;}
 tbody tr:hover{background:#fdf3df;}
 tbody td.wrap{white-space:normal;max-width:180px;}
@@ -193,6 +197,10 @@ tbody td.wrap{white-space:normal;max-width:180px;}
    (not just max-width) is needed here because the table's auto layout otherwise still shrinks a
    wrappable column well below its max-width cap. */
 tbody td.addr-col{min-width:300px;max-width:300px;}
+/* Product-name column in the "ยอดขายตามสินค้า" detail table — wide enough that a normal product
+   name doesn't wrap onto 2-3 lines, but capped so it doesn't push the numeric columns far enough
+   off-screen that scrolling right stops showing them. */
+tbody td.prod-col,tfoot td.prod-col{min-width:130px;max-width:160px;}
 /* Pin the "ชื่อลูกค้า" column of the main orders table so it stays visible while scrolling right
    through its many columns — otherwise it's easy to lose track of whose row you're
    editing/deleting once it's scrolled off-screen. Customer name was picked over the row number
@@ -4192,10 +4200,10 @@ function renderSalesByProductDetail(buckets){
 
   document.getElementById('rs-detail-label').textContent = `รายละเอียด: ${fmtDate(range.from)} – ${fmtDate(range.to)}`;
   document.getElementById('rs-detail-body').innerHTML = rows.length
-    ? rows.map(r=>`<tr><td class="wrap">${esc(r.name)}</td><td>${fmt(r.small)}</td><td>${fmt(r.large)}</td><td>${fmt(r.totalQty)}</td><td class="amount-cell">${fmt(r.sales)} บ.</td><td>${grandSales?(r.sales/grandSales*100).toFixed(1):'0.0'}%</td></tr>`).join('')
+    ? rows.map(r=>`<tr><td class="wrap prod-col">${esc(r.name)}</td><td>${fmt(r.small)}</td><td>${fmt(r.large)}</td><td>${fmt(r.totalQty)}</td><td class="amount-cell">${fmt(r.sales)} บ.</td><td>${grandSales?(r.sales/grandSales*100).toFixed(1):'0.0'}%</td></tr>`).join('')
     : `<tr><td colspan="6" class="empty-state">ไม่มีข้อมูลในช่วงที่เลือก</td></tr>`;
   document.getElementById('rs-detail-foot').innerHTML = rows.length
-    ? `<tr><td>รวมทั้งหมด</td><td>${fmt(grandSmall)}</td><td>${fmt(grandLarge)}</td><td>${fmt(grandQty)}</td><td class="amount-cell">${fmt(grandSales)} บ.</td><td>100%</td></tr>`
+    ? `<tr><td class="prod-col">รวมทั้งหมด</td><td>${fmt(grandSmall)}</td><td>${fmt(grandLarge)}</td><td>${fmt(grandQty)}</td><td class="amount-cell">${fmt(grandSales)} บ.</td><td>100%</td></tr>`
     : '';
 
   // Order-count/average cards sit above the chart and share the same range as the detail table
