@@ -8,14 +8,6 @@
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <meta name="theme-color" content="#7a1f1f">
-<script>
-// Applied here (before the stylesheet paints) rather than in the main script at the bottom of
-// the page, so switching to dark mode doesn't flash light first on every load.
-try{
-  var _tm = JSON.parse(localStorage.getItem('mml_thememode_v1')||'"light"');
-  if(_tm==='dark') document.documentElement.setAttribute('data-theme','dark');
-}catch(e){}
-</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -38,28 +30,10 @@ try{
   --radius:14px;
   --shadow:0 4px 18px rgba(90,40,20,.08);
   --shadow-lg:0 10px 30px rgba(90,40,20,.14);
-  --surface-tint:var(--surface-tint); --surface-tint-hover:var(--surface-tint-hover); --row-tint:var(--row-tint); --row-hover:var(--row-hover);
-  --input-bg:var(--input-bg); --btn2-bg:var(--btn2-bg); --btn2-bg-hover:var(--btn2-bg-hover); --placeholder:var(--placeholder);
+  --surface-tint:#fff3d6; --surface-tint-hover:#ffe9b8; --row-tint:#f6fbf5; --row-hover:#fdf3df;
+  --input-bg:#fffefb; --btn2-bg:#f1e9de; --btn2-bg-hover:#e6dccb; --placeholder:#c9beb2;
   --gold-card:linear-gradient(135deg,#fff1d6,#ffe3b3); --gold-card-ink:#7a4d00; --gold-card-sub:#93753a;
-  --chart-grid:#f0e6d8; --chart-axis:#e6d8c6; --chart-label:#8a7566; --chart-value:#5c4530;
   --btn-dark:#2c1810;
-}
-:root[data-theme="dark"]{
-  --maroon:#a94848; --maroon-dark:#7a1f1f; --maroon-light:#c16b6b;
-  --gold:#e0ac3c; --gold-light:#f0c05a;
-  --cream:#1b1512; --paper:#251d18;
-  --ink:#f0e4d8; --muted:#b3a190; --border:#3c2f26;
-  --green:#4fb571; --green-bg:#1c3322;
-  --orange:#e0954f; --orange-bg:#3a2a17;
-  --red:#e0716a; --red-bg:#3a2020;
-  --blue:#6fa3dd; --blue-bg:#1c2836;
-  --gray:#a8a8a8; --gray-bg:#2c2c2c;
-  --shadow:0 4px 18px rgba(0,0,0,.35);
-  --shadow-lg:0 10px 30px rgba(0,0,0,.5);
-  --surface-tint:#3a2f1c; --surface-tint-hover:#4a3c22; --row-tint:#20281f; --row-hover:#332a1a;
-  --input-bg:#2c231d; --btn2-bg:#332a22; --btn2-bg-hover:#3d3229; --placeholder:#8a7a6c;
-  --gold-card:linear-gradient(135deg,#3a2f1c,#443722); --gold-card-ink:#f0c05a; --gold-card-sub:#c9a76a;
-  --chart-grid:#3c2f26; --chart-axis:#453729; --chart-label:#b3a190; --chart-value:#e8dcc8;
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
@@ -1708,14 +1682,7 @@ p.hint.collapsible-hint.show{display:block;}
 <main id="page-settings-theme" class="page-view">
   <section class="card">
     <div class="card-head"><h2><span class="emoji">🎨</span>ธีม &amp; ไอคอน</h2></div>
-    <div class="mini-title">โหมดสี</div>
-    <p class="hint">เลือกโทนสีของแอป — จะจำไว้ในเครื่องนี้ทุกครั้งที่เปิดแอป</p>
-    <div class="pill-toggle" id="themeModeToggle" style="max-width:260px;">
-      <button type="button" data-theme-mode="light">☀️ สว่าง</button>
-      <button type="button" data-theme-mode="dark">🌙 มืด</button>
-    </div>
-
-    <div class="mini-title" style="margin-top:22px;">ธีมไอคอน</div>
+    <div class="mini-title">ธีมไอคอน</div>
     <p class="hint">เลือกสไตล์ไอคอนของเมนูหลัก เมนูลิ้นชัก และปุ่มตั้งค่า</p>
     <div class="icon-theme-picker" id="iconThemePicker">
       <button type="button" class="icon-theme-option" data-icon-theme="a">
@@ -2402,42 +2369,19 @@ const LS = {
   startupCosts:'mml_startupcosts_v1', adjustments:'mml_stockadjustments_v1', paymentMethods:'mml_paymentmethods_v1',
   operatingExpenses:'mml_opex_v1', dailyTarget:'mml_dailytarget_v1', prepChecklist:'mml_prepchecklist_v1',
   deliveryRouteOrder:'mml_deliveryrouteorder_v1', deliveryRouteMaps:'mml_deliveryroutemaps_v1',
-  themeMode:'mml_thememode_v1', iconTheme:'mml_icontheme_v1'
+  iconTheme:'mml_icontheme_v1'
 };
 function load(key, fallback){
   try{ const v = localStorage.getItem(key); return v?JSON.parse(v):fallback; }catch(e){ return fallback; }
 }
 function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 
-/* ============ Theme mode (light/dark) ============
-   The <head> already applied whichever mode was saved, before this script even ran, so the
-   page never flashes light-then-dark on load — this just keeps the toggle UI and future
-   changes in sync with that. Device-local only (not synced to Firestore) since it's a display
-   preference, not shop data. */
-let themeMode = load(LS.themeMode, 'light');
-function applyThemeMode(mode, rerenderCharts){
-  themeMode = mode==='dark' ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', themeMode);
-  save(LS.themeMode, themeMode);
-  document.querySelectorAll('#themeModeToggle [data-theme-mode]').forEach(b=>{
-    b.classList.toggle('active', b.dataset.themeMode===themeMode);
-  });
-  // Charts already on screen were drawn with the old theme's colors baked into their SVG
-  // markup — only worth re-rendering them on an explicit user toggle (once the whole app,
-  // and its data, has finished loading), never during initial boot.
-  if(rerenderCharts) renderAllReports();
-}
-document.querySelectorAll('#themeModeToggle [data-theme-mode]').forEach(btn=>{
-  btn.addEventListener('click', ()=>applyThemeMode(btn.dataset.themeMode, true));
-});
-applyThemeMode(themeMode);
-
 /* ============ Icon theme (A/B/C) ============
    Swaps every [data-icon] chip's content for the chosen style. Line mode strokes the shared
    sprite (see the <svg><defs> block near the top of <body>) in one ink color; gradient/flat
    mode fills it, with inner accent lines drawn as a second white "cut-through" layer for the
-   gradient style — see the .icon-* CSS classes for how that layering works. Device-local only,
-   same reasoning as themeMode above. */
+   gradient style — see the .icon-* CSS classes for how that layering works. Device-local only
+   (not synced to Firestore) since it's a display preference, not shop data. */
 const ICON_PALETTE = {
   gold:['#c9954f','#e8b96e'], green:['#1e7d32','#4caf6a'], orange:['#d97706','#f5a742'],
   teal:['#0f766e','#2dd4bf'], maroon:['#7a1f1f','#a83232'], slate:['#475569','#94a3b8'],
@@ -2671,10 +2615,6 @@ function fsAttachListeners(){
 
 /* ============ Helpers ============ */
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-// Reads a CSS custom property's current value so hand-built SVG chart strings (grid lines,
-// axis labels) pick up light/dark theme colors automatically instead of being stuck with
-// colors baked in at authoring time — those would go illegible against a dark card background.
-function cv(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function telLink(phone){
   if(!phone) return '-';
   const digits = String(phone).replace(/[^\d+]/g,'');
@@ -4121,7 +4061,7 @@ function svgBar(data, targetWidth){
   let grid = '';
   ticks.forEach(t=>{
     const y = h-padB-(t/niceMax)*(h-padT-padB);
-    grid += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="${cv('--chart-grid')}" stroke-width="1"/>`;
+    grid += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="#f0e6d8" stroke-width="1"/>`;
   });
   let bars='';
   data.forEach((d,i)=>{
@@ -4129,11 +4069,11 @@ function svgBar(data, targetWidth){
     const barH = (h-padT-padB) * (d.value/niceMax);
     const y = h-padB-barH;
     bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="6" fill="${d.color}"><title>${esc(d.label)}: ${fmt(d.value)}</title></rect>`;
-    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="12" text-anchor="middle" fill="${cv('--chart-value')}">${fmt(d.value)}</text>`;
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="12" text-anchor="middle" fill="#5c4530">${fmt(d.value)}</text>`;
     const short = d.label.length>10 ? d.label.slice(0,9)+'…' : d.label;
-    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+24}" font-size="13" text-anchor="middle" fill="${cv('--chart-label')}">${esc(short)}</text>`;
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+24}" font-size="13" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
   });
-  const barsSvg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar">${grid}<line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="${cv('--chart-axis')}"/>${bars}</svg>`;
+  const barsSvg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar">${grid}<line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
   return {axis: svgYAxis(niceMax, ticks), bars: barsSvg};
 }
 function svgPie(data,total){
@@ -4190,7 +4130,7 @@ function svgYAxis(niceMax, ticks){
   let labels='';
   ticks.forEach(t=>{
     const y = h-padB-(t/niceMax)*(h-padT-padB);
-    labels += `<text x="${aw-8}" y="${(y+4).toFixed(1)}" font-size="12" text-anchor="end" fill="${cv('--chart-label')}">${fmt(t)}</text>`;
+    labels += `<text x="${aw-8}" y="${(y+4).toFixed(1)}" font-size="12" text-anchor="end" fill="#8a7566">${fmt(t)}</text>`;
   });
   return `<svg viewBox="0 0 ${aw} ${h}" width="${aw}" height="${h}" class="chart-svg-bar chart-axis-svg">${labels}</svg>`;
 }
@@ -4210,7 +4150,7 @@ function svgGroupedBar(categories, series){
   let grid = '';
   ticks.forEach(t=>{
     const y = h-padB-(t/niceMax)*(h-padT-padB);
-    grid += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="${cv('--chart-grid')}" stroke-width="1"/>`;
+    grid += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="#f0e6d8" stroke-width="1"/>`;
   });
   let bars='';
   categories.forEach((cat,ci)=>{
@@ -4231,13 +4171,13 @@ function svgGroupedBar(categories, series){
         if(si>0){
           bars += `<line x1="${(x+bw/2).toFixed(1)}" y1="${(y-3).toFixed(1)}" x2="${(x+bw/2).toFixed(1)}" y2="${(labelY+3).toFixed(1)}" stroke="var(--placeholder)" stroke-width="1"/>`;
         }
-        bars += `<text x="${(x+bw/2).toFixed(1)}" y="${labelY.toFixed(1)}" font-size="12" text-anchor="middle" fill="${cv('--chart-value')}">${fmt(val)}</text>`;
+        bars += `<text x="${(x+bw/2).toFixed(1)}" y="${labelY.toFixed(1)}" font-size="12" text-anchor="middle" fill="#5c4530">${fmt(val)}</text>`;
       }
     });
     const short = cat.label.length>9 ? cat.label.slice(0,8)+'…' : cat.label;
-    bars += `<text x="${(groupX+groupW/2).toFixed(1)}" y="${h-padB+24}" font-size="13" text-anchor="middle" fill="${cv('--chart-label')}">${esc(short)}</text>`;
+    bars += `<text x="${(groupX+groupW/2).toFixed(1)}" y="${h-padB+24}" font-size="13" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
   });
-  const barsSvg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar">${grid}<line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="${cv('--chart-axis')}"/>${bars}</svg>`;
+  const barsSvg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar">${grid}<line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
   return {axis: svgYAxis(niceMax, ticks), bars: barsSvg};
 }
 
@@ -6338,14 +6278,14 @@ function svgBreakEven(rows, startupTotal){
     const reached = startupTotal>0 && r.cum>=startupTotal;
     const color = r.cum<0 ? '#c62828' : (reached ? '#1e7d32' : '#c8961e');
     bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="4" fill="${color}"><title>${esc(monthLabel(r.month))}: กำไรสะสม ${fmt(r.cum)} บาท</title></rect>`;
-    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+16}" font-size="10" text-anchor="middle" fill="${cv('--chart-label')}">${esc(monthLabel(r.month))}</text>`;
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+16}" font-size="10" text-anchor="middle" fill="#8a7566">${esc(monthLabel(r.month))}</text>`;
   });
   let refLine = '';
   if(startupTotal>0){
     const lineY = yFor(startupTotal);
     refLine = `<line x1="${padL}" y1="${lineY.toFixed(1)}" x2="${w-padR}" y2="${lineY.toFixed(1)}" stroke="#c62828" stroke-width="1.5" stroke-dasharray="5,4"/><text x="${w-padR}" y="${(lineY-5).toFixed(1)}" font-size="10.5" text-anchor="end" fill="#c62828">จุดคุ้มทุน (${fmt(startupTotal)} บ.)</text>`;
   }
-  return `<svg viewBox="0 0 ${w} ${h}" class="chart-svg"><line x1="${padL}" y1="${zeroY.toFixed(1)}" x2="${w-padR}" y2="${zeroY.toFixed(1)}" stroke="${cv('--chart-axis')}"/>${bars}${refLine}</svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" class="chart-svg"><line x1="${padL}" y1="${zeroY.toFixed(1)}" x2="${w-padR}" y2="${zeroY.toFixed(1)}" stroke="#e6d8c6"/>${bars}${refLine}</svg>`;
 }
 
 /* ============ Cash-flow break-even (uses real purchase records, not recipes) ============ */
