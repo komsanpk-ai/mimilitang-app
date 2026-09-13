@@ -4828,6 +4828,15 @@ function switchPage(pageName){
 let lastExitAttemptAt = 0;
 const EXIT_DOUBLE_TAP_MS = 2000;
 window.addEventListener('popstate', (e)=>{
+  // A back-press while the drawer is open pops the history entry openDrawer() pushed —
+  // close it and land on home (never treat this as "leave the app", even if the drawer
+  // was opened from the home screen itself with nothing picked).
+  if(drawerOverlay.classList.contains('show')){
+    fsDebugLog('back-nav: popstate closed the open drawer -> going home');
+    drawerOverlay.classList.remove('show');
+    switchPage('home');
+    return;
+  }
   const pageName = (e.state && e.state.page) || 'home';
   fsDebugLog('back-nav: popstate fired -> page='+pageName+', currentDisplayedPage='+currentDisplayedPage+', history.length='+history.length);
   if(pageName==='home' && currentDisplayedPage==='home'){
@@ -4890,8 +4899,24 @@ document.querySelectorAll('.home-tile').forEach(btn=>{
 
 /* ============ Hamburger drawer ============ */
 const drawerOverlay = document.getElementById('drawerOverlay');
-function openDrawer(){ drawerOverlay.classList.add('show'); }
-function closeDrawer(){ drawerOverlay.classList.remove('show'); }
+// Opening the drawer pushes its own history entry so a phone back-press while it's open
+// closes the drawer first (see popstate below) instead of falling through to page-level
+// back navigation or the home exit-guard. Closing it any other way (X, tapping the dark
+// overlay, or picking a menu item) replaces that entry away again with history.replaceState
+// so it never lingers for a *later* back-press to stumble into.
+function openDrawer(){
+  if(drawerOverlay.classList.contains('show')) return;
+  drawerOverlay.classList.add('show');
+  navSeq++;
+  history.pushState({page:currentDisplayedPage, drawerOpen:true}, '', '#nav'+navSeq);
+}
+function closeDrawer(){
+  if(!drawerOverlay.classList.contains('show')) return;
+  drawerOverlay.classList.remove('show');
+  if(history.state && history.state.drawerOpen){
+    history.replaceState({page:currentDisplayedPage}, '');
+  }
+}
 document.getElementById('hamburgerBtn').addEventListener('click', openDrawer);
 document.getElementById('closeDrawerBtn').addEventListener('click', closeDrawer);
 drawerOverlay.addEventListener('click', e=>{ if(e.target===drawerOverlay) closeDrawer(); });
@@ -4899,13 +4924,14 @@ document.querySelectorAll('.drawer-link').forEach(btn=>{
   // Utility buttons in this same list (Log Out, ล้างแคช) have no data-page — they handle their own
   // click elsewhere, so this generic handler should only navigate for actual page links, not call
   // switchPage(undefined) (which throws inside applyPage's pageName.indexOf check) for them too.
-  btn.addEventListener('click', ()=>{ if(btn.dataset.page) switchPage(btn.dataset.page); closeDrawer(); });
+  // closeDrawer() runs first so its history cleanup lands before switchPage's own pushState.
+  btn.addEventListener('click', ()=>{ closeDrawer(); if(btn.dataset.page) switchPage(btn.dataset.page); });
 });
 document.querySelectorAll('.drawer-sublink:not(#settingsDrawerBtn)').forEach(btn=>{
   btn.addEventListener('click', ()=>{
+    closeDrawer();
     switchPage('stock');
     switchSubview(btn.dataset.subview);
-    closeDrawer();
   });
 });
 switchSubview('overview');
