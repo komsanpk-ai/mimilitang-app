@@ -2158,7 +2158,7 @@ p.hint.collapsible-hint.show{display:block;}
 </div>
 
 <div id="toast"></div>
-<div id="fsDebugBox" style="display:none;position:fixed;bottom:8px;left:8px;right:8px;z-index:2000;background:rgba(0,0,0,.92);color:#7CFC7C;font-family:monospace;font-size:11px;line-height:1.5;padding:10px;border-radius:10px;white-space:pre-wrap;max-height:45vh;overflow:auto;pointer-events:none;"></div>
+<div id="fsDebugBox" style="display:none;position:fixed;top:8px;left:8px;right:8px;z-index:2000;background:rgba(0,0,0,.92);color:#7CFC7C;font-family:monospace;font-size:10.5px;line-height:1.4;padding:6px 10px;border-radius:10px;white-space:pre-wrap;max-height:120px;overflow:hidden;pointer-events:none;"></div>
 
 <!-- Login gate: shown until Firebase Auth confirms a signed-in user -->
 <div class="modal-overlay show" id="loginOverlay" style="z-index:1000;">
@@ -2211,8 +2211,13 @@ if(new URLSearchParams(location.search).get('debug')==='1'){
 function fsDebugLog(msg){
   const box = document.getElementById('fsDebugBox');
   const t = new Date().toLocaleTimeString('th-TH', {hour12:false});
-  box.textContent += `[${t}] ${msg}\n`;
-  box.scrollTop = box.scrollHeight;
+  // The box is now a small fixed-height strip (so it can't cover a modal's buttons) and
+  // pointer-events:none so taps pass through it — but that also means it can't be scrolled by
+  // the user, so it has to show the most recent lines on its own rather than relying on scroll.
+  const KEEP_LINES = 6;
+  const lines = (box.dataset.lines ? JSON.parse(box.dataset.lines) : []).concat(`[${t}] ${msg}`).slice(-KEEP_LINES);
+  box.dataset.lines = JSON.stringify(lines);
+  box.textContent = lines.join('\n');
 }
 fsDebugLog('project: '+firebaseConfig.projectId+' | origin: '+location.origin+location.pathname);
 
