@@ -2565,14 +2565,36 @@ let prepChecklist = load(LS.prepChecklist, null) || {};
 let deliveryRouteOrder = load(LS.deliveryRouteOrder, null) || {};
 let deliveryRouteMaps = load(LS.deliveryRouteMaps, null) || {};
 
-function persistOrders(){ save(LS.orders, orders); fsSyncArray('orders', orders); }
+// orders/stockins grow without bound over time (one record per transaction, forever), and each
+// can carry a compressed-but-still-substantial slip photo — confirmed via a real device's
+// ?debug=1 log hitting genuine QuotaExceededError at ~4,981KB of localStorage usage from well
+// under 30 slip uploads (grouped multi-item orders duplicate the same slip across each order
+// record, multiplying the effective footprint). Firestore itself has no such tight limit and is
+// already the real source of truth for these collections (synced via fsSyncArray, with its own
+// much larger IndexedDB-backed offline cache from enablePersistence) — localStorage's copy only
+// exists for instant first-paint before that cache/listener catches up a moment later, so it's
+// safe to drop the heaviest fields from *that* copy specifically without losing any data.
+function stripForLocalCache(arr, heavyFields){
+  return arr.map(item=>{
+    const copy = Object.assign({}, item);
+    heavyFields.forEach(f=>{ if(copy[f]!==undefined) delete copy[f]; });
+    return copy;
+  });
+}
+// Run once per boot, immediately: an origin already sitting at/near quota from before this fix
+// existed needs its bloated local copy shrunk right away, not just have its growth rate slowed
+// starting from the next order/stockin save — this is what actually recovers headroom for a
+// shop already in the state the user's device was confirmed to be in.
+save(LS.orders, stripForLocalCache(orders, ['paymentSlip']));
+save(LS.stockins, stripForLocalCache(stockins, ['slip']));
+function persistOrders(){ save(LS.orders, stripForLocalCache(orders, ['paymentSlip'])); fsSyncArray('orders', orders); }
 function persistProducts(){ save(LS.products, products); fsSyncValue('products', products); }
 function persistChannels(){ save(LS.channels, channels); fsSyncValue('channels', channels); }
 function persistPaymentMethods(){ save(LS.paymentMethods, paymentMethods); fsSyncValue('paymentMethods', paymentMethods); }
 function persistMaterials(){ save(LS.materials, materials); fsSyncArray('materials', materials); }
 function persistUnits(){ save(LS.units, units); fsSyncValue('units', units); }
 function persistRecipes(){ save(LS.recipes, recipes); fsSyncValue('recipes', recipes); }
-function persistStockins(){ save(LS.stockins, stockins); fsSyncArray('stockins', stockins); }
+function persistStockins(){ save(LS.stockins, stripForLocalCache(stockins, ['slip'])); fsSyncArray('stockins', stockins); }
 function persistStartupCosts(){ save(LS.startupCosts, startupCosts); fsSyncValue('startupCosts', startupCosts); }
 function persistStockAdjustments(){ save(LS.adjustments, stockAdjustments); fsSyncArray('stockAdjustments', stockAdjustments); }
 function persistOperatingExpenses(){ save(LS.operatingExpenses, operatingExpenses); fsSyncValue('operatingExpenses', operatingExpenses); }
@@ -2654,7 +2676,7 @@ function fsAttachListeners(){
   fsListen(()=>firestore.collection('orders'), snap=>{
     orders = snap.docs.map(d=>d.data());
     _fsPrevSnapshot.orders = orders.map(x=>Object.assign({},x));
-    save(LS.orders, orders);
+    save(LS.orders, stripForLocalCache(orders, ['paymentSlip']));
     fsDebugLog('orders snapshot: '+snap.docs.length+' doc(s), fromCache='+snap.metadata.fromCache);
     renderTable(); renderAllReports(); renderDeliveryReport(); renderPrepPage(); renderStockPage();
   }, 'orders');
@@ -2669,7 +2691,7 @@ function fsAttachListeners(){
   fsListen(()=>firestore.collection('stockins'), snap=>{
     stockins = snap.docs.map(d=>d.data());
     _fsPrevSnapshot.stockins = stockins.map(x=>Object.assign({},x));
-    save(LS.stockins, stockins);
+    save(LS.stockins, stripForLocalCache(stockins, ['slip']));
     renderStockPage();
   }, 'stockins');
 
