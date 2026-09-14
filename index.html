@@ -2158,7 +2158,7 @@ p.hint.collapsible-hint.show{display:block;}
 </div>
 
 <div id="toast"></div>
-<div id="fsDebugBox" style="display:none;position:fixed;bottom:8px;left:8px;right:8px;z-index:2000;background:rgba(0,0,0,.92);color:#7CFC7C;font-family:monospace;font-size:11px;line-height:1.5;padding:10px;border-radius:10px;white-space:pre-wrap;max-height:45vh;overflow:auto;"></div>
+<div id="fsDebugBox" style="display:none;position:fixed;bottom:8px;left:8px;right:8px;z-index:2000;background:rgba(0,0,0,.92);color:#7CFC7C;font-family:monospace;font-size:11px;line-height:1.5;padding:10px;border-radius:10px;white-space:pre-wrap;max-height:45vh;overflow:auto;pointer-events:none;"></div>
 
 <!-- Login gate: shown until Firebase Auth confirms a signed-in user -->
 <div class="modal-overlay show" id="loginOverlay" style="z-index:1000;">
@@ -3794,8 +3794,15 @@ function updateDlSlipPreview(){
 }
 document.getElementById('dlSlipInput').addEventListener('change', e=>{
   const file = e.target.files[0]; if(!file) return;
-  compressImageFile(file).then(dataUrl=>{ dlCompleteSlipData = dataUrl; updateDlSlipPreview(); })
-    .catch(e=>toast(e.message||'อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง'));
+  fsDebugLog('dl-slip: file picked — '+file.name+' ('+Math.round(file.size/1024)+'KB, '+file.type+')');
+  compressImageFile(file).then(dataUrl=>{
+    dlCompleteSlipData = dataUrl;
+    updateDlSlipPreview();
+    fsDebugLog('dl-slip: compressed OK — '+Math.round(dataUrl.length/1024)+'KB');
+  }).catch(err=>{
+    fsDebugLog('dl-slip: compress FAILED — '+(err.message||err));
+    toast(err.message||'อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง');
+  });
 });
 function openDlCompleteModal(orderIds){
   const members = orderIds.map(id=>orders.find(x=>x.id===id)).filter(Boolean);
@@ -3810,10 +3817,11 @@ function openDlCompleteModal(orderIds){
   box.innerHTML = paymentMethods.map(pm=>`<button type="button" class="btn btn-primary dl-method-btn" data-method="${esc(pm)}">✅ ${esc(pm)}</button>`).join('')
     + `<button type="button" class="btn btn-secondary" id="dlCompleteCancelBtn">ยกเลิก</button>`;
   box.querySelectorAll('.dl-method-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>completeDelivery(btn.dataset.method));
+    btn.addEventListener('click', ()=>{ fsDebugLog('dl-complete: method button tapped — '+btn.dataset.method); completeDelivery(btn.dataset.method); });
   });
   document.getElementById('dlCompleteCancelBtn').addEventListener('click', closeDlCompleteModal);
   document.getElementById('dlCompleteModal').classList.add('show');
+  fsDebugLog('dl-complete: modal opened for '+o.customerName+' ('+orderIds.length+' order(s))');
 }
 function closeDlCompleteModal(){
   dlCompleteTargetIds = null;
@@ -3821,8 +3829,9 @@ function closeDlCompleteModal(){
   document.getElementById('dlCompleteModal').classList.remove('show');
 }
 function completeDelivery(method){
+  fsDebugLog('dl-complete: completeDelivery() start — method='+method+', targetIds='+JSON.stringify(dlCompleteTargetIds));
   const members = (dlCompleteTargetIds||[]).map(id=>orders.find(x=>x.id===id)).filter(Boolean);
-  if(!members.length){ closeDlCompleteModal(); return; }
+  if(!members.length){ fsDebugLog('dl-complete: no matching order(s) found — aborting'); closeDlCompleteModal(); return; }
   members.forEach(o=>{
     o.shippingStatus = 'ส่งลูกค้าเรียบร้อย';
     o.paymentStatus = 'ได้รับเงินแล้ว';
@@ -3830,10 +3839,12 @@ function completeDelivery(method){
     o.paymentSlip = dlCompleteSlipData;
   });
   persistOrders();
+  fsDebugLog('dl-complete: persisted + re-rendering...');
   renderTable();
   renderAllReports();
   renderDeliveryReport();
   closeDlCompleteModal();
+  fsDebugLog('dl-complete: done, modal closed');
   toast(`บันทึก "${members[0].customerName}" ส่งสำเร็จ + ${method} แล้ว`);
 
   const dayOrders = orders.filter(x=>x.deliveryDate===members[0].deliveryDate && x.shippingStatus!=='ยกเลิก');
