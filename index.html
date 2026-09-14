@@ -5379,9 +5379,13 @@ function updateAdjustPreview(){
   f('sa_current').value = mat ? `${fmt(baseline)} ${mat.unit}` : '-';
   const newQty = Number(f('sa_newQty').value)||0;
   const delta = mat ? newQty - baseline : 0;
-  document.getElementById('sa_delta').textContent = (delta>=0?'+':'')+fmt(delta)+(mat?' '+mat.unit:'');
+  document.getElementById('sa_delta').textContent = mat
+    ? (delta>=0 ? `ปรับเพิ่ม ${fmt(delta)}` : `ปรับลง ${fmt(Math.abs(delta))}`)+' '+mat.unit
+    : '0';
   document.getElementById('sa_delta').style.color = delta>=0 ? 'var(--green)' : 'var(--red)';
-  document.getElementById('sa_sub').textContent = mat ? `จะปรับยอดจาก ${fmt(baseline)} เป็น ${fmt(newQty)} ${mat.unit}` : '-';
+  document.getElementById('sa_sub').textContent = !mat ? '-'
+    : baseline>=0 ? `จะปรับยอดจาก ${fmt(baseline)} เป็น ${fmt(newQty)} ${mat.unit}`
+    : `จะปรับยอดเป็น ${fmt(newQty)} ${mat.unit}`;
 }
 ['sa_material','sa_newQty'].forEach(id=>{
   f(id).addEventListener('input', updateAdjustPreview); f(id).addEventListener('change', updateAdjustPreview);
@@ -5533,11 +5537,22 @@ function renderStockAdjustTable(){
   tbody.innerHTML = pageItems.map(a=>{
     const mat = getMaterial(a.materialId);
     const color = a.delta>=0 ? 'var(--green)' : 'var(--red)';
+    // A negative "previousQty" is just the system's running recipe-deduction total, not a real
+    // physical quantity anyone ever held — showing it as if it were a from-value ("-30.45 → 15")
+    // reads as broken. Once it's negative there's no meaningful physical "before" to show, so
+    // just state what this adjustment set the count to.
+    const changeLine = a.previousQty>=0
+      ? `${fmt(a.previousQty)} → ${fmt(a.newQty)} ${esc(mat?mat.unit:'')}`
+      : `ปรับเป็น ${fmt(a.newQty)} ${esc(mat?mat.unit:'')}`;
+    // An adjustment only ever moves the count up or down — there's no such thing as "negative
+    // stock" to report, so state it as a direction (ปรับเพิ่ม/ปรับลง) with a plain magnitude
+    // instead of a signed number, which read as a nonsensical negative quantity.
+    const deltaLine = a.delta>=0 ? `ปรับเพิ่ม ${fmt(a.delta)}` : `ปรับลง ${fmt(Math.abs(a.delta))}`;
     return `<tr>
       <td>${fmtDate(a.date)}</td><td class="wrap">${esc(mat?mat.name:'(ไม่พบวัตถุดิบ)')}</td>
       <td>
-        <div>${fmt(a.previousQty)} → ${fmt(a.newQty)} ${esc(mat?mat.unit:'')}</div>
-        <div style="color:${color};font-weight:700;">${(a.delta>=0?'+':'')+fmt(a.delta)}</div>
+        <div>${changeLine}</div>
+        <div style="color:${color};font-weight:700;">${deltaLine} ${esc(mat?mat.unit:'')}</div>
       </td>
       <td class="wrap">${esc(a.note)}</td>
       <td><div class="row-actions">
