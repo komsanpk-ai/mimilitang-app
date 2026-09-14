@@ -2533,18 +2533,29 @@ function persistLogo(){ save(LS.logo, logoData); fsSyncValue('logo', logoData); 
 /* ============ Firebase: data sync (Firestore <-> local arrays) ============ */
 const _fsPrevSnapshot = {orders:[], materials:[], stockins:[], stockAdjustments:[]};
 function fsSyncArray(name, currentArr){
-  const prevArr = _fsPrevSnapshot[name] || [];
-  const prevMap = new Map(prevArr.map(x=>[x.id,x]));
-  const currMap = new Map(currentArr.map(x=>[x.id,x]));
-  const batch = firestore.batch();
-  let ops = 0;
-  currMap.forEach((item,id)=>{
-    const prev = prevMap.get(id);
-    if(!prev || JSON.stringify(prev)!==JSON.stringify(item)){ batch.set(firestore.collection(name).doc(id), item); ops++; }
-  });
-  prevMap.forEach((_,id)=>{ if(!currMap.has(id)){ batch.delete(firestore.collection(name).doc(id)); ops++; } });
-  _fsPrevSnapshot[name] = currentArr.map(x=>Object.assign({},x));
-  if(ops) batch.commit().catch(e=>{ console.error('Firestore sync failed:',name,e); fsDebugLog('❌ push FAILED: '+name+' ('+ops+' op(s)) — '+(e.code||e.message||e)); });
+  // Building/committing the batch can throw *synchronously* (not just reject) — e.g. a document
+  // over Firestore's 1MiB size limit, which a big attached photo (slip/product image) can trigger.
+  // This function runs synchronously inside every persistX() call, right before the UI re-renders
+  // and closes whatever modal triggered the save — an uncaught throw here used to abort all of
+  // that silently, making a button tap (e.g. confirming delivery right after attaching a slip)
+  // look like it did nothing even though the local save had already succeeded.
+  try {
+    const prevArr = _fsPrevSnapshot[name] || [];
+    const prevMap = new Map(prevArr.map(x=>[x.id,x]));
+    const currMap = new Map(currentArr.map(x=>[x.id,x]));
+    const batch = firestore.batch();
+    let ops = 0;
+    currMap.forEach((item,id)=>{
+      const prev = prevMap.get(id);
+      if(!prev || JSON.stringify(prev)!==JSON.stringify(item)){ batch.set(firestore.collection(name).doc(id), item); ops++; }
+    });
+    prevMap.forEach((_,id)=>{ if(!currMap.has(id)){ batch.delete(firestore.collection(name).doc(id)); ops++; } });
+    _fsPrevSnapshot[name] = currentArr.map(x=>Object.assign({},x));
+    if(ops) batch.commit().catch(e=>{ console.error('Firestore sync failed:',name,e); fsDebugLog('❌ push FAILED: '+name+' ('+ops+' op(s)) — '+(e.code||e.message||e)); });
+  } catch(e){
+    console.error('Firestore sync threw:', name, e);
+    fsDebugLog('❌ push THREW: '+name+' — '+(e.code||e.message||e));
+  }
 }
 function fsSyncValue(key, value){
   firestore.collection('settings').doc(key).set({value}).catch(e=>{ console.error('Firestore sync failed: settings/'+key, e); fsDebugLog('❌ push FAILED: settings/'+key+' — '+(e.code||e.message||e)); });
@@ -2824,6 +2835,15 @@ function materialStatus(mat){
    at `maxDim`, re-encoded as JPEG at `quality` (both generous enough that the result is visually
    indistinguishable at the sizes this app displays photos, typically well under 200KB). */
 function compressImageFile(file, {maxDim=1280, quality=0.75, mimeType='image/jpeg'}={}){
+  // A single fixed resize+quality pass (the original approach here) is generous enough for a
+  // typical phone photo but isn't a hard guarantee for every possible source image — an unusually
+  // detailed/high-contrast photo can still come out larger than expected. Since Firestore rejects
+  // any document over ~1MiB and a compressed image is by far the largest field on whatever record
+  // it's attached to, keep shrinking further (smaller pixel size, then lower quality) until the
+  // result is comfortably under that ceiling, and only give up with a clear, catchable error after
+  // several attempts — never let an oversized result reach a Firestore write and fail silently
+  // later (see mimilitang_app_conventions memory for the incident this was first added to fix).
+  const SAFE_CHARS = 700000; // data-URL string length; leaves generous headroom under ~1MiB/doc
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
     reader.onerror = ()=>reject(reader.error||new Error('อ่านไฟล์ไม่สำเร็จ'));
@@ -2831,14 +2851,32 @@ function compressImageFile(file, {maxDim=1280, quality=0.75, mimeType='image/jpe
       const img = new Image();
       img.onerror = ()=>reject(new Error('ไฟล์รูปภาพเสียหายหรือไม่รองรับ'));
       img.onload = ()=>{
-        let w = img.naturalWidth, h = img.naturalHeight;
-        if(w>maxDim || h>maxDim){
-          if(w>=h){ h = Math.round(h*maxDim/w); w = maxDim; } else { w = Math.round(w*maxDim/h); h = maxDim; }
-        }
         const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL(mimeType, quality));
+        const ctx = canvas.getContext('2d');
+        function encodeAt(dim, q){
+          let w = img.naturalWidth, h = img.naturalHeight;
+          if(w>dim || h>dim){
+            if(w>=h){ h = Math.round(h*dim/w); w = dim; } else { w = Math.round(w*dim/h); h = dim; }
+          }
+          canvas.width = w; canvas.height = h;
+          ctx.clearRect(0,0,w,h);
+          ctx.drawImage(img, 0, 0, w, h);
+          return canvas.toDataURL(mimeType, q);
+        }
+        let dim = maxDim, q = quality;
+        let dataUrl = encodeAt(dim, q);
+        let attempts = 0;
+        while(dataUrl.length > SAFE_CHARS && attempts < 4){
+          dim = Math.round(dim*0.75);
+          q = Math.max(0.4, q-0.15);
+          dataUrl = encodeAt(dim, q);
+          attempts++;
+        }
+        if(dataUrl.length > SAFE_CHARS){
+          reject(new Error('ไฟล์รูปภาพมีรายละเอียดสูงเกินไป บีบอัดให้เล็กพอไม่ได้ — ลองถ่ายใหม่หรือเลือกรูปอื่น'));
+          return;
+        }
+        resolve(dataUrl);
       };
       img.src = reader.result;
     };
@@ -2857,7 +2895,7 @@ document.getElementById('logoInput').addEventListener('change', e=>{
   const file = e.target.files[0]; if(!file) return;
   compressImageFile(file, {mimeType:'image/png', quality:1}).then(dataUrl=>{
     logoData = dataUrl; persistLogo(); renderLogo(); toast('อัปเดตโลโก้แล้ว');
-  }).catch(()=>toast('อัปโหลดโลโก้ไม่สำเร็จ ลองใหม่อีกครั้ง'));
+  }).catch(e=>toast(e.message||'อัปโหลดโลโก้ไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 renderLogo();
 
@@ -2959,7 +2997,7 @@ function updateSlipPreview(){
 f('f_paymentSlip').addEventListener('change', e=>{
   const file = e.target.files[0]; if(!file) return;
   compressImageFile(file).then(dataUrl=>{ formSlipData = dataUrl; updateSlipPreview(); })
-    .catch(()=>toast('อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง'));
+    .catch(e=>toast(e.message||'อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 function updateTotalPreview(){
   const data = readForm();
@@ -3598,7 +3636,7 @@ document.getElementById('deliveryMapPhotoInput').addEventListener('change', e=>{
     renderDeliveryMapPhoto(date);
     e.target.value = '';
     toast('แก้ไขสำเร็จ');
-  }).catch(()=>toast('อัปโหลดรูปแผนที่ไม่สำเร็จ ลองใหม่อีกครั้ง'));
+  }).catch(e=>toast(e.message||'อัปโหลดรูปแผนที่ไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 document.getElementById('deliveryMapPhotoRemoveBtn').addEventListener('click', ()=>{
   const date = f('dl_date').value || addDaysISO(todayISO(),1);
@@ -3753,7 +3791,7 @@ function updateDlSlipPreview(){
 document.getElementById('dlSlipInput').addEventListener('change', e=>{
   const file = e.target.files[0]; if(!file) return;
   compressImageFile(file).then(dataUrl=>{ dlCompleteSlipData = dataUrl; updateDlSlipPreview(); })
-    .catch(()=>toast('อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง'));
+    .catch(e=>toast(e.message||'อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 function openDlCompleteModal(orderIds){
   const members = orderIds.map(id=>orders.find(x=>x.id===id)).filter(Boolean);
@@ -4882,7 +4920,7 @@ document.getElementById('addProductBtn').addEventListener('click', ()=>{
 document.getElementById('prod_modal_photo_input').addEventListener('change', e=>{
   const file = e.target.files[0]; if(!file) return;
   compressImageFile(file).then(dataUrl=>{ productModalPendingImage = dataUrl; setProductPhotoPreview(dataUrl); })
-    .catch(()=>toast('อัปโหลดรูปสินค้าไม่สำเร็จ ลองใหม่อีกครั้ง'));
+    .catch(e=>toast(e.message||'อัปโหลดรูปสินค้าไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 document.getElementById('closeProductModalBtn').addEventListener('click', ()=>{
   document.getElementById('productModal').classList.remove('show');
@@ -5594,7 +5632,7 @@ function updateSiSlipPreview(){
 f('si_slip').addEventListener('change', e=>{
   const file = e.target.files[0]; if(!file) return;
   compressImageFile(file).then(dataUrl=>{ siSlipData = dataUrl; updateSiSlipPreview(); })
-    .catch(()=>toast('อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง'));
+    .catch(e=>toast(e.message||'อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 function wireStockinSlipButtons(tbody){
   tbody.querySelectorAll('.stockin-slip-view-btn').forEach(btn=>{
@@ -6735,7 +6773,7 @@ document.getElementById('addMaterialBtn').addEventListener('click', ()=>{
 document.getElementById('mat_modal_photo_input').addEventListener('change', e=>{
   const file = e.target.files[0]; if(!file) return;
   compressImageFile(file).then(dataUrl=>{ materialModalPendingImage = dataUrl; setMaterialPhotoPreview(dataUrl); })
-    .catch(()=>toast('อัปโหลดรูปวัตถุดิบไม่สำเร็จ ลองใหม่อีกครั้ง'));
+    .catch(e=>toast(e.message||'อัปโหลดรูปวัตถุดิบไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 document.getElementById('closeMaterialModalBtn').addEventListener('click', ()=>{
   document.getElementById('materialModal').classList.remove('show');
