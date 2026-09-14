@@ -1428,7 +1428,8 @@ p.hint.collapsible-hint.show{display:block;}
   <section class="card" id="stockAdjustSection">
     <div class="card-head"><h2><span class="emoji icon-chip" data-icon="adjust">🔧</span>ปรับปรุงยอดคงเหลือ</h2></div>
     <p class="hint">ใช้เมื่อยอดในระบบไม่ตรงกับของจริง เช่น ยอดยกมาก่อนเริ่มใช้ระบบ หรือของทดสอบที่ไม่ได้อ้างอิงสต๊อกจริง — ปรับยอดคงเหลือได้ตรงๆ โดยไม่ต้องผ่าน "รับเข้าสต๊อก" เลือกวันที่ย้อนหลังได้ (ใช้บันทึกประวัติเท่านั้น ยอดคงเหลือจะถูกอัปเดตทันทีที่บันทึก)<br>
-    ถ้าทราบราคาต้นทุนของยอดนี้ (เช่น ของเดิมที่มีอยู่ก่อนเริ่มใช้ระบบ) กรอกราคาด้านล่างได้เลย ระบบจะอัปเดต "ราคาล่าสุด" ให้ที่หน้าสต๊อกคงเหลือ โดยไม่นับเป็นการซื้อใหม่ (ไม่บวกเพิ่มเข้าคงเหลืออีกรอบ) — หากไม่ทราบราคา เว้นว่างไว้ได้ แล้วค่อยไปอัปเดตทีหลังผ่านฟอร์มนี้ หรือตอน "รับเข้าสต๊อก" ครั้งถัดไป</p>
+    ถ้าทราบราคาต้นทุนของยอดนี้ (เช่น ของเดิมที่มีอยู่ก่อนเริ่มใช้ระบบ) กรอกราคาด้านล่างได้เลย ระบบจะอัปเดต "ราคาล่าสุด" ให้ที่หน้าสต๊อกคงเหลือ โดยไม่นับเป็นการซื้อใหม่ (ไม่บวกเพิ่มเข้าคงเหลืออีกรอบ) — หากไม่ทราบราคา เว้นว่างไว้ได้ แล้วค่อยไปอัปเดตทีหลังผ่านฟอร์มนี้ หรือตอน "รับเข้าสต๊อก" ครั้งถัดไป<br>
+    <b>เห็นยอดเดิม/ยอดคงเหลือติดลบ ไม่ต้องตกใจ</b> — ตัวเลขนี้คำนวณจากยอดที่หักอัตโนมัติทุกครั้งที่มีออเดอร์ตามสูตรต้นทุน ไม่ใช่ยอดนับจริงในครัว มักเกิดกับของที่เตรียมเองแล้วไม่ได้บันทึก "รับเข้าสต๊อก" เหมือนวัตถุดิบที่ซื้อ (เช่น น้ำเชื่อม/น้ำต้ม) กรอกยอดนับจริงที่นี่เพื่อดึงยอดกลับมาตรงกับของจริงได้เลย</p>
     <button type="button" class="btn btn-primary btn-small" id="openAdjustModalBtn">➕ ปรับปรุงยอดคงเหลือ</button>
 
     <datalist id="adjustReasonList">
@@ -1446,7 +1447,7 @@ p.hint.collapsible-hint.show{display:block;}
     </div>
     <div class="table-scroll">
       <table id="stockAdjustTable" class="compact-table">
-        <thead><tr><th>วันที่</th><th>วัตถุดิบ</th><th>ยอดเดิม</th><th>ยอดใหม่</th><th>ผลต่าง</th><th>หมายเหตุ</th><th></th></tr></thead>
+        <thead><tr><th>วันที่</th><th>วัตถุดิบ</th><th>การเปลี่ยนแปลง</th><th>หมายเหตุ</th><th></th></tr></thead>
         <tbody id="stockAdjustBody"></tbody>
       </table>
     </div>
@@ -5366,12 +5367,21 @@ document.getElementById('sid_nextBtn').addEventListener('click', ()=>{ f('sid_da
 document.getElementById('sa_date').value = todayISO();
 function updateAdjustPreview(){
   const mat = getMaterial(f('sa_material').value);
-  f('sa_current').value = mat ? `${fmt(mat.currentStock)} ${mat.unit}` : '-';
+  // When editing an existing (not-necessarily-latest) adjustment, mat.currentStock already has
+  // that record's own delta baked in — comparing against it would preview against the wrong
+  // baseline. Undo just this record's delta first so the preview matches what submit will
+  // actually save (see the editingAdjustId branch of the submit handler, which does the same).
+  let baseline = mat ? mat.currentStock||0 : 0;
+  if(mat && editingAdjustId){
+    const editing = stockAdjustments.find(x=>x.id===editingAdjustId);
+    if(editing && editing.materialId===mat.id) baseline -= editing.delta;
+  }
+  f('sa_current').value = mat ? `${fmt(baseline)} ${mat.unit}` : '-';
   const newQty = Number(f('sa_newQty').value)||0;
-  const delta = mat ? newQty - (mat.currentStock||0) : 0;
+  const delta = mat ? newQty - baseline : 0;
   document.getElementById('sa_delta').textContent = (delta>=0?'+':'')+fmt(delta)+(mat?' '+mat.unit:'');
   document.getElementById('sa_delta').style.color = delta>=0 ? 'var(--green)' : 'var(--red)';
-  document.getElementById('sa_sub').textContent = mat ? `จะปรับยอดจาก ${fmt(mat.currentStock)} เป็น ${fmt(newQty)} ${mat.unit}` : '-';
+  document.getElementById('sa_sub').textContent = mat ? `จะปรับยอดจาก ${fmt(baseline)} เป็น ${fmt(newQty)} ${mat.unit}` : '-';
 }
 ['sa_material','sa_newQty'].forEach(id=>{
   f(id).addEventListener('input', updateAdjustPreview); f(id).addEventListener('change', updateAdjustPreview);
@@ -5502,7 +5512,7 @@ function renderStockAdjustTable(){
   const tbody = document.getElementById('stockAdjustBody');
   const list = stockAdjustments.slice().sort((a,b)=>b.date.localeCompare(a.date));
   if(!list.length){
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">ยังไม่มีประวัติการปรับปรุงยอด</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีประวัติการปรับปรุงยอด</td></tr>';
     document.getElementById('saPagination').innerHTML = '';
     document.getElementById('saSummary').innerHTML = '';
     return;
@@ -5525,8 +5535,10 @@ function renderStockAdjustTable(){
     const color = a.delta>=0 ? 'var(--green)' : 'var(--red)';
     return `<tr>
       <td>${fmtDate(a.date)}</td><td class="wrap">${esc(mat?mat.name:'(ไม่พบวัตถุดิบ)')}</td>
-      <td>${fmt(a.previousQty)}</td><td>${fmt(a.newQty)}</td>
-      <td style="color:${color};font-weight:700;">${(a.delta>=0?'+':'')+fmt(a.delta)}</td>
+      <td>
+        <div>${fmt(a.previousQty)} → ${fmt(a.newQty)} ${esc(mat?mat.unit:'')}</div>
+        <div style="color:${color};font-weight:700;">${(a.delta>=0?'+':'')+fmt(a.delta)}</div>
+      </td>
       <td class="wrap">${esc(a.note)}</td>
       <td><div class="row-actions">
         <button type="button" class="icon-mini edit-adjust-btn" data-id="${a.id}" title="แก้ไข">✏️</button>
