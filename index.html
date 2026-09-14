@@ -2208,16 +2208,24 @@ const firestore = firebase.firestore();
 if(new URLSearchParams(location.search).get('debug')==='1'){
   document.getElementById('fsDebugBox').style.display = 'block';
 }
+function fsDebugRenderBox(){
+  const box = document.getElementById('fsDebugBox');
+  const lines = box.dataset.lines ? JSON.parse(box.dataset.lines) : [];
+  // The localStorage-usage line is pinned at the top and kept out of the rolling recent-lines
+  // buffer below — otherwise a handful of boot-time log lines would push it off-screen before
+  // the user even gets to the step that's actually failing, right when that number matters most.
+  box.textContent = 'localStorage: ~'+localStorageUsageKB()+'KB used (quota is usually 5,000-10,000KB)\n'+lines.join('\n');
+}
 function fsDebugLog(msg){
   const box = document.getElementById('fsDebugBox');
   const t = new Date().toLocaleTimeString('th-TH', {hour12:false});
   // The box is now a small fixed-height strip (so it can't cover a modal's buttons) and
   // pointer-events:none so taps pass through it — but that also means it can't be scrolled by
   // the user, so it has to show the most recent lines on its own rather than relying on scroll.
-  const KEEP_LINES = 6;
+  const KEEP_LINES = 5;
   const lines = (box.dataset.lines ? JSON.parse(box.dataset.lines) : []).concat(`[${t}] ${msg}`).slice(-KEEP_LINES);
   box.dataset.lines = JSON.stringify(lines);
-  box.textContent = lines.join('\n');
+  fsDebugRenderBox();
 }
 fsDebugLog('project: '+firebaseConfig.projectId+' | origin: '+location.origin+location.pathname);
 
@@ -2410,19 +2418,33 @@ function load(key, fallback){
 // all of that — a save-triggering tap would look like it did nothing, with no error visible
 // unless devtools/?debug=1 happened to be open. Mirrors the same fsSyncArray fix applied earlier
 // for the equivalent Firestore-side failure mode.
+// Rough total localStorage usage for this origin, in KB — logged alongside a save failure so
+// the *actual* numbers are visible instead of assuming "storage full" is the cause without
+// evidence (typical browser quota is 5-10MB; if usage is nowhere near that, the real error name
+// logged below points to something else entirely, e.g. private-browsing mode, a WebView-specific
+// restriction, or a non-serializable value slipping into JSON.stringify).
+function localStorageUsageKB(){
+  let total = 0;
+  try {
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      total += (k?k.length:0) + (localStorage.getItem(k)||'').length;
+    }
+  } catch(e){ return -1; }
+  return Math.round(total/1024);
+}
 function save(key, val){
   try {
     localStorage.setItem(key, JSON.stringify(val));
   } catch(e){
+    // No user-facing toast here on purpose — the actual cause isn't confirmed (real usage is
+    // nowhere near typical quota limits for this shop's data volume), so claiming "storage full"
+    // would just be a guess presented as fact. What matters is that the failure never blocks the
+    // caller's own UI update (modal close, re-render) — logged for diagnosis via ?debug=1 instead,
+    // which now also shows real-time localStorage usage (see localStorageUsageKB below) so the
+    // *actual* error name/usage is visible next time this happens, instead of assuming.
     console.error('localStorage save failed:', key, e);
-    fsDebugLog('❌ localStorage save FAILED: '+key+' — '+(e.name||e.message||e));
-    if(e.name==='QuotaExceededError' || e.code===22){
-      // The calling persistX()/completeDelivery()-style flow almost always shows its own
-      // "saved!" toast right after this — toast() just replaces whatever's showing, so that
-      // would instantly clobber this far more important warning. Delay past the normal 2.2s
-      // toast lifetime so this one shows *after*, not swallowed by, that success message.
-      setTimeout(()=>toast('พื้นที่จัดเก็บข้อมูลในเครื่องเต็ม — การเปลี่ยนแปลงล่าสุดอาจไม่ถูกบันทึกถาวร ลองลบรูปภาพ/ข้อมูลเก่าที่ไม่จำเป็น หรือแจ้งผู้ดูแลระบบ'), 2300);
-    }
+    fsDebugLog('❌ localStorage save FAILED: '+key+' — '+(e.name||e.message||e)+' | total usage now ~'+localStorageUsageKB()+'KB');
   }
 }
 
