@@ -403,7 +403,11 @@ html[data-icon-theme="c"] .rank-fill{background:#0f766e;}
 /* ---------- Modal ---------- */
 .modal-overlay{
   position:fixed;inset:0;background:rgba(30,15,10,.5);display:none;align-items:center;justify-content:center;
-  z-index:100;padding:16px;
+  /* Must outrank .drawer-overlay's z-index:150 below — if the drawer were ever still open
+     underneath a modal, its overlay would sit on top and silently swallow every tap meant for
+     the modal (file input, buttons), with no visible sign why, since both are similar semi-
+     transparent dark backdrops. */
+  z-index:160;padding:16px;
 }
 .modal-overlay.show{display:flex;}
 .modal{background:var(--paper);border-radius:16px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;padding:22px;box-shadow:var(--shadow-lg);}
@@ -5209,6 +5213,12 @@ document.querySelectorAll('.modal-overlay').forEach(modalEl=>{
   new MutationObserver(()=>{
     const isShown = modalEl.classList.contains('show');
     if(isShown && !wasShown){
+      // Belt-and-suspenders: the drawer overlay sits at a higher z-index than a modal so it can
+      // cover the whole screen while open, which means if it were ever still open underneath a
+      // modal (any path that missed calling closeDrawer()), it would silently swallow every tap
+      // meant for the modal with no visible sign why. A modal being open is never a state the
+      // drawer should coexist with, so force it closed here as a generic safety net.
+      closeDrawer();
       navSeq++;
       history.pushState(pageState({modalOpen:true}), '', '#nav'+navSeq);
     } else if(!isShown && wasShown && history.state && history.state.modalOpen){
