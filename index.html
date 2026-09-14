@@ -2403,7 +2403,28 @@ const LS = {
 function load(key, fallback){
   try{ const v = localStorage.getItem(key); return v?JSON.parse(v):fallback; }catch(e){ return fallback; }
 }
-function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+// Unlike load() above, this had no error handling at all — localStorage.setItem throws
+// synchronously (most commonly QuotaExceededError once the origin's storage fills up, which
+// slip/photo data pushes toward over time), and since every persistX() function calls this
+// before doing anything else (re-render, close a modal), an uncaught throw here silently aborted
+// all of that — a save-triggering tap would look like it did nothing, with no error visible
+// unless devtools/?debug=1 happened to be open. Mirrors the same fsSyncArray fix applied earlier
+// for the equivalent Firestore-side failure mode.
+function save(key, val){
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+  } catch(e){
+    console.error('localStorage save failed:', key, e);
+    fsDebugLog('❌ localStorage save FAILED: '+key+' — '+(e.name||e.message||e));
+    if(e.name==='QuotaExceededError' || e.code===22){
+      // The calling persistX()/completeDelivery()-style flow almost always shows its own
+      // "saved!" toast right after this — toast() just replaces whatever's showing, so that
+      // would instantly clobber this far more important warning. Delay past the normal 2.2s
+      // toast lifetime so this one shows *after*, not swallowed by, that success message.
+      setTimeout(()=>toast('พื้นที่จัดเก็บข้อมูลในเครื่องเต็ม — การเปลี่ยนแปลงล่าสุดอาจไม่ถูกบันทึกถาวร ลองลบรูปภาพ/ข้อมูลเก่าที่ไม่จำเป็น หรือแจ้งผู้ดูแลระบบ'), 2300);
+    }
+  }
+}
 
 /* ============ Icon theme (A/B/C) ============
    Swaps every [data-icon] chip's content for the chosen style. Line mode strokes the shared
