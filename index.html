@@ -2769,6 +2769,19 @@ function distinctVisits(list){
   list.forEach(o=>{ const key = o.groupId||o.id; if(seen.has(key)) return; seen.add(key); out.push(o); });
   return out;
 }
+// A multi-item order's shared payment slip is only ever stored on one of its grouped documents
+// (see completeDelivery) rather than duplicated onto every one — this looks it up regardless of
+// which specific member ended up holding it, so every display site stays correct no matter which
+// member is being looked at.
+function orderSlip(o){
+  if(!o) return null;
+  if(o.paymentSlip) return o.paymentSlip;
+  if(o.groupId){
+    const sibling = orders.find(x=>x.groupId===o.groupId && x.paymentSlip);
+    if(sibling) return sibling.paymentSlip;
+  }
+  return null;
+}
 function customerOrderCount(phone){
   if(!phone) return 0;
   return distinctVisits(orders.filter(o=>o.phone===phone)).length;
@@ -3115,7 +3128,7 @@ function fillFormFromGroup(members){
   f('f_note').value=o.note||''; f('f_shippingFee').value=o.shippingFee||'';
   f('f_discountValue').value=o.discountValue||''; f('f_discountType').value=o.discountType;
   f('f_deposit').value=o.deposit||'';
-  formSlipData = o.paymentSlip || null; f('f_paymentSlip').value=''; updateSlipPreview();
+  formSlipData = orderSlip(o); f('f_paymentSlip').value=''; updateSlipPreview();
   extraLineItems = members.slice(1).map(m=>({product:m.product, jarSmall:Number(m.jarSmall)||0, jarLarge:Number(m.jarLarge)||0}));
   renderLineItemRows();
   updateTotalPreview();
@@ -3152,8 +3165,10 @@ document.getElementById('orderForm').addEventListener('submit', e=>{
   const data = readForm();
   // Extra product lines become their own order documents (so every per-product report stays
   // accurate) sharing one groupId (so "how many times has this customer bought" counts this as
-  // one visit — see distinctVisits). Shipping fee/discount/deposit describe the whole visit, so
-  // only the first line item keeps them; the rest get 0 to avoid counting them once per product.
+  // one visit — see distinctVisits). Shipping fee/discount/deposit/slip describe the whole visit
+  // (one transfer, one slip), so only the first line item keeps them; the rest get 0/none to
+  // avoid counting them once per product or duplicating the same slip photo onto every document
+  // (orderSlip() looks the slip up across the group regardless of which member holds it).
   const validExtraItems = extraLineItems.filter(it=>it.product && ((Number(it.jarSmall)||0)>0 || (Number(it.jarLarge)||0)>0));
   const lineItems = [
     {product:data.product, jarSmall:data.jarSmall, jarLarge:data.jarLarge},
@@ -3163,7 +3178,7 @@ document.getElementById('orderForm').addEventListener('submit', e=>{
     lineItems.forEach((item, i)=>{
       const orderData = Object.assign({}, data, item);
       if(groupId) orderData.groupId = groupId;
-      if(i>0){ orderData.shippingFee = 0; orderData.discountValue = 0; orderData.deposit = 0; }
+      if(i>0){ orderData.shippingFee = 0; orderData.discountValue = 0; orderData.deposit = 0; delete orderData.paymentSlip; }
       const newConsumption = computeConsumptionForOrder(orderData);
       applyConsumption(newConsumption, -1);
       orders.push(Object.assign({id:uid()}, orderData, {_stockConsumed:newConsumption}));
@@ -3448,7 +3463,8 @@ function renderTable(){
   tbody.querySelectorAll('.slip-view-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const o = orders.find(o=>o.id===btn.dataset.id);
-      if(o && o.paymentSlip){ document.getElementById('slipViewImg').src=o.paymentSlip; document.getElementById('slipViewModal').classList.add('show'); }
+      const slip = orderSlip(o);
+      if(slip){ document.getElementById('slipViewImg').src=slip; document.getElementById('slipViewModal').classList.add('show'); }
     });
   });
   tbody.querySelectorAll('.del-btn').forEach(btn=>{
@@ -3509,7 +3525,7 @@ function unitRowHtml(u, no){
     <td class="amount-cell">${fmt(total)} บ.</td>
     <td>${paymentStatusCell}</td>
     <td>${paymentMethodCell}</td>
-    <td>${p.paymentSlip ? `<button type="button" class="btn btn-outline btn-small slip-view-btn" data-id="${p.id}">🖼️ ดูสลิป</button>` : `<span class="subtle-note">-</span>`}</td>
+    <td>${orderSlip(p) ? `<button type="button" class="btn btn-outline btn-small slip-view-btn" data-id="${p.id}">🖼️ ดูสลิป</button>` : `<span class="subtle-note">-</span>`}</td>
     <td>${badgeSelectHTML(ids, p.channel, channels, 'channel')}</td>
     <td class="wrap">${esc(p.note)}</td>
     <td><div class="row-actions">
@@ -3879,7 +3895,7 @@ function openDlCompleteModal(orderIds){
   if(!members.length) return;
   const o = members[0];
   dlCompleteTargetIds = orderIds;
-  dlCompleteSlipData = o.paymentSlip || null;
+  dlCompleteSlipData = orderSlip(o);
   document.getElementById('dlSlipInput').value = '';
   updateDlSlipPreview();
   document.getElementById('dlCompleteCustomerName').textContent = `ยืนยันส่งสำเร็จ: ${o.customerName}`;
@@ -3906,8 +3922,10 @@ function completeDelivery(method){
     o.shippingStatus = 'ส่งลูกค้าเรียบร้อย';
     o.paymentStatus = 'ได้รับเงินแล้ว';
     o.paymentMethod = method;
-    o.paymentSlip = dlCompleteSlipData;
   });
+  // One purchase, one slip — stored once (on the first member) instead of duplicated onto every
+  // grouped document; orderSlip() looks it up correctly regardless of which member holds it.
+  members[0].paymentSlip = dlCompleteSlipData;
   persistOrders();
   fsDebugLog('dl-complete: persisted + re-rendering...');
   renderTable();
@@ -4129,7 +4147,7 @@ function renderPaymentBreakdown(list){
       phone: first.phone,
       paymentMethod: first.paymentMethod,
       amountReceived: u.members.reduce((s,o)=>s+o._amt.amountReceived,0),
-      paymentSlip: u.members.map(o=>o.paymentSlip).find(Boolean) || null
+      paymentSlip: orderSlip(first)
     };
   }).filter(o=>o.amountReceived>0).sort((a,b)=>b.orderDate.localeCompare(a.orderDate));
 
@@ -4182,8 +4200,8 @@ function renderPaymentBreakdown(list){
   }).join('');
   tbody.querySelectorAll('.slip-view-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const o = orders.find(x=>x.id===btn.dataset.id);
-      if(o && o.paymentSlip){ document.getElementById('slipViewImg').src=o.paymentSlip; document.getElementById('slipViewModal').classList.add('show'); }
+      const slip = orderSlip(orders.find(x=>x.id===btn.dataset.id));
+      if(slip){ document.getElementById('slipViewImg').src=slip; document.getElementById('slipViewModal').classList.add('show'); }
     });
   });
 }
