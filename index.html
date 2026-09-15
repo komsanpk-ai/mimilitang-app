@@ -3625,9 +3625,13 @@ function renderDeliveryReport(){
     byProduct[key].small += Number(o.jarSmall)||0;
     byProduct[key].large += Number(o.jarLarge)||0;
   });
-  const lines = Object.keys(byProduct).map(k=>`<b>${esc(k)}</b>: เล็ก ${byProduct[k].small} · ใหญ่ ${byProduct[k].large} · รวม ${byProduct[k].small+byProduct[k].large} ถ้วย`);
+  const lines = [];
+  Object.keys(byProduct).forEach(k=>{
+    if(byProduct[k].small>0) lines.push(`${esc(k)} (🔹 เล็ก): ${byProduct[k].small} ถ้วย`);
+    if(byProduct[k].large>0) lines.push(`${esc(k)} (🔷 ใหญ่): ${byProduct[k].large} ถ้วย`);
+  });
   document.getElementById('deliveryProductBreakdown').innerHTML = lines.length
-    ? lines.join(' &nbsp;|&nbsp; ') + ` &nbsp;|&nbsp; <b class="breakdown-grand-total">รวมทั้งหมด ${totalSmall+totalLarge} ถ้วย</b>`
+    ? lines.map(l=>`<div>${l}</div>`).join('') + `<div class="breakdown-grand-total" style="margin-top:4px;">รวมทั้งหมด (เล็ก+ใหญ่ทุกสินค้า): ${totalSmall+totalLarge} ถ้วย</div>`
     : 'ไม่มีออเดอร์ในวันนี้';
 
   const tbody = document.getElementById('deliveryBody');
