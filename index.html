@@ -3031,7 +3031,13 @@ function renderLineItemRows(){
   }));
 }
 document.getElementById('addLineItemBtn').addEventListener('click', ()=>{
-  extraLineItems.push({product: products[0]?products[0].name:'', jarSmall:0, jarLarge:0});
+  // Default to the first product NOT already picked in another line — defaulting to products[0]
+  // unconditionally made it easy to add a second line, forget to actually change its dropdown, and
+  // silently save two lines of the same product (confirmed happening for a real order: line 1 was
+  // ลี่ถัง 8 เซียน, the added line stayed ลี่ถัง 8 เซียน by default instead of becoming รังนก).
+  const usedProducts = new Set([f('f_product').value, ...extraLineItems.map(it=>it.product)]);
+  const nextProduct = (products.find(p=>!usedProducts.has(p.name)) || products[0] || {}).name || '';
+  extraLineItems.push({product: nextProduct, jarSmall:0, jarLarge:0});
   renderLineItemRows();
   updateTotalPreview();
 });
