@@ -3190,8 +3190,17 @@ document.getElementById('orderForm').addEventListener('submit', e=>{
     // if it still has 2+ lines — simpler and safer than diffing which line changed/was added/removed.
     const originalMembers = editingGroupIds.map(id=>orders.find(o=>o.id===id)).filter(Boolean);
     const keepGroupId = (originalMembers.find(o=>o.groupId)||{}).groupId || null;
-    originalMembers.forEach(o=>{ if(o._stockConsumed) applyConsumption(o._stockConsumed, 1); });
-    orders = orders.filter(o=>!editingGroupIds.includes(o.id));
+    // Remove every CURRENT order sharing this group, not just the specific ids captured when the
+    // edit modal was opened — if that captured set was ever incomplete for any reason (e.g. the
+    // table was filtered/searched down to fewer than the group's true full membership at the
+    // moment "แก้ไข" was clicked), relying on it alone leaves the missed sibling behind as a
+    // stale orphaned duplicate once this save reuses the same groupId for a fresh set (confirmed
+    // happening for a real order via its backup export: editing to fix one digit of a phone
+    // number left the original 2-item group's records behind alongside 2 new corrected ones).
+    const toRemove = orders.filter(o=>editingGroupIds.includes(o.id) || (keepGroupId && o.groupId===keepGroupId));
+    toRemove.forEach(o=>{ if(o._stockConsumed) applyConsumption(o._stockConsumed, 1); });
+    const removeIds = new Set(toRemove.map(o=>o.id));
+    orders = orders.filter(o=>!removeIds.has(o.id));
     pushLineItems(lineItems.length>1 ? (keepGroupId||uid()) : null);
     toast('บันทึกการแก้ไขแล้ว');
   } else {
