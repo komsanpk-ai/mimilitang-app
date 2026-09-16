@@ -1838,7 +1838,7 @@ p.hint.collapsible-hint.show{display:block;}
     <h3 id="dlCompleteCustomerName">ยืนยันส่งสำเร็จ</h3>
     <p class="hint">จะปรับสถานะเป็น "ส่งลูกค้าเรียบร้อย" และ "ได้รับเงินแล้ว" พร้อมกัน — เลือกวิธีรับเงิน:</p>
     <div class="field" style="text-align:left;margin-bottom:10px;">
-      <label>แนบสลิปการโอน (ถ้ามี)</label>
+      <label>แนบสลิปการโอน (ถ้ามี — เช่น ยอดคงเหลือหลังหักมัดจำ)</label>
       <input type="file" accept="image/*" id="dlSlipInput">
       <div class="subtle-note" id="dlSlipPreview" style="margin-top:4px;"></div>
     </div>
@@ -2100,9 +2100,19 @@ p.hint.collapsible-hint.show{display:block;}
         <div class="field"><label>💵 ประเภทการจ่ายเงิน</label><select id="f_paymentMethod"></select></div>
       </div>
 
-      <div class="field"><label>📎 แนบสลิปการโอน (ถ้ามี)</label>
-        <input type="file" accept="image/*" id="f_paymentSlip">
-        <div class="subtle-note" id="f_paymentSlipPreview" style="margin-top:2px;"></div>
+      <div class="field"><label>📎 แนบสลิปการโอน (ถ้ามี — แนบได้สูงสุด 2 รูป เช่น มัดจำ + ยอดคงเหลือ)</label>
+        <div class="row">
+          <div>
+            <div class="subtle-note" style="margin:0 0 4px;">สลิปที่ 1</div>
+            <input type="file" accept="image/*" id="f_paymentSlip">
+            <div class="subtle-note" id="f_paymentSlipPreview" style="margin-top:2px;"></div>
+          </div>
+          <div>
+            <div class="subtle-note" style="margin:0 0 4px;">สลิปที่ 2 (ถ้ามี)</div>
+            <input type="file" accept="image/*" id="f_paymentSlip2">
+            <div class="subtle-note" id="f_paymentSlip2Preview" style="margin-top:2px;"></div>
+          </div>
+        </div>
       </div>
 
       <div class="field"><label>📝 หมายเหตุ</label><textarea id="f_note" placeholder="หมายเหตุ"></textarea></div>
@@ -2585,9 +2595,9 @@ function stripForLocalCache(arr, heavyFields){
 // existed needs its bloated local copy shrunk right away, not just have its growth rate slowed
 // starting from the next order/stockin save — this is what actually recovers headroom for a
 // shop already in the state the user's device was confirmed to be in.
-save(LS.orders, stripForLocalCache(orders, ['paymentSlip']));
+save(LS.orders, stripForLocalCache(orders, ['paymentSlip','paymentSlip2']));
 save(LS.stockins, stripForLocalCache(stockins, ['slip']));
-function persistOrders(){ save(LS.orders, stripForLocalCache(orders, ['paymentSlip'])); fsSyncArray('orders', orders); }
+function persistOrders(){ save(LS.orders, stripForLocalCache(orders, ['paymentSlip','paymentSlip2'])); fsSyncArray('orders', orders); }
 function persistProducts(){ save(LS.products, products); fsSyncValue('products', products); }
 function persistChannels(){ save(LS.channels, channels); fsSyncValue('channels', channels); }
 function persistPaymentMethods(){ save(LS.paymentMethods, paymentMethods); fsSyncValue('paymentMethods', paymentMethods); }
@@ -2676,7 +2686,7 @@ function fsAttachListeners(){
   fsListen(()=>firestore.collection('orders'), snap=>{
     orders = snap.docs.map(d=>d.data());
     _fsPrevSnapshot.orders = orders.map(x=>Object.assign({},x));
-    save(LS.orders, stripForLocalCache(orders, ['paymentSlip']));
+    save(LS.orders, stripForLocalCache(orders, ['paymentSlip','paymentSlip2']));
     fsDebugLog('orders snapshot: '+snap.docs.length+' doc(s), fromCache='+snap.metadata.fromCache);
     renderTable(); renderAllReports(); renderDeliveryReport(); renderPrepPage(); renderStockPage();
   }, 'orders');
@@ -2772,16 +2782,20 @@ function distinctVisits(list){
 // A multi-item order's shared payment slip is only ever stored on one of its grouped documents
 // (see completeDelivery) rather than duplicated onto every one — this looks it up regardless of
 // which specific member ended up holding it, so every display site stays correct no matter which
-// member is being looked at.
-function orderSlip(o){
+// member is being looked at. paymentSlip/paymentSlip2 are two independent slots (e.g. a deposit
+// transferred at order time, then the balance transferred after delivery) — same group-lookup
+// logic applies to each slot separately.
+function findGroupSlip(o, field){
   if(!o) return null;
-  if(o.paymentSlip) return o.paymentSlip;
+  if(o[field]) return o[field];
   if(o.groupId){
-    const sibling = orders.find(x=>x.groupId===o.groupId && x.paymentSlip);
-    if(sibling) return sibling.paymentSlip;
+    const sibling = orders.find(x=>x.groupId===o.groupId && x[field]);
+    if(sibling) return sibling[field];
   }
   return null;
 }
+function orderSlip(o){ return findGroupSlip(o, 'paymentSlip'); }
+function orderSlip2(o){ return findGroupSlip(o, 'paymentSlip2'); }
 function customerOrderCount(phone){
   if(!phone) return 0;
   return distinctVisits(orders.filter(o=>o.phone===phone)).length;
@@ -3075,7 +3089,8 @@ function readForm(){
     discountValue: Number(f('f_discountValue').value)||0,
     discountType: f('f_discountType').value,
     deposit: Number(f('f_deposit').value)||0,
-    paymentSlip: formSlipData
+    paymentSlip: formSlipData,
+    paymentSlip2: formSlipData2
   };
 }
 let formSlipData = null;
@@ -3090,6 +3105,20 @@ function updateSlipPreview(){
 f('f_paymentSlip').addEventListener('change', e=>{
   const file = e.target.files[0]; if(!file) return;
   compressImageFile(file).then(dataUrl=>{ formSlipData = dataUrl; updateSlipPreview(); })
+    .catch(e=>toast(e.message||'อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง'));
+});
+let formSlipData2 = null;
+function updateSlipPreview2(){
+  const el = document.getElementById('f_paymentSlip2Preview');
+  el.innerHTML = formSlipData2
+    ? `<img src="${formSlipData2}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);vertical-align:middle;"> <button type="button" id="removeSlip2Btn" class="icon-mini danger" style="vertical-align:middle;">✕</button>`
+    : '';
+  const rm = document.getElementById('removeSlip2Btn');
+  if(rm) rm.addEventListener('click', ()=>{ formSlipData2=null; f('f_paymentSlip2').value=''; updateSlipPreview2(); });
+}
+f('f_paymentSlip2').addEventListener('change', e=>{
+  const file = e.target.files[0]; if(!file) return;
+  compressImageFile(file).then(dataUrl=>{ formSlipData2 = dataUrl; updateSlipPreview2(); })
     .catch(e=>toast(e.message||'อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง'));
 });
 function updateTotalPreview(){
@@ -3135,6 +3164,7 @@ function fillFormFromGroup(members){
   f('f_discountValue').value=o.discountValue||''; f('f_discountType').value=o.discountType;
   f('f_deposit').value=o.deposit||'';
   formSlipData = orderSlip(o); f('f_paymentSlip').value=''; updateSlipPreview();
+  formSlipData2 = orderSlip2(o); f('f_paymentSlip2').value=''; updateSlipPreview2();
   extraLineItems = members.slice(1).map(m=>({product:m.product, jarSmall:Number(m.jarSmall)||0, jarLarge:Number(m.jarLarge)||0}));
   renderLineItemRows();
   updateTotalPreview();
@@ -3145,6 +3175,7 @@ function resetForm(){
   f('f_jarSmall').value=''; f('f_jarLarge').value=''; f('f_shippingFee').value='';
   f('f_discountValue').value=''; f('f_deposit').value=''; f('f_discountType').value='baht';
   formSlipData = null; f('f_paymentSlip').value=''; updateSlipPreview();
+  formSlipData2 = null; f('f_paymentSlip2').value=''; updateSlipPreview2();
   updateReserveFieldsUI();
   extraLineItems = [];
   renderLineItemRows();
@@ -3171,10 +3202,11 @@ document.getElementById('orderForm').addEventListener('submit', e=>{
   const data = readForm();
   // Extra product lines become their own order documents (so every per-product report stays
   // accurate) sharing one groupId (so "how many times has this customer bought" counts this as
-  // one visit — see distinctVisits). Shipping fee/discount/deposit/slip describe the whole visit
-  // (one transfer, one slip), so only the first line item keeps them; the rest get 0/none to
-  // avoid counting them once per product or duplicating the same slip photo onto every document
-  // (orderSlip() looks the slip up across the group regardless of which member holds it).
+  // one visit — see distinctVisits). Shipping fee/discount/deposit/slips describe the whole visit
+  // (one purchase, up to 2 slips e.g. deposit + balance), so only the first line item keeps them;
+  // the rest get 0/none to avoid counting them once per product or duplicating the same slip
+  // photos onto every document (orderSlip()/orderSlip2() look each slip up across the group
+  // regardless of which member holds it).
   const validExtraItems = extraLineItems.filter(it=>it.product && ((Number(it.jarSmall)||0)>0 || (Number(it.jarLarge)||0)>0));
   const lineItems = [
     {product:data.product, jarSmall:data.jarSmall, jarLarge:data.jarLarge},
@@ -3184,7 +3216,7 @@ document.getElementById('orderForm').addEventListener('submit', e=>{
     lineItems.forEach((item, i)=>{
       const orderData = Object.assign({}, data, item);
       if(groupId) orderData.groupId = groupId;
-      if(i>0){ orderData.shippingFee = 0; orderData.discountValue = 0; orderData.deposit = 0; delete orderData.paymentSlip; }
+      if(i>0){ orderData.shippingFee = 0; orderData.discountValue = 0; orderData.deposit = 0; delete orderData.paymentSlip; delete orderData.paymentSlip2; }
       const newConsumption = computeConsumptionForOrder(orderData);
       applyConsumption(newConsumption, -1);
       orders.push(Object.assign({id:uid()}, orderData, {_stockConsumed:newConsumption}));
@@ -3478,7 +3510,7 @@ function renderTable(){
   tbody.querySelectorAll('.slip-view-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const o = orders.find(o=>o.id===btn.dataset.id);
-      const slip = orderSlip(o);
+      const slip = btn.dataset.slip==='2' ? orderSlip2(o) : orderSlip(o);
       if(slip){ document.getElementById('slipViewImg').src=slip; document.getElementById('slipViewModal').classList.add('show'); }
     });
   });
@@ -3540,7 +3572,11 @@ function unitRowHtml(u, no){
     <td class="amount-cell">${fmt(total)} บ.</td>
     <td>${paymentStatusCell}</td>
     <td>${paymentMethodCell}</td>
-    <td>${orderSlip(p) ? `<button type="button" class="btn btn-outline btn-small slip-view-btn" data-id="${p.id}">🖼️ ดูสลิป</button>` : `<span class="subtle-note">-</span>`}</td>
+    <td><div class="row-actions">
+      ${orderSlip(p) ? `<button type="button" class="icon-mini slip-view-btn" data-id="${p.id}" data-slip="1" title="ดูสลิปที่ 1">🖼️</button>` : ''}
+      ${orderSlip2(p) ? `<button type="button" class="icon-mini slip-view-btn" data-id="${p.id}" data-slip="2" title="ดูสลิปที่ 2">🖼️</button>` : ''}
+      ${(!orderSlip(p) && !orderSlip2(p)) ? `<span class="subtle-note">-</span>` : ''}
+    </div></td>
     <td>${badgeSelectHTML(ids, p.channel, channels, 'channel')}</td>
     <td class="wrap">${esc(p.note)}</td>
     <td><div class="row-actions">
@@ -3914,7 +3950,10 @@ function openDlCompleteModal(orderIds){
   if(!members.length) return;
   const o = members[0];
   dlCompleteTargetIds = orderIds;
-  dlCompleteSlipData = orderSlip(o);
+  // Prefills from slot 2 (not orderSlip/slot 1) — slot 1 is the deposit slip attached at order
+  // time; this modal's slip is the separate/later transfer confirmed at delivery, so it must not
+  // read or overwrite slot 1 (that used to happen here and silently destroyed the deposit slip).
+  dlCompleteSlipData = orderSlip2(o);
   document.getElementById('dlSlipInput').value = '';
   updateDlSlipPreview();
   document.getElementById('dlCompleteCustomerName').textContent = `ยืนยันส่งสำเร็จ: ${o.customerName}`;
@@ -3942,9 +3981,11 @@ function completeDelivery(method){
     o.paymentStatus = 'ได้รับเงินแล้ว';
     o.paymentMethod = method;
   });
-  // One purchase, one slip — stored once (on the first member) instead of duplicated onto every
-  // grouped document; orderSlip() looks it up correctly regardless of which member holds it.
-  members[0].paymentSlip = dlCompleteSlipData;
+  // Stored once (on the first member) instead of duplicated onto every grouped document;
+  // orderSlip2() looks it up correctly regardless of which member holds it. This writes slot 2,
+  // never slot 1 (paymentSlip) — slot 1 is whatever was attached at order time (e.g. a deposit)
+  // and must survive this step untouched.
+  members[0].paymentSlip2 = dlCompleteSlipData;
   persistOrders();
   fsDebugLog('dl-complete: persisted + re-rendering...');
   renderTable();
@@ -4166,7 +4207,8 @@ function renderPaymentBreakdown(list){
       phone: first.phone,
       paymentMethod: first.paymentMethod,
       amountReceived: u.members.reduce((s,o)=>s+o._amt.amountReceived,0),
-      paymentSlip: orderSlip(first)
+      paymentSlip: orderSlip(first),
+      paymentSlip2: orderSlip2(first)
     };
   }).filter(o=>o.amountReceived>0).sort((a,b)=>b.orderDate.localeCompare(a.orderDate));
 
@@ -4206,8 +4248,11 @@ function renderPaymentBreakdown(list){
   document.getElementById('spPrevPageBtn').onclick = ()=>{ slipPage--; renderPaymentBreakdown(list); };
   document.getElementById('spNextPageBtn').onclick = ()=>{ slipPage++; renderPaymentBreakdown(list); };
   tbody.innerHTML = pageItems.map(o=>{
-    const slipCell = o.paymentSlip
-      ? `<button type="button" class="btn btn-outline btn-small slip-view-btn" data-id="${o.id}">🖼️ ดูสลิป</button>`
+    const slipCell = (o.paymentSlip || o.paymentSlip2)
+      ? `<div class="row-actions">
+          ${o.paymentSlip ? `<button type="button" class="icon-mini slip-view-btn" data-id="${o.id}" data-slip="1" title="ดูสลิปที่ 1">🖼️</button>` : ''}
+          ${o.paymentSlip2 ? `<button type="button" class="icon-mini slip-view-btn" data-id="${o.id}" data-slip="2" title="ดูสลิปที่ 2">🖼️</button>` : ''}
+        </div>`
       : `<span class="subtle-note">-</span>`;
     return `<tr>
       <td>${fmtDate(o.orderDate)}</td>
@@ -4219,7 +4264,8 @@ function renderPaymentBreakdown(list){
   }).join('');
   tbody.querySelectorAll('.slip-view-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const slip = orderSlip(orders.find(x=>x.id===btn.dataset.id));
+      const o = orders.find(x=>x.id===btn.dataset.id);
+      const slip = btn.dataset.slip==='2' ? orderSlip2(o) : orderSlip(o);
       if(slip){ document.getElementById('slipViewImg').src=slip; document.getElementById('slipViewModal').classList.add('show'); }
     });
   });
