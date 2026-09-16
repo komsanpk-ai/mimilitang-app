@@ -4073,9 +4073,11 @@ function getRangeForTab(){
     return {from:document.getElementById('d_from').value||todayISO(), to:document.getElementById('d_to').value||todayISO(), label:null};
   }
   if(activeTab==='weekly'){
+    // "สัปดาห์" here means a rolling 7-day window ENDING at the picked date (e.g. today minus 6
+    // days through today), not the calendar week (Mon-Sun) containing it — the calendar-week
+    // version used to include not-yet-arrived future days by default, reading as missing data.
     const pick = document.getElementById('w_pick').value || todayISO();
-    const s = startOfWeek(pick+'T00:00:00'); const e = new Date(s); e.setDate(s.getDate()+6);
-    const from = toISODate(s), to = toISODate(e);
+    const from = addDaysISO(pick, -6), to = pick;
     const label = `สัปดาห์: ${fmtDate(from)} – ${fmtDate(to)}`;
     document.getElementById('w_label').textContent = label;
     return {from, to, label};
@@ -4091,14 +4093,17 @@ function getRangeForTab(){
 
 function syncReportRangeToDate(dateStr){
   if(!dateStr) return;
-  const dFrom = document.getElementById('d_from'), dTo = document.getElementById('d_to');
-  if(!dFrom.value || dateStr < dFrom.value) dFrom.value = dateStr;
-  if(!dTo.value || dateStr > dTo.value) dTo.value = dateStr;
+  // Jumps the daily view to exactly this date (rather than widening the existing from/to to
+  // also cover it) — saving/editing an order dated weeks in the past used to drag "รายวัน" open
+  // to span from that old date through today, reading as "all these other days got mixed in"
+  // when really the range had just been silently stretched backward.
+  document.getElementById('d_from').value = dateStr;
+  document.getElementById('d_to').value = dateStr;
 
   const wPick = document.getElementById('w_pick');
-  const ws = toISODate(startOfWeek((wPick.value||todayISO())+'T00:00:00'));
-  const we = addDaysISO(ws, 6);
-  if(dateStr < ws || dateStr > we) wPick.value = dateStr;
+  const curPick = wPick.value || todayISO();
+  const ws = addDaysISO(curPick, -6);
+  if(dateStr < ws || dateStr > curPick) wPick.value = dateStr;
 
   const mPick = document.getElementById('m_pick');
   if(dateStr.slice(0,7) !== (mPick.value||todayISO().slice(0,7))) mPick.value = dateStr.slice(0,7);
@@ -4548,7 +4553,10 @@ function initReportModule(cfg){
   function currentBuckets(){
     if(gran==='month') return monthsOfYear(year);
     if(gran==='week'){ const [y,m] = monthPick.split('-').map(Number); return weeksOfMonth(y,m); }
-    return daysOfWeek(toISODate(startOfWeek(weekPick+'T00:00:00')));
+    // "รายวัน" compares the 7 days ending at weekPick (a rolling window), not the calendar week
+    // containing it — otherwise the default view (weekPick=today) shows not-yet-arrived future
+    // days as empty bars past today instead of today being the most recent bar shown.
+    return daysOfWeek(addDaysISO(weekPick, -6));
   }
   function updateVisibility(){
     ['month','week','day'].forEach(g=>{
@@ -4561,8 +4569,8 @@ function initReportModule(cfg){
     if(yLabel) yLabel.textContent = `ปี ${year}`;
     const wLabel = document.getElementById(`${P}-w-label`);
     if(wLabel){
-      const s = toISODate(startOfWeek(weekPick+'T00:00:00'));
-      wLabel.textContent = `สัปดาห์: ${fmtDate(s)} – ${fmtDate(addDaysISO(s,6))}`;
+      const s = addDaysISO(weekPick, -6);
+      wLabel.textContent = `สัปดาห์: ${fmtDate(s)} – ${fmtDate(weekPick)}`;
     }
   }
   function render(center){
@@ -4830,8 +4838,9 @@ function rovCurrentRange(){
     return {from, to};
   }
   if(rovGran==='week'){
-    const from = toISODate(startOfWeek(rovWeekPick+'T00:00:00'));
-    return {from, to: addDaysISO(from, 6)};
+    // Rolling 7 days ending at rovWeekPick (today by default), not the calendar week (Mon-Sun)
+    // containing it — the calendar-week version defaulted to showing days not yet reached.
+    return {from: addDaysISO(rovWeekPick, -6), to: rovWeekPick};
   }
   return {from: rovDayPick, to: rovDayPick};
 }
@@ -4888,8 +4897,8 @@ function rovUpdateVisibility(){
   });
 }
 function rovRefreshLabels(){
-  const from = toISODate(startOfWeek(rovWeekPick+'T00:00:00'));
-  document.getElementById('rov-w-label').textContent = `สัปดาห์: ${fmtDate(from)} – ${fmtDate(addDaysISO(from,6))}`;
+  const from = addDaysISO(rovWeekPick, -6);
+  document.getElementById('rov-w-label').textContent = `สัปดาห์: ${fmtDate(from)} – ${fmtDate(rovWeekPick)}`;
 }
 document.querySelectorAll('#rov-tabs button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -4976,8 +4985,7 @@ function getRangeForTabPayment(){
   }
   if(paymentActiveTab==='weekly'){
     const pick = document.getElementById('pay_w_pick').value || todayISO();
-    const s = startOfWeek(pick+'T00:00:00'); const e = new Date(s); e.setDate(s.getDate()+6);
-    const from = toISODate(s), to = toISODate(e);
+    const from = addDaysISO(pick, -6), to = pick;
     document.getElementById('pay_w_label').textContent = `สัปดาห์: ${fmtDate(from)} – ${fmtDate(to)}`;
     return {from, to};
   }
