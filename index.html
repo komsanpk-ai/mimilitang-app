@@ -892,6 +892,10 @@ p.hint.collapsible-hint.show{display:block;}
       <span class="home-tile-icon"><span class="icon-chip" data-icon="payment">💳</span></span>
       <span class="home-tile-label">รายงานประเภทการจ่ายเงิน</span>
     </button>
+    <button type="button" class="home-tile home-tile-row" data-page="report-channel">
+      <span class="home-tile-icon"><span class="icon-chip" data-icon="cart">🛒</span></span>
+      <span class="home-tile-label">รายงานช่องทางการขาย</span>
+    </button>
     <button type="button" class="home-tile home-tile-row" data-page="report-overview">
       <span class="home-tile-icon"><span class="icon-chip" data-icon="report">📊</span></span>
       <span class="home-tile-label">ภาพรวมยอดขาย</span>
@@ -1040,6 +1044,16 @@ p.hint.collapsible-hint.show{display:block;}
     </div>
     <div class="total-box" id="rr-total-box" style="margin-top:14px;"></div>
     <p class="subtle-note" id="rr-uncovered-note"></p>
+
+    <div class="mini-title" id="rr-detail-label" style="margin-top:14px;">อันดับกำไรตามสินค้า</div>
+    <p class="hint" style="margin-top:-6px;">จัดอันดับสินค้าตามกำไรที่ทำได้จริงในช่วงที่กำลังดูอยู่ด้านบน (ไม่ใช่แค่ % กำไรต่อสูตรแบบคงที่) เพื่อดูว่าสินค้าไหนทำเงินให้ร้านมากที่สุด ไม่ใช่แค่ขายดีที่สุด</p>
+    <div class="table-scroll">
+      <table class="compact-table">
+        <thead><tr><th>สินค้า</th><th>รายได้</th><th>ต้นทุน</th><th>กำไร</th><th>% กำไร</th></tr></thead>
+        <tbody id="rr-detail-body"></tbody>
+        <tfoot id="rr-detail-foot"></tfoot>
+      </table>
+    </div>
   </section>
 </main>
 
@@ -1246,6 +1260,74 @@ p.hint.collapsible-hint.show{display:block;}
     <div class="table-footer">
       <div class="summary-strip" id="spSummary"></div>
       <div class="pagination" id="spPagination"></div>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="mini-title">ยอดค้างชำระ (ลูกค้าที่ยังจ่ายไม่ครบ)</div>
+    <p class="hint" style="margin-top:-6px;">รวมทุกออเดอร์ที่ยังค้างยอดอยู่ ไม่ว่าจะสั่งซื้อวันไหนก็ตาม (ไม่ขึ้นกับช่วงเวลาที่เลือกด้านบน) ไม่นับออเดอร์ที่ยกเลิกหรือของสำรอง — เรียงจากค้างนานสุดไปหาน้อยสุด</p>
+    <div class="table-scroll">
+      <table class="compact-table">
+        <thead><tr><th>ชื่อลูกค้า</th><th>เบอร์โทร</th><th>วันที่ส่ง</th><th>ค้างมาแล้ว</th><th>ยอดค้างชำระ</th></tr></thead>
+        <tbody id="ar-body"></tbody>
+        <tfoot id="ar-foot"></tfoot>
+      </table>
+    </div>
+  </section>
+</main>
+
+<main id="page-report-channel" class="page-view">
+  <section class="card">
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="cart">🛒</span>รายงานช่องทางการขาย</h2></div>
+    <p class="hint">ยอดขายรวม (ยอดเต็มทุกออเดอร์ ไม่รวมเฉพาะที่ได้รับเงินแล้ว) แยกตามช่องทางที่บันทึกไว้ในแต่ละออเดอร์ ไม่นับออเดอร์ที่ยกเลิกหรือของสำรอง — ใช้ดูว่าช่องทางไหนทำยอดขายให้ร้านมากที่สุด</p>
+    <div class="tabs">
+      <button type="button" data-tab="daily" class="active">รายงานประจำวัน</button>
+      <button type="button" data-tab="weekly">รายงานประจำสัปดาห์</button>
+      <button type="button" data-tab="monthly">รายงานประจำเดือน</button>
+    </div>
+
+    <!-- daily controls -->
+    <div class="report-controls" id="chan-ctrl-daily">
+      <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="chan_d_from"></div>
+      <div class="field"><label>ถึงวันที่</label><input type="date" id="chan_d_to"></div>
+      <button type="button" class="btn btn-outline btn-small" data-chanquick="today">วันนี้</button>
+      <button type="button" class="btn btn-outline btn-small" data-chanquick="7days">7 วันล่าสุด</button>
+      <button type="button" class="btn btn-outline btn-small" data-chanquick="thismonth">เดือนนี้</button>
+    </div>
+    <!-- weekly controls -->
+    <div class="report-controls" id="chan-ctrl-weekly" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="chan_w_prev">◀ สัปดาห์ก่อน</button>
+      <input type="date" id="chan_w_pick">
+      <button type="button" class="btn btn-outline btn-small" id="chan_w_next">สัปดาห์ถัดไป ▶</button>
+      <span class="range-label" id="chan_w_label"></span>
+    </div>
+    <!-- monthly controls -->
+    <div class="report-controls" id="chan-ctrl-monthly" style="display:none">
+      <button type="button" class="btn btn-outline btn-small" id="chan_m_prev">◀ เดือนก่อน</button>
+      <input type="month" id="chan_m_pick">
+      <button type="button" class="btn btn-outline btn-small" id="chan_m_next">เดือนถัดไป ▶</button>
+    </div>
+
+    <div class="chart-section">
+      <div class="chart-col">
+        <div class="mini-title">กราฟแท่ง</div>
+        <div class="chart-box-row">
+          <div class="chart-axis" id="chanChartAxisBar"></div>
+          <div class="chart-box" id="chanChartBoxBar"></div>
+        </div>
+      </div>
+      <div class="chart-col">
+        <div class="mini-title">กราฟวงกลม</div>
+        <div class="chart-box" id="chanChartBoxPie"></div>
+      </div>
+      <div class="legend" id="chanChartLegend"></div>
+    </div>
+    <div class="table-scroll" style="margin-top:14px;">
+      <table class="compact-table">
+        <thead><tr><th>ช่องทาง</th><th>จำนวนออเดอร์</th><th>ยอดขายรวม</th><th>เฉลี่ย/ออเดอร์</th></tr></thead>
+        <tbody id="chan-rank-body"></tbody>
+        <tfoot id="chan-rank-foot"></tfoot>
+      </table>
     </div>
   </section>
 </main>
@@ -4717,10 +4799,51 @@ function reportRevenueSeries(buckets){
     {name:'กำไร', color:PALETTE[2], values:profit}
   ], uncovered, totalOverride: totalRevenue};
 }
+/* Per-product profit ranking for the currently visible range (whatever month/week/day window
+   the chart above is showing) — the chart's own series are already summed across ALL products,
+   so this answers a different question: which single product actually contributed the most
+   profit, which isn't always the one that sold the most (see reportSalesByProductSeries). */
+function renderRevenueByProductDetail(buckets){
+  const body = document.getElementById('rr-detail-body'), foot = document.getElementById('rr-detail-foot');
+  if(!body) return;
+  if(rrMode==='qty'){
+    body.innerHTML = `<tr><td colspan="5" class="empty-state">สลับเป็นโหมด "ยอดเงิน (บาท)" ด้านบนเพื่อดูอันดับกำไรตามสินค้า</td></tr>`;
+    foot.innerHTML = '';
+    return;
+  }
+  const range = {from:buckets[0].from, to:buckets[buckets.length-1].to};
+  const byProduct = {};
+  orders.forEach(o=>{
+    if(o.shippingStatus==='ยกเลิก' || o.isReserve) return;
+    if(!(o.deliveryDate>=range.from && o.deliveryDate<=range.to)) return;
+    const name = o.product || 'อื่นๆ';
+    const amt = computeAmounts(o);
+    if(!byProduct[name]) byProduct[name] = {revenue:0, cost:0};
+    byProduct[name].revenue += amt.subtotal - amt.discountAmount;
+    [['jarSmall','small'],['jarLarge','large']].forEach(([field,size])=>{
+      const q = Number(o[field])||0; if(q<=0) return;
+      const recipe = getRecipe(o.product, size);
+      if(!recipe) return;
+      byProduct[name].cost += computeRecipeCost(recipe).totalCost * q;
+    });
+  });
+  const rows = Object.keys(byProduct).map(name=>{
+    const r = byProduct[name], profit = r.revenue - r.cost;
+    return {name, revenue:r.revenue, cost:r.cost, profit, marginPct: r.revenue>0 ? (profit/r.revenue*100) : 0};
+  }).filter(r=>r.revenue>0).sort((a,b)=>b.profit-a.profit);
+  body.innerHTML = rows.length
+    ? rows.map(r=>`<tr><td class="wrap prod-col">${esc(r.name)}</td><td class="amount-cell">${fmt(r.revenue)} บ.</td><td class="amount-cell">${fmt(r.cost)} บ.</td><td class="amount-cell" style="color:${r.profit>=0?'var(--green)':'var(--red)'}">${fmt(r.profit)} บ.</td><td>${r.marginPct.toFixed(1)}%</td></tr>`).join('')
+    : `<tr><td colspan="5" class="empty-state">ไม่มีข้อมูลในช่วงที่เลือก</td></tr>`;
+  const grand = rows.reduce((s,r)=>({revenue:s.revenue+r.revenue, cost:s.cost+r.cost, profit:s.profit+r.profit}), {revenue:0,cost:0,profit:0});
+  foot.innerHTML = rows.length
+    ? `<tr><td class="prod-col">รวมทั้งหมด</td><td class="amount-cell">${fmt(grand.revenue)} บ.</td><td class="amount-cell">${fmt(grand.cost)} บ.</td><td class="amount-cell">${fmt(grand.profit)} บ.</td><td>${grand.revenue>0?(grand.profit/grand.revenue*100).toFixed(1):'0.0'}%</td></tr>`
+    : '';
+}
 const reportRevenueModule = initReportModule({page:'report-revenue', prefix:'rr', computeSeries:reportRevenueSeries,
-  onRender: result=>{
+  onRender: (result, buckets)=>{
     const note = document.getElementById('rr-uncovered-note');
     if(note) note.textContent = result.uncovered ? `⚠️ มี ${result.uncovered} ออเดอร์ที่สินค้า/ขนาดยังไม่มีสูตรต้นทุน ต้นทุนและกำไรในกราฟนี้อาจคลาดเคลื่อนจากความเป็นจริง` : '';
+    renderRevenueByProductDetail(buckets);
   }});
 document.getElementById('rr-mode').addEventListener('change', ()=>{ rrMode = document.getElementById('rr-mode').value; reportRevenueModule.render(); });
 
@@ -4999,6 +5122,119 @@ function renderPaymentReportPage(){
   const {from, to} = getRangeForTabPayment();
   const list = orders.filter(o=>!o.isReserve && o.deliveryDate>=from && o.deliveryDate<=to).map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
   renderPaymentBreakdown(list);
+  renderAccountsReceivable();
+}
+
+/* All-time list of who still owes money, independent of the daily/weekly/monthly picker above —
+   same "always show the current real state, not just the selected window" precedent as the
+   repeat-customer leaderboard on the customer report page. Grouped by order unit (see
+   buildOrderUnits) so a multi-item order's outstanding balance is shown once per visit, matching
+   how it was actually paid, not once per product line. */
+function renderAccountsReceivable(){
+  const body = document.getElementById('ar-body'), foot = document.getElementById('ar-foot');
+  if(!body) return;
+  const units = buildOrderUnits(orders.filter(o=>!o.isReserve && o.shippingStatus!=='ยกเลิก'));
+  const todayMs = new Date(todayISO()+'T00:00:00').getTime();
+  const rows = units.map(u=>{
+    const first = u.members[0];
+    const outstanding = u.members.reduce((s,o)=>s+computeAmounts(o).outstanding,0);
+    const daysOverdue = Math.round((todayMs - new Date(first.deliveryDate+'T00:00:00').getTime())/86400000);
+    return {customerName:first.customerName, phone:first.phone, deliveryDate:first.deliveryDate, outstanding, daysOverdue};
+  }).filter(r=>r.outstanding>0).sort((a,b)=>b.daysOverdue-a.daysOverdue);
+
+  body.innerHTML = rows.length
+    ? rows.map(r=>`<tr>
+        <td class="wrap">${repeatStarHTML(r.phone)}${esc(r.customerName)}</td>
+        <td>${esc(r.phone)}</td>
+        <td>${fmtDate(r.deliveryDate)}</td>
+        <td>${r.daysOverdue>=0 ? fmt(r.daysOverdue)+' วัน' : '<span class="subtle-note">ยังไม่ถึงวันส่ง</span>'}</td>
+        <td class="amount-cell" style="color:var(--red);">${fmt(r.outstanding)} บ.</td>
+      </tr>`).join('')
+    : `<tr><td colspan="5" class="empty-state">ไม่มีลูกค้าค้างชำระ 🎉</td></tr>`;
+  const grandOutstanding = rows.reduce((s,r)=>s+r.outstanding,0);
+  foot.innerHTML = rows.length
+    ? `<tr><td colspan="4">รวมทั้งหมด (${rows.length} ราย)</td><td class="amount-cell">${fmt(grandOutstanding)} บ.</td></tr>`
+    : '';
+}
+
+/* ---- Report 6: sales by channel — mirrors the payment-method report's daily/weekly/monthly
+   picker mechanism exactly (see getRangeForTabPayment above), grouped by o.channel instead of
+   o.paymentMethod, and using ยอดขายเต็ม (grandTotal) rather than amountReceived since the point
+   here is which channel brings in the most business, not which is already collected. ---- */
+let channelActiveTab = 'daily';
+document.querySelectorAll('#page-report-channel .tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#page-report-channel .tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); channelActiveTab = btn.dataset.tab;
+    ['daily','weekly','monthly'].forEach(t=>document.getElementById('chan-ctrl-'+t).style.display = t===channelActiveTab?'flex':'none');
+    renderChannelReportPage();
+  });
+});
+document.getElementById('chan_d_from').value = todayISO();
+document.getElementById('chan_d_to').value = todayISO();
+document.getElementById('chan_d_from').addEventListener('change', renderChannelReportPage);
+document.getElementById('chan_d_to').addEventListener('change', renderChannelReportPage);
+document.querySelectorAll('[data-chanquick]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const t = todayISO();
+    if(btn.dataset.chanquick==='today'){ document.getElementById('chan_d_from').value=t; document.getElementById('chan_d_to').value=t; }
+    if(btn.dataset.chanquick==='7days'){ document.getElementById('chan_d_from').value=addDaysISO(t,-6); document.getElementById('chan_d_to').value=t; }
+    if(btn.dataset.chanquick==='thismonth'){ const d=new Date(); document.getElementById('chan_d_from').value=toISODate(new Date(d.getFullYear(),d.getMonth(),1)); document.getElementById('chan_d_to').value=t; }
+    renderChannelReportPage();
+  });
+});
+document.getElementById('chan_w_pick').value = todayISO();
+document.getElementById('chan_w_pick').addEventListener('change', renderChannelReportPage);
+document.getElementById('chan_w_prev').addEventListener('click', ()=>{ document.getElementById('chan_w_pick').value=addDaysISO(document.getElementById('chan_w_pick').value,-7); renderChannelReportPage(); });
+document.getElementById('chan_w_next').addEventListener('click', ()=>{ document.getElementById('chan_w_pick').value=addDaysISO(document.getElementById('chan_w_pick').value,7); renderChannelReportPage(); });
+document.getElementById('chan_m_pick').value = todayISO().slice(0,7);
+document.getElementById('chan_m_pick').addEventListener('change', renderChannelReportPage);
+document.getElementById('chan_m_prev').addEventListener('click', ()=>{ let [y,m]=document.getElementById('chan_m_pick').value.split('-').map(Number); m--; if(m<1){m=12;y--;} document.getElementById('chan_m_pick').value=`${y}-${String(m).padStart(2,'0')}`; renderChannelReportPage(); });
+document.getElementById('chan_m_next').addEventListener('click', ()=>{ let [y,m]=document.getElementById('chan_m_pick').value.split('-').map(Number); m++; if(m>12){m=1;y++;} document.getElementById('chan_m_pick').value=`${y}-${String(m).padStart(2,'0')}`; renderChannelReportPage(); });
+function getRangeForTabChannel(){
+  if(channelActiveTab==='daily'){
+    return {from:document.getElementById('chan_d_from').value||todayISO(), to:document.getElementById('chan_d_to').value||todayISO()};
+  }
+  if(channelActiveTab==='weekly'){
+    const pick = document.getElementById('chan_w_pick').value || todayISO();
+    const from = addDaysISO(pick, -6), to = pick;
+    document.getElementById('chan_w_label').textContent = `สัปดาห์: ${fmtDate(from)} – ${fmtDate(to)}`;
+    return {from, to};
+  }
+  const [y,m] = (document.getElementById('chan_m_pick').value||todayISO().slice(0,7)).split('-').map(Number);
+  const from = `${y}-${String(m).padStart(2,'0')}-01`;
+  const lastDay = new Date(y, m, 0).getDate();
+  const to = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  return {from, to};
+}
+function renderChannelReportPage(){
+  const body = document.getElementById('chan-rank-body');
+  if(!body) return;
+  const {from, to} = getRangeForTabChannel();
+  const list = orders.filter(o=>!o.isReserve && o.shippingStatus!=='ยกเลิก' && o.deliveryDate>=from && o.deliveryDate<=to);
+  const units = buildOrderUnits(list);
+
+  const byChannel = {};
+  units.forEach(u=>{
+    const key = u.members[0].channel || channels[0] || 'ไม่ระบุ';
+    const total = u.members.reduce((s,o)=>s+computeAmounts(o).grandTotal,0);
+    if(!byChannel[key]) byChannel[key] = {orderCount:0, total:0};
+    byChannel[key].orderCount++;
+    byChannel[key].total += total;
+  });
+  const rows = Object.keys(byChannel).map((k,i)=>({label:k, orderCount:byChannel[k].orderCount, total:byChannel[k].total})).sort((a,b)=>b.total-a.total);
+
+  const chartData = rows.map((r,i)=>({label:r.label, value:r.total, color:PALETTE[(i+1)%PALETTE.length]}));
+  renderChartInto(chartData, 'chanChartBoxBar', 'chanChartBoxPie', 'chanChartLegend', 'chanChartAxisBar');
+
+  const foot = document.getElementById('chan-rank-foot');
+  body.innerHTML = rows.length
+    ? rows.map(r=>`<tr><td class="wrap">${esc(r.label)}</td><td>${fmt(r.orderCount)}</td><td class="amount-cell">${fmt(r.total)} บ.</td><td class="amount-cell">${fmt(r.orderCount?r.total/r.orderCount:0)} บ.</td></tr>`).join('')
+    : `<tr><td colspan="4" class="empty-state">ไม่มีข้อมูลในช่วงที่เลือก</td></tr>`;
+  const grandOrders = rows.reduce((s,r)=>s+r.orderCount,0), grandTotal = rows.reduce((s,r)=>s+r.total,0);
+  foot.innerHTML = rows.length
+    ? `<tr><td>รวมทั้งหมด</td><td>${fmt(grandOrders)}</td><td class="amount-cell">${fmt(grandTotal)} บ.</td><td class="amount-cell">${fmt(grandOrders?grandTotal/grandOrders:0)} บ.</td></tr>`
+    : '';
 }
 
 /* Called wherever an order/product/recipe/material change previously only refreshed the old
@@ -5012,6 +5248,7 @@ function renderAllReports(){
   renderRepeatCustomerTable();
   reportStockModule.render();
   renderPaymentReportPage();
+  renderChannelReportPage();
   renderPnL();
 }
 
@@ -5168,12 +5405,12 @@ document.getElementById('restoreInput').addEventListener('change', e=>{
 let activeSubview = 'overview';
 
 const ALL_PAGES = ['home','order','prep','delivery','stock','report',
-  'report-overview','report-revenue','report-customers','report-stock','report-payment','report-pnl',
+  'report-overview','report-revenue','report-customers','report-stock','report-payment','report-channel','report-pnl',
   'settings','settings-products','settings-channels','settings-payment','settings-materials','settings-units','settings-backup','settings-account','settings-theme'];
 const PAGE_PARENT = {
   order:'home', prep:'home', delivery:'home', stock:'home', report:'home', settings:'home',
   'report-overview':'report', 'report-revenue':'report',
-  'report-customers':'report', 'report-stock':'report', 'report-payment':'report', 'report-pnl':'report',
+  'report-customers':'report', 'report-stock':'report', 'report-payment':'report', 'report-channel':'report', 'report-pnl':'report',
   'settings-products':'settings', 'settings-channels':'settings', 'settings-payment':'settings',
   'settings-materials':'settings', 'settings-units':'settings', 'settings-backup':'settings', 'settings-account':'settings',
   'settings-theme':'settings'
@@ -5195,6 +5432,7 @@ function applyPage(pageName){
   if(pageName==='report-customers'){ reportCustomerModule.render(true); renderRepeatCustomerTable(); }
   if(pageName==='report-stock'){ renderRovReport(); reportStockModule.render(true); }
   if(pageName==='report-payment') renderPaymentReportPage();
+  if(pageName==='report-channel') renderChannelReportPage();
   if(pageName==='report-pnl') renderPnL();
   if(pageName==='settings' || pageName.indexOf('settings-')===0){ renderSettingsLists(); renderMaterialSettingsList(); renderUnitSettingsList(); }
   if(pageName==='settings-account') updateAccountEmailDisplay();
