@@ -4253,10 +4253,12 @@ function renderChartInto(data, barBoxId, pieBoxId, legendId, axisBoxId){
     return;
   }
   const total = data.reduce((s,d)=>s+d.value,0)||1;
-  const barChart = svgBar(data, boxBar.clientWidth);
+  // barBoxId/pieBoxId double as the gradient-id namespace (see svgBar/svgPie) — every page's own
+  // chart-box ids are unique across the whole app, same fix as svgGroupedBar/svgBreakEven's `ns`.
+  const barChart = svgBar(data, boxBar.clientWidth, barBoxId);
   boxBar.innerHTML = barChart.bars;
   if(axisBox) axisBox.innerHTML = barChart.axis;
-  boxPie.innerHTML = svgPie(data,total);
+  boxPie.innerHTML = svgPie(data, total, pieBoxId);
   legend.innerHTML = data.map(d=>`
     <div class="legend-row">
       <span class="legend-swatch" style="background:${d.color}"></span>
@@ -4361,7 +4363,7 @@ document.getElementById('sp_pageSize').addEventListener('change', ()=>{ slipPage
 document.getElementById('closeSlipViewBtn').addEventListener('click', ()=>document.getElementById('slipViewModal').classList.remove('show'));
 document.getElementById('slipViewModal').addEventListener('click', e=>{ if(e.target.id==='slipViewModal') document.getElementById('slipViewModal').classList.remove('show'); });
 
-function svgBar(data, targetWidth){
+function svgBar(data, targetWidth, ns){
   /* Unlike svgGroupedBar (deliberately a fixed wide canvas + horizontal scroll, since month/week/
      day reports can have up to 12 categories), this chart only ever shows a handful of categories
      — products/sizes, or payment methods — so on the overview page it should just show all of
@@ -4390,7 +4392,7 @@ function svgBar(data, targetWidth){
     if(iconTheme==='a'){
       fillAttr = `fill="${d.color}" fill-opacity="0.16" stroke="${d.color}" stroke-width="2"`;
     } else if(iconTheme!=='c'){
-      const gid = `barg-${i}`;
+      const gid = `barg-${ns}-${i}`;
       barDefs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${d.color}"/><stop offset="1" stop-color="${d.color}" stop-opacity=".55"/></linearGradient>`;
       fillAttr = `fill="url(#${gid})"`;
     }
@@ -4402,7 +4404,7 @@ function svgBar(data, targetWidth){
   const barsSvg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="chart-svg-bar">${barDefs?`<defs>${barDefs}</defs>`:''}${grid}<line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#e6d8c6"/>${bars}</svg>`;
   return {axis: svgYAxis(niceMax, ticks), bars: barsSvg};
 }
-function svgPie(data,total){
+function svgPie(data,total,ns){
   const size=280,r=105,cx=140,cy=140;
   let angle=-90,paths='',pieDefs='';
   data.forEach((d,i)=>{
@@ -4418,7 +4420,7 @@ function svgPie(data,total){
       fillAttr = `fill="${d.color}" fill-opacity="0.22"`;
       strokeAttr = `stroke="${d.color}" stroke-width="2"`;
     } else if(iconTheme!=='c'){
-      const gid = `pieg-${i}`;
+      const gid = `pieg-${ns}-${i}`;
       pieDefs += `<radialGradient id="${gid}" cx="50%" cy="50%" r="75%"><stop offset="0" stop-color="${d.color}"/><stop offset="1" stop-color="${d.color}" stop-opacity=".6"/></radialGradient>`;
       fillAttr = `fill="url(#${gid})"`;
     }
