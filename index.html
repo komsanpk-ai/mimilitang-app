@@ -4581,7 +4581,12 @@ function daysOfWeek(weekStartISO){
   for(let i=0;i<7;i++){
     const dt = new Date(start); dt.setDate(start.getDate()+i);
     const iso = toISODate(dt);
-    days.push({key:iso, label:`${THAI_DOW_SHORT[i]} ${dt.getDate()}/${dt.getMonth()+1}`, from:iso, to:iso});
+    // THAI_DOW_SHORT is Monday-first (index 0 = จ), so it must be indexed by dt's own actual
+    // weekday (getDay(): Sun=0..Sat=6), not by the loop position i — the 7-day window here is a
+    // rolling range ending at whatever date was picked (see initReportModule), so it no longer
+    // always starts on a Monday the way the old calendar-week version did.
+    const dow = THAI_DOW_SHORT[(dt.getDay()+6)%7];
+    days.push({key:iso, label:`${dow} ${dt.getDate()}/${dt.getMonth()+1}`, from:iso, to:iso});
   }
   return days;
 }
