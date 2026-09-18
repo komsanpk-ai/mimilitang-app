@@ -372,37 +372,68 @@ async function buildDeliveryReport(dateISO) {
 
   if (!orders.length) return `วันที่ ${dateLabel}\nยังไม่มีออเดอร์ที่ต้องเตรียมส่งค่ะ`;
 
-  const productNames = [...new Set(orders.map(o => o.product))];
-  const productSuffix = productNames.length === 1 ? ` ${productNames[0]}` : '';
+  // A customer buying more than one product (see extraLineItems in index.html) saves as
+  // several order documents sharing one groupId — group them back into a single entry here
+  // so one visit shows once, under one name, instead of once per product line.
+  const seenGroups = new Set();
+  const groups = [];
+  orders.forEach(o => {
+    if (o.groupId) {
+      if (seenGroups.has(o.groupId)) return;
+      seenGroups.add(o.groupId);
+      groups.push(orders.filter(x => x.groupId === o.groupId));
+    } else {
+      groups.push([o]);
+    }
+  });
 
   let totalSmall = 0, totalLarge = 0;
-  const entries = orders.map((o, i) => {
-    const small = Number(o.jarSmall) || 0, large = Number(o.jarLarge) || 0;
-    totalSmall += small; totalLarge += large;
-    const amt = computeAmountsServer(o, products);
+  const byProduct = {};
+  const entries = groups.map((members, i) => {
+    const first = members[0];
+    const productBlocks = members.map(o => {
+      const small = Number(o.jarSmall) || 0, large = Number(o.jarLarge) || 0;
+      totalSmall += small; totalLarge += large;
+      if (!byProduct[o.product]) byProduct[o.product] = { small: 0, large: 0 };
+      byProduct[o.product].small += small;
+      byProduct[o.product].large += large;
+      const amt = computeAmountsServer(o, products);
+      return `${o.product}_ถ้วยเล็ก ${fmt(small)} ถ้วย / ใหญ่ ${fmt(large)} ถ้วย\n\nยอดรวม ${fmt(amt.subtotal)} บาท`;
+    });
+    // "รวมทั้งหมด" is the sum of the product lines just shown above (product sales only) —
+    // ค่าจัดส่ง/มัดจำ/ส่วนลด are their own separate line below, not folded into this number,
+    // since only one member of the group actually carries those shared-per-visit fields
+    // (see pushLineItems in index.html: only the first line item keeps them, the rest are 0).
+    const groupSubtotal = members.reduce((s, o) => s + computeAmountsServer(o, products).subtotal, 0);
+    const shipping = members.reduce((s, o) => s + (Number(o.shippingFee) || 0), 0);
+    const deposit = members.reduce((s, o) => s + (Number(o.deposit) || 0), 0);
+    const discountAmount = members.reduce((s, o) => s + computeAmountsServer(o, products).discountAmount, 0);
 
-    // Only listed when actually present on this order — a shipping/deposit/discount line
-    // that's always "0 บาท" would just be noise on every single entry.
+    // Only listed when actually present — a shipping/deposit/discount line that's always
+    // "0 บาท" would just be noise on every single entry.
     const extras = [];
-    if (amt.shipping > 0) extras.push(`ค่าจัดส่ง ${fmt(amt.shipping)} บาท`);
-    if (amt.deposit > 0) extras.push(`มัดจำ ${fmt(amt.deposit)} บาท`);
-    if (amt.discountAmount > 0) extras.push(`ส่วนลด ${fmt(amt.discountAmount)} บาท`);
+    if (shipping > 0) extras.push(`ค่าจัดส่ง ${fmt(shipping)} บาท`);
+    if (deposit > 0) extras.push(`มัดจำ ${fmt(deposit)} บาท`);
+    if (discountAmount > 0) extras.push(`ส่วนลด ${fmt(discountAmount)} บาท`);
 
     const rows = [
-      `${i + 1}.${o.customerName}`,
-      `ที่อยู่ ${o.address || '-'}`,
-      `ถ้วยเล็ก ${fmt(small)} ถ้วย / ใหญ่ ${fmt(large)} ถ้วย`,
-      `ยอดรวม ${fmt(amt.grandTotal)} บาท`
+      `${i + 1}.${first.customerName}`,
+      `ที่อยู่ ${first.address || '-'}`,
+      productBlocks.join('\n\n') + `\nรวมทั้งหมด ${fmt(groupSubtotal)} บาท`
     ];
     if (extras.length) rows.push(`(${extras.join(' / ')})`);
-    return rows.join('\n');
+    return rows.join('\n\n');
   });
+
+  const productBreakdown = Object.keys(byProduct)
+    .map(name => `${name} เล็ก ${fmt(byProduct[name].small)} ถ้วย / ใหญ่ ${fmt(byProduct[name].large)} ถ้วย`)
+    .join('\n');
 
   return [
     `วันที่ ${dateLabel}`,
-    `รวม ${orders.length} ออเดอร์${productSuffix}`,
-    entries.join('\n\n'),
-    `แบ่งเป็น เล็ก ${fmt(totalSmall)} ถ้วย / ใหญ่ ${fmt(totalLarge)} ถ้วย`,
+    `รวม ${groups.length} ออเดอร์`,
+    entries.join(`\n\n${PREP_SEPARATOR}\n\n`),
+    `แบ่งเป็น\n\n${productBreakdown}`,
     `รวมทั้งหมด ${fmt(totalSmall + totalLarge)} ถ้วย`
   ].join('\n\n');
 }
