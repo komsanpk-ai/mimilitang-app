@@ -387,7 +387,11 @@ async function buildDeliveryReport(dateISO) {
     }
   });
 
-  let totalSmall = 0, totalLarge = 0;
+  // Shorter than PREP_SEPARATOR (which is meant for the prep-checklist report) — that one
+  // wraps to 2 lines on a phone screen inside a LINE chat bubble.
+  const DELIVERY_SEPARATOR = '..............................';
+
+  let totalSmall = 0, totalLarge = 0, totalMoney = 0;
   const byProduct = {};
   const entries = groups.map((members, i) => {
     const first = members[0];
@@ -398,16 +402,19 @@ async function buildDeliveryReport(dateISO) {
       byProduct[o.product].small += small;
       byProduct[o.product].large += large;
       const amt = computeAmountsServer(o, products);
-      return `${o.product}_ถ้วยเล็ก ${fmt(small)} ถ้วย / ใหญ่ ${fmt(large)} ถ้วย\n\nยอดรวม ${fmt(amt.subtotal)} บาท`;
+      return `${o.product}\nถ้วยเล็ก ${fmt(small)} ถ้วย / ใหญ่ ${fmt(large)} ถ้วย\nยอดรวม ${fmt(amt.subtotal)} บาท`;
     });
-    // "รวมทั้งหมด" is the sum of the product lines just shown above (product sales only) —
-    // ค่าจัดส่ง/มัดจำ/ส่วนลด are their own separate line below, not folded into this number,
-    // since only one member of the group actually carries those shared-per-visit fields
-    // (see pushLineItems in index.html: only the first line item keeps them, the rest are 0).
+    // ค่าจัดส่ง/ส่วนลด show ABOVE "ยอดรวมทั้งหมด" (only one member of the group actually
+    // carries these shared-per-visit fields — see pushLineItems in index.html, only the first
+    // line item keeps them, the rest are 0) so the reader can add/subtract them by eye before
+    // the final total, which now folds shipping and discount into it (deposit stays purely
+    // informational — it's money already collected against the total, not a cost).
     const groupSubtotal = members.reduce((s, o) => s + computeAmountsServer(o, products).subtotal, 0);
     const shipping = members.reduce((s, o) => s + (Number(o.shippingFee) || 0), 0);
     const deposit = members.reduce((s, o) => s + (Number(o.deposit) || 0), 0);
     const discountAmount = members.reduce((s, o) => s + computeAmountsServer(o, products).discountAmount, 0);
+    const grandTotal = Math.max(groupSubtotal + shipping - discountAmount, 0);
+    totalMoney += grandTotal;
 
     // Only listed when actually present — a shipping/deposit/discount line that's always
     // "0 บาท" would just be noise on every single entry.
@@ -419,22 +426,24 @@ async function buildDeliveryReport(dateISO) {
     const rows = [
       `${i + 1}.${first.customerName}`,
       `ที่อยู่ ${first.address || '-'}`,
-      productBlocks.join('\n\n') + `\nรวมทั้งหมด ${fmt(groupSubtotal)} บาท`
+      productBlocks.join('\n\n')
     ];
     if (extras.length) rows.push(`(${extras.join(' / ')})`);
+    rows.push(`ยอดรวมทั้งหมด ${fmt(grandTotal)} บาท`);
     return rows.join('\n\n');
   });
 
   const productBreakdown = Object.keys(byProduct)
-    .map(name => `${name} เล็ก ${fmt(byProduct[name].small)} ถ้วย / ใหญ่ ${fmt(byProduct[name].large)} ถ้วย`)
-    .join('\n');
+    .map(name => `${name}\nเล็ก ${fmt(byProduct[name].small)} ถ้วย / ใหญ่ ${fmt(byProduct[name].large)} ถ้วย`)
+    .join('\n\n');
 
   return [
     `วันที่ ${dateLabel}`,
     `รวม ${groups.length} ออเดอร์`,
-    entries.join(`\n\n${PREP_SEPARATOR}\n\n`),
-    `แบ่งเป็น\n\n${productBreakdown}`,
-    `รวมทั้งหมด ${fmt(totalSmall + totalLarge)} ถ้วย`
+    entries.join(`\n\n${DELIVERY_SEPARATOR}\n\n`),
+    `สรุป\n\n${productBreakdown}`,
+    `รวมถ้วย ทั้งหมด ${fmt(totalSmall + totalLarge)} ถ้วย`,
+    `ยอดเงินรวมทั้งหมด ${fmt(totalMoney)} บาท`
   ].join('\n\n');
 }
 
