@@ -165,15 +165,7 @@ function computeAmountsServer(o, products) {
   return { subtotal, shipping, discountAmount, grandTotal, deposit, amountReceived };
 }
 
-// Monday..Sunday of the week containing todayISOBangkok(), and the 1st..last day of the
-// current calendar month — the two extra report windows alongside "today".
-function startOfWeekISO(iso) {
-  const d = new Date(iso + 'T00:00:00Z');
-  const day = d.getUTCDay(); // 0=Sun..6=Sat
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  d.setUTCDate(d.getUTCDate() + diffToMonday);
-  return d.toISOString().slice(0, 10);
-}
+// 1st..last day of the current calendar month — the "this month" report window.
 function monthRangeISO(iso) {
   const [y, m] = iso.split('-');
   const from = `${y}-${m}-01`;
@@ -182,10 +174,14 @@ function monthRangeISO(iso) {
   return [from, to];
 }
 // "1"/"2"/"3" -> {from, to} for today / this week / this month, or null if not one of those.
+// "this week" is a rolling 7 days ending today (matches index.html's report windows — see
+// getRangeForTab there), not the calendar week (Mon-Sun) containing today — the calendar-week
+// version used to include days later in the week that hadn't happened yet, making a report
+// pulled mid-week look like it was missing data for the tail end of "this week".
 function periodFromChoice(choice) {
   const today = todayISOBangkok();
   if (choice === '1') return { from: today, to: today };
-  if (choice === '2') { const from = startOfWeekISO(today); return { from, to: addDaysISO(from, 6) }; }
+  if (choice === '2') return { from: addDaysISO(today, -6), to: today };
   if (choice === '3') { const [from, to] = monthRangeISO(today); return { from, to }; }
   return null;
 }
@@ -261,6 +257,24 @@ function distinctVisits(list) {
   const seen = new Set(), out = [];
   list.forEach(o => { const key = o.groupId || o.id; if (seen.has(key)) return; seen.add(key); out.push(o); });
   return out;
+}
+
+// Same grouping as distinctVisits, but returns each visit as the full array of its member
+// documents (not just the first) — for reports that need every member's own fields (product,
+// jarSmall/jarLarge, etc.), not just a dedupe count.
+function groupOrdersByVisit(orders) {
+  const seen = new Set();
+  const groups = [];
+  orders.forEach(o => {
+    if (o.groupId) {
+      if (seen.has(o.groupId)) return;
+      seen.add(o.groupId);
+      groups.push(orders.filter(x => x.groupId === o.groupId));
+    } else {
+      groups.push([o]);
+    }
+  });
+  return groups;
 }
 
 // รายงาน > 2 > 1 จำนวนลูกค้า > (period) — "new" means this phone's earliest-ever delivery
@@ -359,6 +373,114 @@ async function buildPaymentReport(fromISO, toISO) {
   return lines.join('\n\n');
 }
 
+// รายงาน > 7 > (period) — sales grouped by channel (see ⚙️ ตั้งค่า > ช่องทางการขาย on the web
+// app), ranked by total so the shop owner can see which channel actually drives the most
+// business. Uses grandTotal (not amountReceived like buildPaymentReport above) since the point
+// here is which channel brings in orders, not which is already collected. Mirrors index.html's
+// renderChannelReportPage.
+async function buildChannelSalesReport(fromISO, toISO) {
+  const [ordersSnap, productsDoc] = await Promise.all([
+    db.collection('orders').where('deliveryDate', '>=', fromISO).where('deliveryDate', '<=', toISO).get(),
+    db.collection('settings').doc('products').get()
+  ]);
+  const orders = ordersSnap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && !o.isReserve);
+  const products = (productsDoc.exists && productsDoc.data().value) || [];
+  if (!orders.length) return 'ไม่มีออเดอร์ในช่วงที่เลือกค่ะ';
+
+  const byChannel = {};
+  groupOrdersByVisit(orders).forEach(members => {
+    const key = members[0].channel || '(ไม่ระบุ)';
+    const total = members.reduce((s, o) => s + computeAmountsServer(o, products).grandTotal, 0);
+    if (!byChannel[key]) byChannel[key] = { orderCount: 0, total: 0 };
+    byChannel[key].orderCount++;
+    byChannel[key].total += total;
+  });
+
+  const rows = Object.keys(byChannel).map(k => ({ label: k, ...byChannel[k] })).sort((a, b) => b.total - a.total);
+  const grandTotal = rows.reduce((s, r) => s + r.total, 0);
+  const lines = rows.map(r => `${r.label} = ${fmt(r.total)} บาท (${fmt(r.orderCount)} ออเดอร์) ${fmt(grandTotal > 0 ? r.total / grandTotal * 100 : 0)}%`);
+  lines.push(`รวมยอดขายทั้งหมด = ${fmt(grandTotal)} บาท`);
+  return lines.join('\n\n');
+}
+
+// รายงาน > 8 — all-time (not period-bound, same reasoning as buildRepeatCustomerReport above):
+// every customer with an unpaid balance right now, sorted by how long it's been outstanding.
+// Mirrors index.html's renderAccountsReceivable.
+async function buildAccountsReceivableReport() {
+  const [ordersSnap, productsDoc] = await Promise.all([
+    db.collection('orders').get(),
+    db.collection('settings').doc('products').get()
+  ]);
+  const orders = ordersSnap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && !o.isReserve);
+  const products = (productsDoc.exists && productsDoc.data().value) || [];
+
+  const todayMs = new Date(todayISOBangkok() + 'T00:00:00Z').getTime();
+  const rows = groupOrdersByVisit(orders).map(members => {
+    const first = members[0];
+    const outstanding = members.reduce((s, o) => {
+      const amt = computeAmountsServer(o, products);
+      return s + Math.max(amt.grandTotal - amt.amountReceived, 0);
+    }, 0);
+    const daysOverdue = Math.round((todayMs - new Date(first.deliveryDate + 'T00:00:00Z').getTime()) / 86400000);
+    return { customerName: first.customerName, phone: first.phone, deliveryDate: first.deliveryDate, outstanding, daysOverdue };
+  }).filter(r => r.outstanding > 0).sort((a, b) => b.daysOverdue - a.daysOverdue);
+
+  if (!rows.length) return '✅ ไม่มีลูกค้าค้างชำระตอนนี้ค่ะ';
+
+  const lines = rows.map(r => {
+    const dayLabel = r.daysOverdue >= 0 ? `ค้างมาแล้ว ${fmt(r.daysOverdue)} วัน` : 'ยังไม่ถึงวันส่ง';
+    return `${r.customerName} (${r.phone})\nวันที่ส่ง ${isoToThaiDateDisplay(r.deliveryDate)} — ${dayLabel}\nค้างชำระ ${fmt(r.outstanding)} บาท`;
+  });
+  lines.push(`รวมยอดค้างชำระทั้งหมด (${fmt(rows.length)} ราย) = ${fmt(rows.reduce((s, r) => s + r.outstanding, 0))} บาท`);
+  return lines.join('\n\n');
+}
+
+// รายงาน > 9 > (period) — ranks products by actual profit contributed in the period, since the
+// best-selling product isn't always the most profitable one (the per-recipe % กำไร on the web
+// app's สูตร page is a static number, not weighted by real sales volume). Mirrors index.html's
+// renderRevenueByProductDetail.
+async function buildProductProfitReport(fromISO, toISO) {
+  const [ordersSnap, productsDoc, recipesDoc, materialsSnap] = await Promise.all([
+    db.collection('orders').where('deliveryDate', '>=', fromISO).where('deliveryDate', '<=', toISO).get(),
+    db.collection('settings').doc('products').get(),
+    db.collection('settings').doc('recipes').get(),
+    db.collection('materials').get()
+  ]);
+  const orders = ordersSnap.docs.map(d => d.data()).filter(o => o.shippingStatus !== 'ยกเลิก' && !o.isReserve);
+  const products = (productsDoc.exists && productsDoc.data().value) || [];
+  const recipes = (recipesDoc.exists && recipesDoc.data().value) || [];
+  const materialsById = new Map(materialsSnap.docs.map(d => [d.id, d.data()]));
+  if (!orders.length) return 'ไม่มีออเดอร์ในช่วงที่เลือกค่ะ';
+
+  const byProduct = {};
+  let hasMissingPrice = false, hasMissingRecipe = false;
+  orders.forEach(o => {
+    const amt = computeAmountsServer(o, products);
+    if (!byProduct[o.product]) byProduct[o.product] = { revenue: 0, cost: 0 };
+    byProduct[o.product].revenue += amt.subtotal - amt.discountAmount;
+    for (const [field, size] of [['jarSmall', 'small'], ['jarLarge', 'large']]) {
+      const qty = Number(o[field]) || 0;
+      if (qty <= 0) continue;
+      const recipe = recipes.find(r => r.product === o.product && r.size === size);
+      if (!recipe) { hasMissingRecipe = true; continue; }
+      const r = computeRecipeCostServer(recipe, materialsById);
+      byProduct[o.product].cost += r.cost * qty;
+      if (r.hasMissingPrice) hasMissingPrice = true;
+    }
+  });
+
+  const rows = Object.keys(byProduct).map(name => {
+    const r = byProduct[name], profit = r.revenue - r.cost;
+    return { name, revenue: r.revenue, cost: r.cost, profit, marginPct: r.revenue > 0 ? profit / r.revenue * 100 : 0 };
+  }).sort((a, b) => b.profit - a.profit);
+
+  const lines = rows.map(r => `${r.name}\nรายได้ ${fmt(r.revenue)} บาท / ต้นทุน ${fmt(r.cost)} บาท\nกำไร ${fmt(r.profit)} บาท (${fmt(r.marginPct)}%)`);
+  const grand = rows.reduce((s, r) => ({ revenue: s.revenue + r.revenue, cost: s.cost + r.cost, profit: s.profit + r.profit }), { revenue: 0, cost: 0, profit: 0 });
+  lines.push(`รวมทั้งหมด\nรายได้ ${fmt(grand.revenue)} บาท / ต้นทุน ${fmt(grand.cost)} บาท\nกำไร ${fmt(grand.profit)} บาท`);
+  if (hasMissingPrice || hasMissingRecipe) lines.push('⚠️ บางรายการยังไม่มีสูตร/ราคาวัตถุดิบครบ ต้นทุนจริงอาจคลาดเคลื่อน');
+  return lines.join('\n\n');
+}
+
 // รายงาน > 5 — filtered by a single exact deliveryDate: this is a picking/delivery list for
 // what has to physically go out on one specific day, not a revenue period like the reports above.
 async function buildDeliveryReport(dateISO) {
@@ -375,17 +497,7 @@ async function buildDeliveryReport(dateISO) {
   // A customer buying more than one product (see extraLineItems in index.html) saves as
   // several order documents sharing one groupId — group them back into a single entry here
   // so one visit shows once, under one name, instead of once per product line.
-  const seenGroups = new Set();
-  const groups = [];
-  orders.forEach(o => {
-    if (o.groupId) {
-      if (seenGroups.has(o.groupId)) return;
-      seenGroups.add(o.groupId);
-      groups.push(orders.filter(x => x.groupId === o.groupId));
-    } else {
-      groups.push([o]);
-    }
-  });
+  const groups = groupOrdersByVisit(orders);
 
   // Shorter than PREP_SEPARATOR (which is meant for the prep-checklist report) — that one
   // wraps to 2 lines on a phone screen inside a LINE chat bubble.
@@ -520,12 +632,14 @@ async function buildPrepChecklistReport(dateISO) {
   return lines.join('\n\n');
 }
 
-const REPORT_TOP_MENU = 'มีมี่ มีรายงานที่คุณต้องการดังนี้ กดเลือกหมายเลขได้เลยค่ะ\n1. สรุปรายชื่อและออเดอร์เตรียมส่ง\n2. เช็คลิสต์เตรียมของ\n3. รายงานยอดขาย\n4. รายงานลูกค้า\n5. รายงานสินค้าใกล้หมดต้องซื้อ\n6. รายงานการจ่ายเงิน';
+const REPORT_TOP_MENU = 'มีมี่ มีรายงานที่คุณต้องการดังนี้ กดเลือกหมายเลขได้เลยค่ะ\n1. สรุปรายชื่อและออเดอร์เตรียมส่ง\n2. เช็คลิสต์เตรียมของ\n3. รายงานยอดขาย\n4. รายงานลูกค้า\n5. รายงานสินค้าใกล้หมดต้องซื้อ\n6. รายงานการจ่ายเงิน\n7. รายงานช่องทางการขาย\n8. รายชื่อลูกค้าค้างชำระ\n9. อันดับกำไรตามสินค้า';
 const REPORT_DELIVERY_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 สรุปเตรียมส่งวันนี้\n2 สรุปเตรียมส่งพรุ่งนี้';
 const REPORT_SALES_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 ยอดขายรายวัน\n2 ยอดขายรายสัปดาห์\n3 ยอดขายรายเดือน';
 const REPORT_CUSTOMER_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 จำนวนลูกค้า\n2 จำนวนครั้งที่ลูกค้าซื้อซ้ำ';
 const REPORT_CUSTOMER_COUNT_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 จำนวนลูกค้ารายวัน\n2 รายสัปดาห์\n3 รายเดือน';
 const REPORT_PAYMENT_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 รายวัน\n2 สัปดาห์\n3 เดือน';
+const REPORT_CHANNEL_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 รายวัน\n2 สัปดาห์\n3 เดือน';
+const REPORT_PRODUCT_PROFIT_SUBMENU = 'เลือกหมายเลขประเภทรายงานได้เลยค่ะ\n1 รายวัน\n2 สัปดาห์\n3 เดือน';
 const REPORT_INVALID_CHOICE = 'กรุณาเลือกหมายเลขที่แสดงไว้ค่ะ';
 
 function todayISOBangkok() {
@@ -1102,6 +1216,9 @@ exports.lineWebhook = onRequest(
             else if (choice === '4') { await setAwaitingInput(userId, { type: 'report-customer-menu' }); replyText = REPORT_CUSTOMER_SUBMENU; }
             else if (choice === '5') replyText = await buildLowStockReport();
             else if (choice === '6') { await setAwaitingInput(userId, { type: 'report-payment-period' }); replyText = REPORT_PAYMENT_SUBMENU; }
+            else if (choice === '7') { await setAwaitingInput(userId, { type: 'report-channel-period' }); replyText = REPORT_CHANNEL_SUBMENU; }
+            else if (choice === '8') replyText = await buildAccountsReceivableReport();
+            else if (choice === '9') { await setAwaitingInput(userId, { type: 'report-product-profit-period' }); replyText = REPORT_PRODUCT_PROFIT_SUBMENU; }
             else { await setAwaitingInput(userId, { type: 'report-menu' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_TOP_MENU}`; }
           } else if (awaiting && awaiting.type === 'report-delivery-period') {
             const choice = event.message.text.trim();
@@ -1126,6 +1243,14 @@ exports.lineWebhook = onRequest(
             const period = periodFromChoice(event.message.text.trim());
             if (!period) { await setAwaitingInput(userId, { type: 'report-payment-period' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_PAYMENT_SUBMENU}`; }
             else replyText = await buildPaymentReport(period.from, period.to);
+          } else if (awaiting && awaiting.type === 'report-channel-period') {
+            const period = periodFromChoice(event.message.text.trim());
+            if (!period) { await setAwaitingInput(userId, { type: 'report-channel-period' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_CHANNEL_SUBMENU}`; }
+            else replyText = await buildChannelSalesReport(period.from, period.to);
+          } else if (awaiting && awaiting.type === 'report-product-profit-period') {
+            const period = periodFromChoice(event.message.text.trim());
+            if (!period) { await setAwaitingInput(userId, { type: 'report-product-profit-period' }); replyText = `${REPORT_INVALID_CHOICE}\n\n${REPORT_PRODUCT_PROFIT_SUBMENU}`; }
+            else replyText = await buildProductProfitReport(period.from, period.to);
           } else {
             replyText = HELP_TEXT;
           }
