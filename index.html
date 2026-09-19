@@ -3732,7 +3732,7 @@ function renderDeliveryReport(){
 
   const dayProfit = computeDeliveryDayProfit(date);
   document.getElementById('deliveryStats').innerHTML = [
-    statCard('วันที่จัดส่ง', fmtDate(date), `<span style="color:#1565c0;font-weight:600;">${thaiDayName(date)}</span>`),
+    statCard('วันที่จัดส่ง', fmtDate(date), `<span style="color:#1565c0;font-weight:600;font-size:12px;">${thaiDayName(date)}</span>`),
     statCard('จำนวนออเดอร์ที่ต้องส่ง', units.length+' ออเดอร์'),
     statCard('ถ้วยเล็กรวม', totalSmall+' ถ้วย'),
     statCard('ถ้วยใหญ่รวม', totalLarge+' ถ้วย'),
@@ -3941,7 +3941,7 @@ function renderPrepPage(){
   const checks = prepChecklist[date] || {};
 
   document.getElementById('prepStats').innerHTML = [
-    statCard('วันที่เตรียม (สำหรับส่ง)', fmtDate(date), `<span style="color:#1565c0;font-weight:600;">${thaiDayName(date)}</span>`),
+    statCard('วันที่เตรียม (สำหรับส่ง)', fmtDate(date), `<span style="color:#1565c0;font-weight:600;font-size:12px;">${thaiDayName(date)}</span>`),
     statCard('จำนวนออเดอร์', data.orderCount+' ออเดอร์'),
     statCard('รายการสินค้าที่ต้องผลิต', data.productsNeeded.length+' รายการ'),
     statCard('วัตถุดิบที่ต้องเตรียม', data.materialsNeeded.length+' รายการ')
