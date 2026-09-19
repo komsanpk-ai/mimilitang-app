@@ -1005,6 +1005,35 @@ p.hint.collapsible-hint.show{display:block;}
   <section class="card">
     <div class="card-head"><h2><span class="emoji icon-chip" data-icon="cash">💰</span>รายงานรายได้</h2></div>
     <p class="hint">เปรียบเทียบรายได้ / ต้นทุนตามสูตร / กำไร ไล่ระดับจากรายเดือน → รายสัปดาห์ → รายวัน ไม่นับออเดอร์ที่ยกเลิก — "รายได้" ที่นี่คือยอดขายสินค้าล้วนๆ (หักส่วนลดแล้ว) ไม่รวมค่าจัดส่งที่เก็บจากลูกค้า ดูค่าจัดส่งแยกได้ที่หน้าภาพรวมยอดขายหรือ P&L</p>
+
+    <div class="mini-title">ดูรายได้เฉพาะวันที่เลือก</div>
+    <p class="hint" style="margin-top:-6px;">เลือกดูยอดของวันใดวันหนึ่งโดยเฉพาะ ไม่ปนกับ 7 วันย้อนหลังเหมือนกราฟเปรียบเทียบด้านล่าง — จำนวนถ้วยตรงกับหน้า "สรุปสินค้าเตรียมส่ง" ของวันเดียวกันเป๊ะ</p>
+    <div class="report-controls">
+      <div class="field"><label>เลือกวันที่</label><input type="date" id="rr_single_date"></div>
+      <button type="button" class="btn btn-outline btn-small" id="rr_single_today">วันนี้</button>
+      <button type="button" class="btn btn-outline btn-small" id="rr_single_prev">◀ วันก่อนหน้า</button>
+      <button type="button" class="btn btn-outline btn-small" id="rr_single_next">วันถัดไป ▶</button>
+    </div>
+    <div class="chart-section">
+      <div class="chart-col chart-col-wide">
+        <div class="chart-box-row">
+          <div class="chart-axis" id="rr-single-chart-axis"></div>
+          <div class="chart-box" id="rr-single-chart-box"></div>
+        </div>
+      </div>
+    </div>
+    <div class="total-box" id="rr-single-total-box" style="margin-top:14px;"></div>
+    <div class="mini-title" style="margin-top:14px;">แยกตามสินค้า (วันที่เลือก)</div>
+    <div class="table-scroll">
+      <table class="compact-table">
+        <thead><tr><th>สินค้า</th><th>ถ้วยเล็ก</th><th>ถ้วยใหญ่</th><th>รวมถ้วย</th><th>รายได้</th><th>ต้นทุน</th><th>กำไร</th></tr></thead>
+        <tbody id="rr-single-detail-body"></tbody>
+        <tfoot id="rr-single-detail-foot"></tfoot>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
     <div class="field" style="max-width:320px;margin-bottom:12px;">
       <label>แสดงกราฟตาม</label>
       <select id="rr-mode">
@@ -1052,34 +1081,6 @@ p.hint.collapsible-hint.show{display:block;}
         <thead><tr><th>สินค้า</th><th>รายได้</th><th>ต้นทุน</th><th>กำไร</th><th>% กำไร</th></tr></thead>
         <tbody id="rr-detail-body"></tbody>
         <tfoot id="rr-detail-foot"></tfoot>
-      </table>
-    </div>
-
-    <hr class="section-divider">
-
-    <div class="mini-title">ดูรายได้เฉพาะวันที่เลือก</div>
-    <p class="hint" style="margin-top:-6px;">เลือกดูยอดของวันใดวันหนึ่งโดยเฉพาะ ไม่ปนกับ 7 วันย้อนหลังเหมือนกราฟเปรียบเทียบด้านบน — จำนวนถ้วยตรงกับหน้า "สรุปสินค้าเตรียมส่ง" ของวันเดียวกันเป๊ะ</p>
-    <div class="report-controls">
-      <div class="field"><label>เลือกวันที่</label><input type="date" id="rr_single_date"></div>
-      <button type="button" class="btn btn-outline btn-small" id="rr_single_today">วันนี้</button>
-      <button type="button" class="btn btn-outline btn-small" id="rr_single_prev">◀ วันก่อนหน้า</button>
-      <button type="button" class="btn btn-outline btn-small" id="rr_single_next">วันถัดไป ▶</button>
-    </div>
-    <div class="chart-section">
-      <div class="chart-col chart-col-wide">
-        <div class="chart-box-row">
-          <div class="chart-axis" id="rr-single-chart-axis"></div>
-          <div class="chart-box" id="rr-single-chart-box"></div>
-        </div>
-      </div>
-    </div>
-    <div class="total-box" id="rr-single-total-box" style="margin-top:14px;"></div>
-    <div class="mini-title" style="margin-top:14px;">แยกตามสินค้า (วันที่เลือก)</div>
-    <div class="table-scroll">
-      <table class="compact-table">
-        <thead><tr><th>สินค้า</th><th>ถ้วยเล็ก</th><th>ถ้วยใหญ่</th><th>รวมถ้วย</th><th>รายได้</th><th>ต้นทุน</th><th>กำไร</th></tr></thead>
-        <tbody id="rr-single-detail-body"></tbody>
-        <tfoot id="rr-single-detail-foot"></tfoot>
       </table>
     </div>
   </section>
