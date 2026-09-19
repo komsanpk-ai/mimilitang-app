@@ -5491,10 +5491,15 @@ document.getElementById('addPaymentMethodBtn').addEventListener('click', ()=>{
   paymentMethods.push(''); persistPaymentMethods(); renderSettingsLists(); populateSelects(); toast('เพิ่มรายการแล้ว');
 });
 
+function buildBackupObject(){
+  return {orders, products, channels, paymentMethods, materials, units, recipes, stockins, startupCosts, stockAdjustments, operatingExpenses, logo:logoData, exportedAt:new Date().toISOString()};
+}
+function downloadJSON(obj, filename){
+  const blob = new Blob([JSON.stringify(obj,null,2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+}
 document.getElementById('downloadBackupBtn').addEventListener('click', ()=>{
-  const backup = {orders, products, channels, paymentMethods, materials, units, recipes, stockins, startupCosts, stockAdjustments, operatingExpenses, logo:logoData, exportedAt:new Date().toISOString()};
-  const blob = new Blob([JSON.stringify(backup,null,2)], {type:'application/json'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mimilitang_backup_${todayISO()}.json`; a.click();
+  downloadJSON(buildBackupObject(), `mimilitang_backup_${todayISO()}.json`);
 });
 document.getElementById('restoreBackupBtn').addEventListener('click', ()=>document.getElementById('restoreInput').click());
 document.getElementById('restoreInput').addEventListener('change', e=>{
@@ -5503,7 +5508,30 @@ document.getElementById('restoreInput').addEventListener('change', e=>{
   reader.onload = ()=>{
     try{
       const data = JSON.parse(reader.result);
-      if(!confirm('การกู้ข้อมูลจะแทนที่ข้อมูลปัจจุบันทั้งหมด ยืนยันหรือไม่?')) return;
+      // Show a per-field count comparison before the wholesale overwrite — a plain "are you
+      // sure?" gave zero visibility into what a restore was about to change, which is exactly
+      // how a stale/incomplete backup file silently wiped several fields to empty once already.
+      const FIELD_LABELS = {
+        orders:'ออเดอร์', products:'สินค้า', channels:'ช่องทางการขาย', paymentMethods:'วิธีจ่ายเงิน',
+        materials:'วัตถุดิบ', units:'หน่วยนับ', recipes:'สูตร', stockins:'รับเข้าสต๊อก',
+        startupCosts:'ต้นทุนเริ่มต้น', stockAdjustments:'ปรับปรุงยอด', operatingExpenses:'ค่าใช้จ่ายดำเนินงาน'
+      };
+      const current = {orders, products, channels, paymentMethods, materials, units, recipes, stockins, startupCosts, stockAdjustments, operatingExpenses};
+      let hasDrop = false;
+      const lines = Object.keys(FIELD_LABELS).map(key=>{
+        const curLen = (current[key]||[]).length;
+        const fileLen = Array.isArray(data[key]) ? data[key].length : curLen;
+        if(fileLen < curLen) hasDrop = true;
+        return `${fileLen<curLen?'⚠️':'  '} ${FIELD_LABELS[key]}: ${curLen} → ${fileLen}`;
+      }).join('\n');
+      const header = hasDrop
+        ? '⚠️ ไฟล์นี้มีข้อมูลบางส่วนน้อยกว่าปัจจุบัน กู้คืนแล้วของเดิมจะถูกแทนที่ถาวร!\n\n'
+        : 'เทียบจำนวนรายการ ปัจจุบัน → ไฟล์ที่จะกู้คืน:\n\n';
+      if(!confirm(header + lines + '\n\nยืนยันกู้ข้อมูลหรือไม่?')) return;
+      // Always keep an automatic safety copy of what's about to be overwritten — restoring is the
+      // one action that can wipe several fields at once, so this is the last line of defense if
+      // the wrong file gets picked despite the warning above.
+      downloadJSON(buildBackupObject(), `mimilitang_pre_restore_backup_${todayISO()}_${Date.now()}.json`);
       if(Array.isArray(data.orders)) orders = data.orders;
       if(Array.isArray(data.products)) products = data.products;
       if(Array.isArray(data.channels)) channels = data.channels;
@@ -5519,7 +5547,7 @@ document.getElementById('restoreInput').addEventListener('change', e=>{
       persistOrders(); persistProducts(); persistChannels(); persistMaterials(); persistUnits(); persistRecipes(); persistStockins(); persistStartupCosts(); persistStockAdjustments(); persistPaymentMethods(); persistOperatingExpenses();
       populateSelects(); renderTable(); renderAllReports(); renderSettingsLists();
       renderMaterialSettingsList(); renderUnitSettingsList(); renderStockPage(); loadRecipeIntoBuilder();
-      toast('กู้ข้อมูลสำเร็จ');
+      toast('กู้ข้อมูลสำเร็จ (สำรองข้อมูลเดิมไว้ให้อัตโนมัติก่อนแล้ว)');
     }catch(err){ toast('ไฟล์ไม่ถูกต้อง'); }
   };
   reader.readAsText(file);
