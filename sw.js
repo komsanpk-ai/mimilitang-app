@@ -18,6 +18,11 @@ self.addEventListener('activate', (e) => {
 // Falls back to cache only when the network is unavailable (offline use).
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  // Only handle same-origin requests (the app's own files). Cross-origin requests —
+  // especially Firestore's long-lived streaming "Listen" channel to
+  // firestore.googleapis.com — must pass straight to the network untouched;
+  // intercepting and cloning/caching a streaming response breaks the connection.
+  if (new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
     fetch(e.request)
       .then((res) => {
