@@ -7367,6 +7367,11 @@ document.getElementById('addUnitBtn').addEventListener('click', ()=>{ units.push
 function makeHintsCollapsible(scopeEl){
   scopeEl.querySelectorAll('p.hint').forEach(p=>{
     if(p.dataset.collapsibleDone) return;
+    // A hint with an id (acctEmailMsg, loginError, celebrateTargetLine, multiItemHint, ...) is a
+    // dynamic status/result message some other code shows/hides itself — a static explainer that
+    // never changes never needs one. Collapsing those too would sit a "❓" button in front of what
+    // is usually an invisible, empty placeholder, which reads as broken rather than helpful.
+    if(p.id) return;
     p.dataset.collapsibleDone = '1';
     p.classList.add('collapsible-hint');
     const btn = document.createElement('button');
@@ -7388,12 +7393,11 @@ renderDeliveryReport();
 renderPrepPage();
 renderStockPage();
 loadRecipeIntoBuilder();
-makeHintsCollapsible(document.getElementById('page-stock'));
-makeHintsCollapsible(document.getElementById('page-settings-materials'));
-makeHintsCollapsible(document.getElementById('page-settings-units'));
-makeHintsCollapsible(document.getElementById('page-settings-backup'));
-makeHintsCollapsible(document.getElementById('page-prep'));
-makeHintsCollapsible(document.getElementById('page-delivery'));
+// Every page gets the same collapsible-hint treatment (not just the 6 pages this used to be
+// called on individually) — calling it per page-X container rather than on document.body keeps
+// modal-internal hints (e.g. the ยืนยันการส่ง confirm modal) untouched, since modals live outside
+// these containers and stay visible as normal in-context instructions.
+ALL_PAGES.forEach(p=>{ const el = document.getElementById('page-'+p); if(el) makeHintsCollapsible(el); });
 
 })();
 </script>
