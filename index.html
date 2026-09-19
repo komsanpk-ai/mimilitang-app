@@ -655,7 +655,7 @@ button:active,.btn:active,.icon-btn:active,.icon-mini:active,.drawer-link:active
 
 .help-toggle-btn{
   background:var(--cream);border:1.5px solid var(--border);color:#cccccc;
-  border-radius:7px;width:20px;height:20px;padding:0;font-size:11px;font-weight:700;line-height:1;
+  border-radius:6px;width:18px;height:18px;padding:0;font-size:11px;font-weight:700;line-height:1;
   display:inline-flex;align-items:center;justify-content:center;flex:none;
   margin-left:7px;vertical-align:middle;
 }
@@ -7378,7 +7378,7 @@ function makeHintsCollapsible(scopeEl){
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'help-toggle-btn';
-    btn.textContent = '❓';
+    btn.textContent = '?';
     btn.title = 'ช่วยเหลือ / คำแนะนำ';
     btn.addEventListener('click', ()=>{
       const showing = p.classList.toggle('show');
