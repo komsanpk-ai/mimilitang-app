@@ -1415,7 +1415,7 @@ p.hint.collapsible-hint.show{display:block;}
     <div class="card-head"><h2><span class="emoji icon-chip" data-icon="delivery">📋</span>สรุปสินค้าเตรียมส่ง</h2></div>
     <p class="hint">ดูตามวันที่จัดส่งจริง (ไม่ใช่วันที่สั่ง) เพื่อรู้ว่าวันนั้นต้องเตรียมสินค้ากี่ถ้วย ส่งใคร ที่ไหนบ้าง เปิดหน้านี้ระหว่างเดินทางส่งของได้เลย — ลากที่ปุ่ม ⠿ หน้าแต่ละแถวเพื่อจัดลำดับเส้นทางส่งของได้ตามต้องการ ลำดับจะถูกจำไว้แยกตามวันที่</p>
     <div class="report-controls">
-      <div class="field"><label>วันที่จัดส่ง</label><input type="date" id="dl_date"></div>
+      <div class="field"><label>วันที่จัดส่ง</label><input type="date" id="dl_date"><div id="dl_dow_label" style="color:#1565c0;font-weight:600;font-size:13px;margin-top:3px;"></div></div>
       <button type="button" class="btn btn-outline btn-small" data-dlquick="today">วันนี้</button>
       <button type="button" class="btn btn-outline btn-small" data-dlquick="tomorrow">พรุ่งนี้</button>
       <button type="button" class="btn btn-outline btn-small" id="dl_prev">◀ วันก่อนหน้า</button>
@@ -3716,6 +3716,7 @@ document.getElementById('dl_date').addEventListener('input', renderDeliveryRepor
 
 function renderDeliveryReport(){
   const date = f('dl_date').value || addDaysISO(todayISO(),1);
+  document.getElementById('dl_dow_label').textContent = thaiDayName(date);
   const list = orders.filter(o=>o.deliveryDate===date && o.shippingStatus!=='ยกเลิก').map(o=>Object.assign({}, o, {_amt:computeAmounts(o)}));
   // A multi-item order (see extraLineItems) is one delivery stop / one customer, not several — a
   // customer who bought 2 products should count once here, matching the "1 order = 1 row" model
@@ -4574,6 +4575,13 @@ function weeksOfMonth(year, month){
   return weeks;
 }
 const THAI_DOW_SHORT = ['จ','อ','พ','พฤ','ศ','ส','อา'];
+const THAI_DOW_FULL = ['วันจันทร์','วันอังคาร','วันพุธ','วันพฤหัสบดี','วันศุกร์','วันเสาร์','วันอาทิตย์'];
+// Same Monday-first indexing fix as daysOfWeek() below — must read the date's own actual
+// weekday (getDay(): Sun=0..Sat=6), never assume which day of the week a picked date falls on.
+function thaiDayName(iso){
+  const [y,m,d] = iso.split('-').map(Number);
+  return THAI_DOW_FULL[(new Date(y,m-1,d).getDay()+6)%7];
+}
 function daysOfWeek(weekStartISO){
   const [y,m,d] = weekStartISO.split('-').map(Number);
   const start = new Date(y,m-1,d);
