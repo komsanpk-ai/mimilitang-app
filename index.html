@@ -4953,7 +4953,7 @@ function renderRevenueSingleDay(){
   }
 
   document.getElementById('rr-single-total-box').innerHTML = `
-    <div class="label">สรุปวันที่ ${fmtDate(date)}</div>
+    <div class="label">สรุปวันที่ ${fmtDate(date)} <span style="color:#1565c0;font-weight:600;font-size:12px;">${thaiDayName(date)}</span></div>
     <div class="amount">กำไร ${fmt(totalProfit)} บาท</div>
     <div class="sub">รายได้ ${fmt(totalRevenue)} บ. − ต้นทุน ${fmt(totalCost)} บ. · รวม ${fmt(totalSmall+totalLarge)} ถ้วย (เล็ก ${fmt(totalSmall)} / ใหญ่ ${fmt(totalLarge)})${uncovered ? ' · ⚠️ บางรายการยังไม่มีสูตรต้นทุน' : ''}</div>`;
 
