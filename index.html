@@ -1527,7 +1527,7 @@ p.hint.collapsible-hint.show{display:block;}
     </div>
     <div class="table-scroll">
       <table id="stockInDailyTable" class="compact-table">
-        <thead><tr><th>วัตถุดิบ</th><th>จำนวน</th><th>หน่วย</th><th>ราคา/หน่วย</th><th>ราคารวม</th><th>ร้านค้า</th><th>สลิป</th><th>หมายเหตุ</th></tr></thead>
+        <thead><tr><th>วัตถุดิบ</th><th>จำนวน</th><th>หน่วย</th><th>ราคา/หน่วย</th><th>ราคารวม</th><th>ร้านค้า</th><th>สลิป</th><th>หมายเหตุ</th><th></th></tr></thead>
         <tbody id="stockInDailyBody"></tbody>
       </table>
     </div>
@@ -5951,7 +5951,7 @@ function renderStockInDaily(){
   const date = f('sid_date').value || todayISO();
   const list = stockins.filter(s=>s.date===date).sort((a,b)=>a.id.localeCompare(b.id));
   const tbody = document.getElementById('stockInDailyBody');
-  if(!list.length){ tbody.innerHTML = `<tr><td colspan="8" class="empty-state">ไม่มีรายการรับเข้าสต๊อกในวันที่ ${fmtDate(date)}</td></tr>`; }
+  if(!list.length){ tbody.innerHTML = `<tr><td colspan="9" class="empty-state">ไม่มีรายการรับเข้าสต๊อกในวันที่ ${fmtDate(date)}</td></tr>`; }
   else {
     tbody.innerHTML = list.map(s=>{
       const mat = getMaterial(s.materialId);
@@ -5961,9 +5961,15 @@ function renderStockInDaily(){
         <td>${esc(s.supplier||'-')}</td>
         <td>${s.slip ? `<button type="button" class="btn btn-outline btn-small stockin-slip-view-btn" data-id="${s.id}">🖼️ ดูสลิป</button>` : `<span class="subtle-note">-</span>`}</td>
         <td class="wrap">${esc(s.note)}</td>
+        <td><div class="row-actions">
+          <button type="button" class="icon-mini edit-stockin-btn" data-id="${s.id}" title="แก้ไข">✏️</button>
+          <button type="button" class="icon-mini danger del-stockin-btn" data-id="${s.id}" title="ลบ">🗑️</button>
+        </div></td>
       </tr>`;
     }).join('');
     wireStockinSlipButtons(tbody);
+    tbody.querySelectorAll('.edit-stockin-btn').forEach(btn=>btn.addEventListener('click', ()=>openStockInModalForEdit(btn.dataset.id)));
+    tbody.querySelectorAll('.del-stockin-btn').forEach(btn=>btn.addEventListener('click', ()=>deleteStockIn(btn.dataset.id)));
   }
   const total = list.reduce((s,x)=>s+(x.totalPrice||0),0);
   document.getElementById('stockInDailyTotal').textContent = fmt(total)+' บาท';
@@ -6244,6 +6250,14 @@ function openStockInModalForEdit(id){
   document.getElementById('stockInSubmitBtn').textContent = '💾 บันทึกการแก้ไข';
   document.getElementById('stockInModal').classList.add('show');
 }
+function deleteStockIn(id){
+  if(!confirm('ยืนยันลบประวัติการซื้อนี้? ระบบจะตัดจำนวนนี้ออกจากสต๊อกคงเหลือด้วย')) return;
+  const s = stockins.find(x=>x.id===id);
+  if(s){ const mat=getMaterial(s.materialId); if(mat){ mat.currentStock = Math.round(((mat.currentStock||0)-s.qty)*1e6)/1e6; } }
+  stockins = stockins.filter(x=>x.id!==id);
+  if(s) recomputeMaterialLatest(s.materialId);
+  persistStockins(); persistMaterials(); renderStockPage(); toast('ลบประวัติแล้ว');
+}
 document.getElementById('openStockInModalBtn').addEventListener('click', openStockInModalForAdd);
 document.getElementById('stockInResetBtn').addEventListener('click', ()=>{
   if(editingStockInId) openStockInModalForEdit(editingStockInId);
@@ -6335,16 +6349,7 @@ function renderStockInHistory(){
     }).join('');
     wireStockinSlipButtons(tbody);
     tbody.querySelectorAll('.edit-stockin-btn').forEach(btn=>btn.addEventListener('click', ()=>openStockInModalForEdit(btn.dataset.id)));
-    tbody.querySelectorAll('.del-stockin-btn').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        if(!confirm('ยืนยันลบประวัติการซื้อนี้? ระบบจะตัดจำนวนนี้ออกจากสต๊อกคงเหลือด้วย')) return;
-        const s = stockins.find(s=>s.id===btn.dataset.id);
-        if(s){ const mat=getMaterial(s.materialId); if(mat){ mat.currentStock = Math.round(((mat.currentStock||0)-s.qty)*1e6)/1e6; } }
-        stockins = stockins.filter(x=>x.id!==btn.dataset.id);
-        if(s) recomputeMaterialLatest(s.materialId);
-        persistStockins(); persistMaterials(); renderStockPage(); toast('ลบประวัติแล้ว');
-      });
-    });
+    tbody.querySelectorAll('.del-stockin-btn').forEach(btn=>btn.addEventListener('click', ()=>deleteStockIn(btn.dataset.id)));
   }
   renderSupplierCompare(matFilter);
 }
