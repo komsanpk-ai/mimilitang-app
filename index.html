@@ -349,6 +349,36 @@ tr.prep-total-row td{font-weight:700;color:var(--maroon-dark);background:var(--c
 }
 .range-label{font-size:13px;font-weight:600;color:var(--maroon-dark);background:var(--cream);padding:8px 14px;border-radius:10px;border:1px solid var(--border);}
 
+/* ---------- Compare two periods (overview page) ---------- */
+.cmp-check{margin-bottom:16px;}
+.cmp-range-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.cmp-range-group{background:var(--cream);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+.cmp-range-group .report-controls{margin-bottom:0;}
+.cmp-range-title{font-size:13px;font-weight:700;color:var(--maroon-dark);margin-bottom:8px;}
+.cmp-legend{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.cmp-period{display:flex;gap:10px;align-items:flex-start;background:var(--cream);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:12.5px;color:var(--muted);min-width:0;}
+.cmp-period b{display:block;color:var(--maroon-dark);font-size:13px;}
+.cmp-dot{width:12px;height:12px;border-radius:50%;flex:none;margin-top:3px;}
+.cmp-dot.a,.cmp-fill.a,.cmp-tag.a{background:var(--gold);}
+.cmp-dot.b,.cmp-fill.b,.cmp-tag.b{background:var(--maroon);}
+.cmp-metric{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--paper);}
+.cmp-metric-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-weight:700;color:var(--maroon-dark);font-size:14px;}
+.cmp-line{display:grid;grid-template-columns:58px 1fr auto;gap:8px;align-items:center;margin:5px 0;}
+.cmp-tag{font-size:11px;font-weight:700;border-radius:999px;padding:2px 6px;text-align:center;color:#fff;white-space:nowrap;}
+.cmp-tag.a{color:var(--ink);}
+.cmp-track{height:14px;background:var(--cream);border-radius:7px;overflow:hidden;}
+.cmp-fill{height:100%;border-radius:7px;}
+.cmp-val{font-size:13px;font-weight:700;color:var(--ink);min-width:84px;text-align:right;font-variant-numeric:tabular-nums;}
+.cmp-val.neg{color:var(--red);}
+.cmp-delta{font-size:12.5px;font-weight:700;border-radius:999px;padding:3px 10px;background:var(--gray-bg);color:var(--gray);}
+.cmp-delta.up{background:var(--green-bg);color:var(--green);}
+.cmp-delta.down{background:var(--red-bg);color:var(--red);}
+.cmp-note{font-size:12.5px;color:var(--orange);background:var(--orange-bg);border-radius:10px;padding:8px 12px;margin:8px 0;}
+@media(max-width:640px){
+  .cmp-range-grid,.cmp-legend{grid-template-columns:1fr;}
+  .cmp-val{min-width:74px;}
+}
+
 /* ---------- Material spend ranking (report-stock overview) ---------- */
 .rank-row{display:flex;align-items:center;gap:9px;margin-bottom:10px;}
 .rank-num{
@@ -999,6 +1029,54 @@ p.hint.collapsible-hint.show{display:block;}
       </div>
     </div>
 
+  </section>
+
+  <!-- ===== REPORTS: COMPARE TWO PERIODS (revenue / cost / profit) ===== -->
+  <section class="card" id="cmpSection">
+    <div class="card-head"><h2><span class="emoji icon-chip" data-icon="trending">📈</span>เปรียบเทียบรายได้ · ต้นทุน · กำไร</h2></div>
+    <p class="hint">เลือก 2 ช่วงเวลาเพื่อเทียบกัน เช่น เดือนก่อน vs เดือนนี้ หรือวันที่ 1–7 ของสองเดือน นับตาม "วันที่จัดส่ง" ไม่นับออเดอร์ที่ยกเลิกและของผลิตสำรอง — "รายได้" คือยอดขายสินค้าสุทธิหลังหักส่วนลด (ไม่รวมค่าจัดส่ง) ต้นทุนคำนวณจากสูตร ใช้นิยามเดียวกับหน้า "รายงานรายได้"</p>
+    <div class="tabs" id="cmp-tabs">
+      <button type="button" data-tab="month" class="active">รายเดือน</button>
+      <button type="button" data-tab="range">รายสัปดาห์ / ช่วงวันที่</button>
+      <button type="button" data-tab="day">รายวัน</button>
+    </div>
+
+    <div id="cmp-ctrl-month">
+      <div class="report-controls">
+        <div class="field"><label>เดือนที่ 1</label><input type="month" id="cmp_m1"></div>
+        <div class="field"><label>เดือนที่ 2</label><input type="month" id="cmp_m2"></div>
+      </div>
+      <label class="reserve-check cmp-check"><input type="checkbox" id="cmp_equalize"> เทียบเฉพาะช่วงวันที่เท่ากัน (ตัดให้ถึงวันที่เดียวกับเดือนที่ 2)</label>
+    </div>
+
+    <div id="cmp-ctrl-range" style="display:none">
+      <div class="cmp-range-grid">
+        <div class="cmp-range-group">
+          <div class="cmp-range-title">ช่วงที่ 1</div>
+          <div class="report-controls">
+            <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="cmp_r1_from"></div>
+            <div class="field"><label>ถึงวันที่</label><input type="date" id="cmp_r1_to"></div>
+          </div>
+        </div>
+        <div class="cmp-range-group">
+          <div class="cmp-range-title">ช่วงที่ 2</div>
+          <div class="report-controls">
+            <div class="field"><label>ตั้งแต่วันที่</label><input type="date" id="cmp_r2_from"></div>
+            <div class="field"><label>ถึงวันที่</label><input type="date" id="cmp_r2_to"></div>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline btn-small" id="cmp_shift_btn" style="margin-bottom:16px;">⟲ ตั้งช่วงที่ 1 = ช่วงที่ 2 ย้อนหลัง 1 เดือน (วันที่เดียวกัน)</button>
+    </div>
+
+    <div id="cmp-ctrl-day" style="display:none">
+      <div class="report-controls">
+        <div class="field"><label>วันที่ 1</label><input type="date" id="cmp_d1"></div>
+        <div class="field"><label>วันที่ 2</label><input type="date" id="cmp_d2"></div>
+      </div>
+    </div>
+
+    <div id="cmp-result"></div>
   </section>
 
 </main>
@@ -4971,6 +5049,162 @@ function renderRevenueSingleDay(){
     : '';
 }
 
+/* ============ Compare two periods: revenue / cost / profit ============
+   Additive section at the bottom of the overview page — its own state, its own render, nothing
+   shared with initReportModule/reportRevenueModule. cmpMetrics() MUST keep the same definitions as
+   reportRevenueSeries()/renderRevenueSingleDay() (product sales net of discount, recipe-based cost,
+   deliveryDate basis, cancelled/reserve excluded) so the numbers always agree with the revenue
+   report for the same dates. */
+let cmpMode = 'month';
+function cmpAddMonthsISO(iso, n){
+  const [y,m,d] = iso.split('-').map(Number);
+  const t = new Date(y, m-1+n, 1);
+  const lastDay = new Date(t.getFullYear(), t.getMonth()+1, 0).getDate();
+  return toISODate(new Date(t.getFullYear(), t.getMonth(), Math.min(d, lastDay)));
+}
+function cmpMonthRange(ym){
+  const [y,m] = ym.split('-').map(Number);
+  return {from:`${ym}-01`, to:`${ym}-${String(new Date(y, m, 0).getDate()).padStart(2,'0')}`};
+}
+function cmpDays(from, to){
+  return Math.round((new Date(to+'T00:00:00Z') - new Date(from+'T00:00:00Z'))/86400000) + 1;
+}
+function cmpMetrics(from, to){
+  let revenue=0, cost=0, uncovered=0, rows=0;
+  orders.forEach(o=>{
+    if(o.shippingStatus==='ยกเลิก' || o.isReserve) return;
+    if(!(o.deliveryDate>=from && o.deliveryDate<=to)) return;
+    const amt = computeAmounts(o);
+    revenue += amt.subtotal - amt.discountAmount;
+    rows++;
+    [['jarSmall','small'],['jarLarge','large']].forEach(([field,size])=>{
+      const q = Number(o[field])||0; if(q<=0) return;
+      const recipe = getRecipe(o.product, size);
+      if(!recipe){ uncovered++; return; }
+      cost += computeRecipeCost(recipe).totalCost * q;
+    });
+  });
+  return {revenue, cost, profit:revenue-cost, uncovered, rows};
+}
+function getCmpPeriods(){
+  const today = todayISO();
+  if(cmpMode==='month'){
+    const m1 = f('cmp_m1').value, m2 = f('cmp_m2').value;
+    if(!m1 || !m2) return {error:'กรุณาเลือกเดือนให้ครบทั้งสองช่อง'};
+    const p1 = Object.assign(cmpMonthRange(m1), {label:monthLabel(m1)});
+    const p2 = Object.assign(cmpMonthRange(m2), {label:monthLabel(m2)});
+    if(f('cmp_equalize').checked){
+      if(p2.from > today) return {error:'เดือนที่ 2 ยังไม่เริ่ม จึงยังไม่มีข้อมูลให้เทียบช่วงวันที่เท่ากัน'};
+      const end2 = p2.to < today ? p2.to : today;
+      const n = Number(end2.slice(8,10));
+      p2.to = end2;
+      p1.to = `${m1}-${String(Math.min(n, Number(p1.to.slice(8,10)))).padStart(2,'0')}`;
+    }
+    return {periods:[p1,p2]};
+  }
+  if(cmpMode==='range'){
+    const periods = [];
+    for(const n of [1,2]){
+      const from = f(`cmp_r${n}_from`).value, to = f(`cmp_r${n}_to`).value;
+      if(!from || !to) return {error:'กรุณาเลือกวันที่ให้ครบทุกช่อง'};
+      if(from > to) return {error:`ช่วงที่ ${n}: วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด`};
+      periods.push({from, to, label:''});
+    }
+    return {periods};
+  }
+  const d1 = f('cmp_d1').value, d2 = f('cmp_d2').value;
+  if(!d1 || !d2) return {error:'กรุณาเลือกวันที่ให้ครบทั้งสองช่อง'};
+  return {periods:[{from:d1, to:d1, label:thaiDayName(d1)}, {from:d2, to:d2, label:thaiDayName(d2)}]};
+}
+function cmpDeltaHtml(a, b, neutral){
+  const diff = b - a;
+  if(Math.abs(diff) < 0.005) return '<span class="cmp-delta">ไม่เปลี่ยนแปลง</span>';
+  const up = diff > 0, sign = up ? '+' : '−';
+  const pct = a !== 0 ? ` (${sign}${(Math.abs(diff)/Math.abs(a)*100).toFixed(1)}%)` : ' (ไม่มีฐานเทียบ)';
+  const cls = neutral ? '' : (up ? ' up' : ' down');
+  return `<span class="cmp-delta${cls}">${up?'▲':'▼'} ${sign}${fmt(Math.abs(diff))} บ.${pct}</span>`;
+}
+function cmpBarLine(n, value, max){
+  const cls = n===1 ? 'a' : 'b';
+  const w = max > 0 ? Math.max(Math.abs(value)/max*100, value!==0 ? 2 : 0) : 0;
+  return `<div class="cmp-line"><span class="cmp-tag ${cls}">ช่วง ${n}</span><div class="cmp-track"><div class="cmp-fill ${cls}" style="width:${w}%"></div></div><span class="cmp-val${value<0?' neg':''}">${fmt(value)} บ.</span></div>`;
+}
+function renderCompare(){
+  const box = document.getElementById('cmp-result');
+  if(!box) return;
+  const per = getCmpPeriods();
+  if(per.error){ box.innerHTML = `<div class="empty-state">${esc(per.error)}</div>`; return; }
+  const [p1, p2] = per.periods;
+  const m1 = cmpMetrics(p1.from, p1.to), m2 = cmpMetrics(p2.from, p2.to);
+  const today = todayISO();
+
+  const periodCard = (p, m, n)=>{
+    const dates = p.from===p.to ? fmtDate(p.from) : `${fmtDate(p.from)} – ${fmtDate(p.to)} · ${cmpDays(p.from,p.to)} วัน`;
+    return `<div class="cmp-period"><span class="cmp-dot ${n===1?'a':'b'}"></span><div><b>ช่วงที่ ${n}${p.label ? ' · '+esc(p.label) : ''}</b>${dates}${m.rows ? '' : ' · ไม่มีออเดอร์'}</div></div>`;
+  };
+  let notes = '';
+  [[p1,1],[p2,2]].forEach(([p,n])=>{
+    if(p.to > today) notes += `<div class="cmp-note">⚠️ ช่วงที่ ${n} ยังไม่สิ้นสุด มีข้อมูลถึงวันนี้เท่านั้น ยอดรวมจึงน้อยกว่าช่วงเต็มโดยธรรมชาติ${cmpMode==='month' ? ' — ติ๊ก "เทียบเฉพาะช่วงวันที่เท่ากัน" ด้านบนเพื่อเทียบอย่างยุติธรรม' : ''}</div>`;
+  });
+  if(m1.uncovered || m2.uncovered){
+    notes += `<div class="cmp-note">⚠️ มีรายการสินค้า/ขนาดที่ยังไม่มีสูตรต้นทุน (ช่วงที่ 1: ${m1.uncovered} · ช่วงที่ 2: ${m2.uncovered}) ต้นทุนและกำไรอาจคลาดเคลื่อนจากความเป็นจริง</div>`;
+  }
+  const header = `<div class="cmp-legend">${periodCard(p1,m1,1)}${periodCard(p2,m2,2)}</div>${notes}`;
+  if(!m1.rows && !m2.rows){
+    box.innerHTML = header + '<div class="empty-state">ไม่มีออเดอร์ในทั้งสองช่วงที่เลือก</div>';
+    return;
+  }
+  const max = Math.max(...[m1.revenue,m1.cost,m1.profit,m2.revenue,m2.cost,m2.profit].map(Math.abs));
+  const metricRow = (label, a, b, neutral)=>`
+    <div class="cmp-metric">
+      <div class="cmp-metric-head"><span>${label}</span>${cmpDeltaHtml(a,b,neutral)}</div>
+      ${cmpBarLine(1,a,max)}${cmpBarLine(2,b,max)}
+    </div>`;
+  const margin = m=> m.revenue>0 ? m.profit/m.revenue*100 : null;
+  const g1 = margin(m1), g2 = margin(m2);
+  let marginDelta = '<span class="cmp-delta">—</span>';
+  if(g1!==null && g2!==null){
+    const d = g2 - g1;
+    marginDelta = Math.abs(d) < 0.05 ? '<span class="cmp-delta">ไม่เปลี่ยนแปลง</span>'
+      : `<span class="cmp-delta ${d>0?'up':'down'}">${d>0?'▲ +':'▼ −'}${Math.abs(d).toFixed(1)} จุด</span>`;
+  }
+  const marginRow = `
+    <div class="cmp-metric">
+      <div class="cmp-metric-head"><span>อัตรากำไร (กำไร ÷ รายได้)</span>${marginDelta}</div>
+      <div class="cmp-line" style="grid-template-columns:58px auto;"><span class="cmp-tag a">ช่วง 1</span><span class="cmp-val" style="text-align:left;">${g1===null?'-':g1.toFixed(1)+'%'}</span></div>
+      <div class="cmp-line" style="grid-template-columns:58px auto;"><span class="cmp-tag b">ช่วง 2</span><span class="cmp-val" style="text-align:left;">${g2===null?'-':g2.toFixed(1)+'%'}</span></div>
+    </div>`;
+  box.innerHTML = header + metricRow('รายได้', m1.revenue, m2.revenue, false) + metricRow('ต้นทุน', m1.cost, m2.cost, true) + metricRow('กำไร', m1.profit, m2.profit, false) + marginRow;
+}
+(function initCompareControls(){
+  const today = todayISO();
+  f('cmp_m2').value = today.slice(0,7);
+  f('cmp_m1').value = addMonthsToYm(today.slice(0,7), -1);
+  f('cmp_r2_from').value = today.slice(0,8) + '01';
+  f('cmp_r2_to').value = today;
+  f('cmp_r1_from').value = cmpAddMonthsISO(f('cmp_r2_from').value, -1);
+  f('cmp_r1_to').value = cmpAddMonthsISO(today, -1);
+  f('cmp_d2').value = today;
+  f('cmp_d1').value = cmpAddMonthsISO(today, -1);
+  document.querySelectorAll('#cmp-tabs button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#cmp-tabs button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active'); cmpMode = btn.dataset.tab;
+      ['month','range','day'].forEach(t=>{ document.getElementById('cmp-ctrl-'+t).style.display = t===cmpMode ? '' : 'none'; });
+      renderCompare();
+    });
+  });
+  ['cmp_m1','cmp_m2','cmp_r1_from','cmp_r1_to','cmp_r2_from','cmp_r2_to','cmp_d1','cmp_d2'].forEach(id=> f(id).addEventListener('input', renderCompare));
+  f('cmp_equalize').addEventListener('change', renderCompare);
+  f('cmp_shift_btn').addEventListener('click', ()=>{
+    const from = f('cmp_r2_from').value, to = f('cmp_r2_to').value;
+    if(!from || !to){ toast('กรุณาเลือกวันที่ของช่วงที่ 2 ก่อน'); return; }
+    f('cmp_r1_from').value = cmpAddMonthsISO(from, -1);
+    f('cmp_r1_to').value = cmpAddMonthsISO(to, -1);
+    renderCompare();
+  });
+})();
+
 /* ---- Report 3: new vs repeat customers per bucket ---- */
 function reportCustomerSeries(buckets){
   const visits = distinctVisits(orders.filter(o=>o.phone && !o.isReserve));
@@ -5369,6 +5603,7 @@ function renderAllReports(){
   reportSalesByProductModule.render();
   reportRevenueModule.render();
   renderRevenueSingleDay();
+  renderCompare();
   reportCustomerModule.render();
   renderRepeatCustomerTable();
   reportStockModule.render();
@@ -5580,7 +5815,7 @@ function applyPage(pageName){
   if(pageName==='stock'){ switchSubview((history.state && history.state.subview) || 'overview'); renderStockPage(); }
   if(pageName==='prep') renderPrepPage();
   if(pageName==='delivery') renderDeliveryReport();
-  if(pageName==='report-overview'){ renderReport(); reportSalesByProductModule.render(true); }
+  if(pageName==='report-overview'){ renderReport(); reportSalesByProductModule.render(true); renderCompare(); }
   if(pageName==='report-revenue'){ reportRevenueModule.render(true); renderRevenueSingleDay(); }
   if(pageName==='report-customers'){ reportCustomerModule.render(true); renderRepeatCustomerTable(); }
   if(pageName==='report-stock'){ renderRovReport(); reportStockModule.render(true); }
