@@ -4472,6 +4472,16 @@ document.getElementById('sp_pageSize').addEventListener('change', ()=>{ slipPage
 document.getElementById('closeSlipViewBtn').addEventListener('click', ()=>document.getElementById('slipViewModal').classList.remove('show'));
 document.getElementById('slipViewModal').addEventListener('click', e=>{ if(e.target.id==='slipViewModal') document.getElementById('slipViewModal').classList.remove('show'); });
 
+/* A negative value (e.g. a loss-making period's กำไร) can't be a bar rising from the baseline, and
+   a negative <rect> height is invalid SVG — the browser logs an error and silently draws nothing,
+   so a loss looked identical to a missing bar. Bars clamp their height to 0 and use these two
+   helpers instead: a short red stub on the baseline plus a red value label, so a loss reads
+   differently from a zero. Deliberately NOT drawn below the baseline — that would need a negative
+   range in svgYAxis/computeNiceTicks, which every chart in the app shares. */
+const NEG_LABEL_ATTR = 'font-weight="700" fill="#c62828" stroke="#fff" stroke-width="3" paint-order="stroke"';
+function svgLossMarker(x, bw, baseY){
+  return `<rect x="${x.toFixed(1)}" y="${(baseY-3).toFixed(1)}" width="${bw.toFixed(1)}" height="3" rx="1.5" fill="#c62828"/>`;
+}
 function svgBar(data, targetWidth, ns){
   /* Unlike svgGroupedBar (deliberately a fixed wide canvas + horizontal scroll, since month/week/
      day reports can have up to 12 categories), this chart only ever shows a handful of categories
@@ -4495,7 +4505,7 @@ function svgBar(data, targetWidth, ns){
   let bars='', barDefs='';
   data.forEach((d,i)=>{
     const x = padL + i*gap + (gap-barW)/2;
-    const barH = (h-padT-padB) * (d.value/niceMax);
+    const barH = Math.max(0, (h-padT-padB) * (d.value/niceMax));
     const y = h-padB-barH;
     let fillAttr = `fill="${d.color}"`;
     if(iconTheme==='a'){
@@ -4506,7 +4516,8 @@ function svgBar(data, targetWidth, ns){
       fillAttr = `fill="url(#${gid})"`;
     }
     bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="6" ${fillAttr}><title>${esc(d.label)}: ${fmt(d.value)}</title></rect>`;
-    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="12" text-anchor="middle" fill="#5c4530">${fmt(d.value)}</text>`;
+    if(d.value<0) bars += svgLossMarker(x, barW, h-padB);
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(d.value<0 ? y-9 : y-6).toFixed(1)}" font-size="12" text-anchor="middle" ${d.value<0 ? NEG_LABEL_ATTR : 'fill="#5c4530"'}>${fmt(d.value)}</text>`;
     const short = d.label.length>10 ? d.label.slice(0,9)+'…' : d.label;
     bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+24}" font-size="13" text-anchor="middle" fill="#8a7566">${esc(short)}</text>`;
   });
@@ -4606,7 +4617,7 @@ function svgGroupedBar(categories, series, ns){
     const groupX = padL + ci*groupGap + (groupGap-groupW)/2;
     series.forEach((s,si)=>{
       const val = s.values[ci]||0;
-      const barH = (h-padT-padB) * (val/niceMax);
+      const barH = Math.max(0, (h-padT-padB) * (val/niceMax));
       const x = groupX + si*barW;
       const y = h-padB-barH;
       const bw = barW*0.82;
@@ -4621,6 +4632,10 @@ function svgGroupedBar(categories, series, ns){
         fillAttr = `fill="url(#${gid})"`;
       }
       bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${barH.toFixed(1)}" rx="6" ${fillAttr}><title>${esc(s.name)} · ${esc(cat.label)}: ${fmt(val)}</title></rect>`;
+      if(val<0){
+        bars += svgLossMarker(x, bw, h-padB);
+        bars += `<text x="${(x+bw/2).toFixed(1)}" y="${(h-padB-9).toFixed(1)}" font-size="12" text-anchor="middle" ${NEG_LABEL_ATTR}>${fmt(val)}</text>`;
+      }
       if(val>0 && barH>20){
         // Adjacent series' bars sit close together within a group, so a label placed directly
         // above each one can crowd into its neighbor's — stagger each series' label a bit higher
