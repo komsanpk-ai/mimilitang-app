@@ -12,11 +12,13 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
-      - run: npm install firebase-admin
+          node-version: '24'
+      # Pinned to a major on purpose: the unpinned install silently picked up v14, which removed
+      # the namespaced admin.firestore()/admin.credential APIs this script used to call.
+      - run: npm install firebase-admin@14
       - run: node scripts/backup-firestore.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

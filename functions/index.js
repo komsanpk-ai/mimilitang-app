@@ -3,11 +3,12 @@
 // collections the web app (index.html) reads from — no separate data store.
 const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
-const admin = require('firebase-admin');
+const { initializeApp } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 const crypto = require('crypto');
 
-admin.initializeApp();
-const db = admin.firestore();
+initializeApp();
+const db = getFirestore();
 
 const LINE_CHANNEL_SECRET = defineSecret('LINE_CHANNEL_SECRET');
 const LINE_CHANNEL_ACCESS_TOKEN = defineSecret('LINE_CHANNEL_ACCESS_TOKEN');

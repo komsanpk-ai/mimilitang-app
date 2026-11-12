@@ -1,13 +1,14 @@
 // Dumps Firestore into the same JSON shape as the app's own "ดาวน์โหลดไฟล์สำรอง" button
 // (see downloadBackupBtn / restoreBackupBtn in index.html), so a file this script writes
 // can be fed straight back into the app's "กู้ข้อมูลจากไฟล์" restore feature if ever needed.
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 const fs = require('fs');
 const path = require('path');
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-const db = admin.firestore();
+initializeApp({ credential: cert(serviceAccount) });
+const db = getFirestore();
 
 // Collections stored as one Firestore doc per array item (id = doc id).
 const ARRAY_COLLECTIONS = ['orders', 'materials', 'stockins', 'stockAdjustments'];
